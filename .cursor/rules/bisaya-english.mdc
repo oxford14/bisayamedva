@@ -1,0 +1,15 @@
+---
+description: Public copy must be Bisaya-English only. Never use Tagalog or Taglish.
+alwaysApply: true
+---
+
+# Bisaya-English language rule
+
+All public-facing marketing copy, CTAs, form labels, errors, empty states, and student-facing UI must be **Bisaya-English**.
+
+- Combine natural Cebuano/Bisaya with English. Do not force a Bisaya word into every sentence.
+- Keep technical Medical VA terms in English: Medical Billing, Claims, Insurance, Eligibility, Patient Account, Revenue Cycle, EHR, Medical Terminology.
+- Never use Tagalog/Taglish marketing words, including: Mag-register, Alamin, Matuto, Simulan, Para sa iyo, Libre, Bayad, Halika, Tara, Ngayon, Gusto mo ba, Sulit, Kailangan mo, Salamat po (use Salamat), Mag-sign in, Kumusta (use Maayong adlaw / Maayong pag-abot).
+- Voice: a real Bisaya professional speaking naturally. Warm, clear, confident. Not slang-heavy, not hospital-corporate.
+- Do not claim the ₱200 Medical Billing course makes someone fully job-ready.
+- Prices and weekend schedules must come from `src/content/site.ts` (or later the database). Do not hard-code them in components.

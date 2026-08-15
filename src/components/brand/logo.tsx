@@ -22,9 +22,9 @@ export function Logo({
             : "/images/brand/logo-on-light.png"
         }
         alt="Bisaya MedVA"
-        width={1044}
-        height={478}
-        className="h-11 w-auto"
+        width={2032}
+        height={976}
+        className="h-10 w-auto sm:h-11"
         priority
       />
     </Link>

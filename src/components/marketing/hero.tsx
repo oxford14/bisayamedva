@@ -1,68 +1,176 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { NumberTicker } from "@/components/ui/number-ticker";
 import { Container } from "@/components/marketing/container";
-import { hero, site } from "@/content/site";
-import { formatPeso } from "@/lib/utils";
+import { hero } from "@/content/site";
+import type { FeaturedOffer } from "@/lib/content/featured-offer";
 
-export function Hero() {
+const ease = [0.22, 1, 0.36, 1] as const;
+
+export function Hero({ session }: { session: FeaturedOffer["session"] }) {
+  const reduceMotion = useReducedMotion();
+
+  const fadeUp = (delay = 0) =>
+    reduceMotion
+      ? { initial: false, animate: { opacity: 1, y: 0 } }
+      : {
+          initial: { opacity: 0, y: 18 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.55, delay, ease },
+        };
+
   return (
-    <section className="relative isolate min-h-[100svh] w-full overflow-hidden bg-navy text-cream">
-      <Image
-        src={hero.image.src}
-        alt={hero.image.alt}
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover object-[72%_center] lg:object-[78%_18%]"
-      />
-      <div className="absolute inset-0 bg-linear-to-r from-navy via-navy/88 to-navy/25 max-lg:from-navy/92 max-lg:via-navy/70 max-lg:to-navy/35" />
-      <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-40" />
-
-      <Container className="relative z-10 flex min-h-[100svh] flex-col justify-end pb-16 pt-28 sm:justify-center sm:pb-24 sm:pt-24 lg:pb-28">
-        <div className="max-w-2xl xl:max-w-3xl">
-          <p className="text-xs font-semibold tracking-[0.24em] text-teal-bright uppercase">
+    <section className="relative isolate overflow-hidden bg-white text-ink">
+      <Container className="relative grid min-h-[calc(100svh-4.5rem)] items-center gap-10 py-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)_10.5rem] lg:gap-8 lg:py-14 xl:gap-12">
+        <div className="relative z-10 max-w-xl xl:max-w-2xl">
+          <motion.p
+            className="text-[11px] font-semibold tracking-[0.22em] text-navy/55 uppercase"
+            {...fadeUp(0.05)}
+          >
             {hero.eyebrow}
-          </p>
-          <h1 className="mt-5 font-display text-[clamp(2.35rem,6.4vw,5.4rem)] leading-[0.98] font-semibold tracking-tight text-balance">
+          </motion.p>
+          <motion.h1
+            className="mt-5 font-display text-[clamp(2.4rem,5.6vw,4.75rem)] leading-[1.02] font-semibold tracking-tight text-balance text-ink"
+            {...fadeUp(0.12)}
+          >
             {hero.headline}
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-cream/82 sm:text-lg">
+          </motion.h1>
+          <motion.p
+            className="mt-6 max-w-md text-base leading-relaxed text-muted sm:text-lg"
+            {...fadeUp(0.2)}
+          >
             {hero.support}
-          </p>
-          <div className="mt-8 flex flex-wrap items-end gap-8">
-            <div>
-              <p className="text-xs font-semibold tracking-[0.16em] text-cream/50 uppercase">
-                {site.featuredCourse.priceLabel}
-              </p>
-              <p className="font-display text-5xl font-semibold sm:text-6xl">
-                <NumberTicker value={site.featuredCourse.price} prefix="₱" />
-              </p>
-            </div>
-            <p className="max-w-[14rem] text-sm text-cream/70">
-              {site.featuredCourse.name} · {site.nextSession.format} · Every
-              weekend
-            </p>
-          </div>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <Button variant="accent" size="lg" asChild>
+          </motion.p>
+          <motion.div
+            className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center"
+            {...fadeUp(0.28)}
+          >
+            <Button
+              variant="accent"
+              size="lg"
+              className="rounded-md shadow-none"
+              asChild
+            >
               <Link href={hero.primaryCta.href}>
-                {hero.primaryCta.label} — {formatPeso(site.featuredCourse.price)}
+                {hero.primaryCta.label}
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
             <Button
               variant="secondary"
               size="lg"
-              className="border-cream/25 text-cream hover:bg-white/10"
+              className="rounded-md border-teal-bright/70 text-navy hover:bg-teal-bright/10"
               asChild
             >
               <Link href={hero.secondaryCta.href}>{hero.secondaryCta.label}</Link>
             </Button>
-          </div>
+          </motion.div>
         </div>
+
+        <motion.div
+          className="relative mx-auto aspect-[1331/992] w-full max-w-sm sm:max-w-md lg:mx-0 lg:max-w-none"
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, delay: 0.15, ease }}
+        >
+          {/* Backdrop shape, sits behind her */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-[2%] right-[4%] z-0 size-[58%]"
+          >
+            <Image
+              src="/images/hero/geo-circle.svg"
+              alt=""
+              fill
+              className="animate-float-slow object-contain opacity-90"
+              unoptimized
+            />
+          </div>
+
+          {/* Transparent portrait; framing trims only the empty left padding */}
+          <Image
+            src={hero.image.src}
+            alt={hero.image.alt}
+            fill
+            priority
+            sizes="(max-width: 1024px) 90vw, 46vw"
+            className="z-10 object-cover object-right"
+          />
+
+          {/* Foreground accents, layered over her */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute bottom-[2%] -left-[14%] z-20 size-[46%]"
+          >
+            <Image
+              src="/images/hero/geo-arc.svg"
+              alt=""
+              fill
+              className="animate-spin-slower object-contain opacity-75"
+              unoptimized
+            />
+          </div>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-[2%] right-0 z-20 size-4 sm:size-5"
+          >
+            <Image
+              src="/images/hero/geo-dot.svg"
+              alt=""
+              fill
+              className="animate-pulse-soft object-contain"
+              unoptimized
+            />
+          </div>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-[22%] -left-[18%] z-20 hidden w-16 opacity-70 sm:block lg:w-20"
+          >
+            <Image
+              src="/images/hero/geo-dot-grid.svg"
+              alt=""
+              width={144}
+              height={192}
+              className="h-auto w-full animate-float-slower"
+              unoptimized
+            />
+          </div>
+        </motion.div>
+
+        <motion.aside
+          className="relative z-10 border-t border-navy/10 pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
+          initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.35, ease }}
+          aria-label="Next weekend training"
+        >
+          <p className="text-[10px] font-semibold tracking-[0.2em] text-navy/45 uppercase">
+            {session.label}
+          </p>
+          <p className="mt-4 font-display text-2xl leading-tight font-semibold text-ink lg:text-[1.65rem]">
+            {session.day}
+          </p>
+          <p className="mt-2 text-sm text-muted">{session.dateLabel}</p>
+          <p className="mt-1 text-sm font-medium text-navy">
+            {session.startTime} – {session.endTime}{" "}
+            <span className="text-muted font-normal">
+              {session.timezoneLabel}
+            </span>
+          </p>
+          <p className="mt-4 text-xs tracking-wide text-muted uppercase">
+            {session.format}
+          </p>
+          <Link
+            href="/register"
+            className="mt-5 inline-flex text-sm font-semibold text-navy underline decoration-teal-bright decoration-2 underline-offset-4 transition-colors hover:text-navy-deep cursor-pointer"
+          >
+            Register
+          </Link>
+        </motion.aside>
       </Container>
     </section>
   );

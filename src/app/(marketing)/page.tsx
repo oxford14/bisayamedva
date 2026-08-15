@@ -10,19 +10,22 @@ import { WeekendTraining } from "@/components/marketing/weekend-training";
 import { WhoFor } from "@/components/marketing/who-for";
 import { WhyBilling } from "@/components/marketing/why-billing";
 import { WhyBisaya } from "@/components/marketing/why-bisaya";
+import { getFeaturedOffer } from "@/lib/content/featured-offer";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const offer = await getFeaturedOffer();
+
   return (
     <>
-      <Hero />
+      <Hero session={offer.session} />
       <TrustStrip />
       <WhyBilling />
       <Curriculum />
       <NotIncluded />
       <WhoFor />
       <HowItWorks />
-      <WeekendTraining />
-      <Pricing />
+      <WeekendTraining offer={offer} />
+      <Pricing offer={offer} />
       <WhyBisaya />
       <Faq />
       <FinalCta />

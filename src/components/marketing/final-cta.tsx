@@ -2,8 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/marketing/container";
-import { finalCta, images, site } from "@/content/site";
-import { formatPeso } from "@/lib/utils";
+import { finalCta, images } from "@/content/site";
 
 export function FinalCta() {
   return (
@@ -23,9 +22,7 @@ export function FinalCta() {
           </h2>
           <p className="mt-5 max-w-lg text-lg text-cream/78">{finalCta.body}</p>
           <Button variant="accent" size="lg" className="mt-8" asChild>
-            <Link href={finalCta.cta.href}>
-              {finalCta.cta.label} — {formatPeso(site.featuredCourse.price)}
-            </Link>
+            <Link href={finalCta.cta.href}>{finalCta.cta.label}</Link>
           </Button>
         </div>
       </Container>

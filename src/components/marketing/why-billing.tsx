@@ -33,7 +33,7 @@ export function WhyBilling() {
           </ul>
         </div>
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[28px] shadow-[0_30px_80px_rgba(11,31,58,0.16)]">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-[28px] shadow-[0_30px_80px_rgba(91,109,73,0.16)]">
             <Image
               src={hero.portrait.src}
               alt={hero.portrait.alt}

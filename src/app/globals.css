@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --navy: #0b1f3a;
-  --navy-deep: #071526;
-  --teal: #0c7a70;
-  --teal-bright: #14a896;
-  --cream: #f7f5f2;
-  --sand: #e8e2d9;
-  --ink: #1a2332;
-  --muted: #5c6570;
-  --border: #d9d2c8;
+  --navy: #5b6d49;
+  --navy-deep: #455338;
+  --teal: #5b6d49;
+  --teal-bright: #a2ac82;
+  --cream: #f5f6f0;
+  --sand: #e4e7d8;
+  --ink: #2f3826;
+  --muted: #66705a;
+  --border: #d5dac8;
   --card: #ffffff;
   --destructive: #b42318;
-  --ring: #0c7a70;
+  --ring: #5b6d49;
   --background: var(--cream);
   --foreground: var(--ink);
 }
@@ -85,15 +85,15 @@ body {
 
 .bg-grid {
   background-image:
-    linear-gradient(to right, rgb(11 31 58 / 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(11 31 58 / 0.045) 1px, transparent 1px);
+    linear-gradient(to right, rgb(91 109 73 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(91 109 73 / 0.045) 1px, transparent 1px);
   background-size: 80px 80px;
 }
 
 .bg-grid-dark {
   background-image:
-    linear-gradient(to right, rgb(247 245 242 / 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(247 245 242 / 0.06) 1px, transparent 1px);
+    linear-gradient(to right, rgb(245 246 240 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(245 246 240 / 0.06) 1px, transparent 1px);
   background-size: 80px 80px;
 }
 
@@ -150,8 +150,65 @@ body {
   }
 }
 
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes float-slower {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+  50% {
+    transform: translateY(10px) translateX(6px);
+  }
+}
+
+@keyframes spin-slower {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.85;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .reveal {
     animation: fade-up 0.4s ease both;
+  }
+
+  .animate-float-slow {
+    animation: float-slow 10s ease-in-out infinite;
+  }
+
+  .animate-float-slower {
+    animation: float-slower 14s ease-in-out infinite;
+  }
+
+  .animate-spin-slower {
+    animation: spin-slower 28s linear infinite;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 6s ease-in-out infinite;
   }
 }

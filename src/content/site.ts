@@ -71,8 +71,8 @@ export const hero = {
   primaryCta: { href: "/register", label: "Register" },
   secondaryCta: { href: "/#what-youll-learn", label: "See What You'll Learn" },
   image: {
-    src: "/images/hero/cinematic.webp",
-    alt: "Filipina student sa home desk, ready mo-start sa Medical Billing training.",
+    src: "/images/hero/HeroImage.png",
+    alt: "Professional Bisaya woman sa desk, ready for Medical VA training.",
   },
   portrait: {
     src: "/images/hero/portrait.webp",
@@ -274,13 +274,19 @@ export const finalCta = {
 } as const;
 
 export const authCopy = {
+  shell: {
+    welcome: "Maayong adlaw!",
+    support: "Enter your details to continue sa imong Bisaya MedVA account.",
+    tagline:
+      "Medical Billing training for aspiring Medical VAs — klaro, practical, Bisaya-English.",
+  },
   login: {
     eyebrow: "WELCOME BACK",
     title: "Login to Bisaya MedVA",
     body: "Maayong pag-abot. Open your student account to see your training details.",
-    submit: "Login",
+    submit: "Log In",
     noAccount: "Wala pa kay account?",
-    register: "Register for Medical Billing",
+    register: "Register",
     forgot: "Forgot password?",
   },
   forgot: {
@@ -318,6 +324,16 @@ export const images = {
   cta: {
     src: "/images/hero/cta.webp",
     alt: "Aspiring Medical VA ready to register for weekend training.",
+  },
+  auth: {
+    character: {
+      src: "/images/auth/medva-character.png",
+      alt: "Friendly Medical VA character ready to help you login.",
+    },
+    wave: {
+      src: "/images/auth/auth-wave-bg.png",
+      alt: "",
+    },
   },
   texture: "/images/brand/texture-linen.webp",
   og: "/images/og/share.jpg",

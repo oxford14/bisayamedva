@@ -9,8 +9,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-navy text-cream hover:bg-navy-deep shadow-[0_8px_20px_rgba(11,31,58,0.12)]",
-        accent: "bg-teal text-white hover:bg-[#0a6b63] shadow-[0_8px_20px_rgba(12,122,112,0.18)]",
+          "bg-navy text-cream hover:bg-navy-deep shadow-[0_8px_20px_rgba(91,109,73,0.12)]",
+        accent: "bg-teal text-white hover:bg-navy-deep shadow-[0_8px_20px_rgba(91,109,73,0.18)]",
         secondary:
           "border border-navy/15 bg-transparent text-navy hover:bg-navy/[0.04]",
         ghost: "text-navy hover:bg-navy/[0.05]",

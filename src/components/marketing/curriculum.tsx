@@ -34,7 +34,7 @@ export function Curriculum() {
                 className={
                   featured
                     ? "rounded-[24px] border border-navy/10 bg-navy p-8 text-cream sm:col-span-2 lg:col-span-2"
-                    : "rounded-[24px] border border-border bg-cream/70 p-7 transition-shadow duration-200 hover:shadow-[0_16px_40px_rgba(11,31,58,0.07)]"
+                    : "rounded-[24px] border border-border bg-cream/70 p-7 transition-shadow duration-200 hover:shadow-[0_16px_40px_rgba(91,109,73,0.07)]"
                 }
               >
                 <span

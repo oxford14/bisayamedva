@@ -257,7 +257,7 @@ export function RegisterFlow() {
             <legend className="text-sm font-medium text-navy">
               Choose your weekend session
             </legend>
-            <label className="mt-3 flex cursor-pointer gap-3 rounded-2xl border border-teal bg-white p-4 shadow-[0_8px_20px_rgba(12,122,112,0.08)]">
+            <label className="mt-3 flex cursor-pointer gap-3 rounded-2xl border border-teal bg-white p-4 shadow-[0_8px_20px_rgba(91,109,73,0.08)]">
               <input
                 type="radio"
                 name="session"

@@ -3,11 +3,12 @@ import Link from "next/link";
 import { Clock, MapPin, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/marketing/container";
-import { images, site } from "@/content/site";
+import { images } from "@/content/site";
+import type { FeaturedOffer } from "@/lib/content/featured-offer";
 import { formatPeso } from "@/lib/utils";
 
-export function WeekendTraining() {
-  const session = site.nextSession;
+export function WeekendTraining({ offer }: { offer: FeaturedOffer }) {
+  const session = offer.session;
 
   return (
     <section className="relative min-h-[32rem] w-full overflow-hidden bg-navy text-cream lg:min-h-[36rem]">
@@ -44,11 +45,11 @@ export function WeekendTraining() {
             <div className="flex items-center gap-3">
               <Calendar className="size-4 text-teal-bright" aria-hidden />
               <dt className="sr-only">Course</dt>
-              <dd>{site.featuredCourse.name}</dd>
+              <dd>{offer.course.name}</dd>
             </div>
           </dl>
           <p className="mt-8 font-display text-5xl font-semibold">
-            {formatPeso(site.featuredCourse.price)}
+            {formatPeso(offer.course.price)}
           </p>
           <Button variant="accent" size="lg" className="mt-7" asChild>
             <Link href="/register">Reserve Your Slot</Link>

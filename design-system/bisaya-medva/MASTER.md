@@ -5,11 +5,11 @@
 > If not, strictly follow the rules below.
 
 **Project:** Bisaya MedVA
-**Generated:** 2026-08-14 (UI/UX Pro Max) then **overridden by PRD tokens**
+**Updated:** 2026-08-15 — olive/sage brand palette
 **Category:** Medical VA training / career education (not a clinic)
 **Design Dials:** Variance 4/10 | Motion 3/10 | Density 3/10 (Spacious)
 
-Pro Max suggested cyan neumorphism + Figtree. **Do not use that.** The PRD requires deep navy, medical teal, warm neutrals, photography-led career education, and no hospital/glass/AI-gradient look.
+Brand colors are olive `#5B6D49` and sage `#A2AC82`. Tailwind token names remain `navy` / `teal` for class stability; values map to olive/sage.
 
 ---
 
@@ -17,23 +17,21 @@ Pro Max suggested cyan neumorphism + Figtree. **Do not use that.** The PRD requi
 
 ### Color Palette
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Navy / Primary | `#0B1F3A` | `--color-primary` |
-| On Primary | `#F7F5F2` | `--color-on-primary` |
-| Teal / Accent | `#0C7A70` | `--color-accent` |
-| On Accent | `#FFFFFF` | `--color-on-accent` |
-| Teal Bright | `#14A896` | `--color-teal-bright` |
-| Background | `#F7F5F2` | `--color-background` |
-| Foreground | `#1A2332` | `--color-foreground` |
-| Card | `#FFFFFF` | `--color-card` |
-| Sand | `#E8E2D9` | `--color-sand` |
-| Muted | `#5C6570` | `--color-muted-foreground` |
-| Border | `#D9D2C8` | `--color-border` |
-| Destructive | `#B42318` | `--color-destructive` |
-| Ring | `#0C7A70` | `--color-ring` |
+| Role | Hex | CSS Variable / Tailwind |
+|------|-----|-------------------------|
+| Olive / Primary | `#5B6D49` | `--navy`, `--teal`, `--ring` |
+| Olive Deep | `#455338` | `--navy-deep` |
+| On Primary | `#F5F6F0` | cream on olive |
+| Sage Bright | `#A2AC82` | `--teal-bright` |
+| Cream / Background | `#F5F6F0` | `--cream` |
+| Foreground / Ink | `#2F3826` | `--ink` |
+| Card | `#FFFFFF` | `--card` |
+| Sand | `#E4E7D8` | `--sand` |
+| Muted | `#66705A` | `--muted` |
+| Border | `#D5DAC8` | `--border` |
+| Destructive | `#B42318` | `--destructive` |
 
-Contrast: navy `#0B1F3A` on cream, and white on `#0C7A70`, both meet 4.5:1.
+Contrast targets: olive `#5B6D49` on cream, and white on olive CTAs (4.5:1).
 
 ### Typography
 
@@ -57,17 +55,17 @@ Contrast: navy `#0B1F3A` on cream, and white on `#0C7A70`, both meet 4.5:1.
 ### Radius & Shadow
 
 - Radius: 10px controls, 16px cards, 24px feature panels
-- Shadows: soft navy-tinted (`rgba(11,31,58,0.08)`), never neon glow
+- Shadows: soft olive-tinted (`rgba(91,109,73,0.08)`), never neon glow
 
 ---
 
 ## Component Specs
 
-- **Primary button:** navy fill, cream text, 12px 22px, radius 10px, min height 44px, `cursor-pointer`
-- **Accent button:** teal fill, white text (hero CTA)
-- **Secondary:** transparent, navy text, 1px sand/navy border
+- **Primary button:** olive fill, cream text, 12px 22px, radius 10px, min height 44px, `cursor-pointer`
+- **Accent button:** olive fill, white text (hero CTA); hover olive-deep
+- **Secondary:** transparent, olive text, 1px sand/olive border
 - **Cards:** white on cream, 1px sand border, no glassmorphism
-- **Inputs:** 16px text, visible labels, focus ring teal 3px
+- **Inputs:** 16px text, visible labels, focus ring olive 3px
 
 ---
 

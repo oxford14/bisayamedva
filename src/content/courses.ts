@@ -57,7 +57,7 @@ export const deepDiveTopics: CatalogTopic[] = [
     subtitle: "Eligibility & benefits",
     description:
       "Confirm coverage, benefits, and patient responsibility before the claim path starts.",
-    price: 699,
+    price: 1000,
   },
   {
     id: "claims-processing",
@@ -65,7 +65,7 @@ export const deepDiveTopics: CatalogTopic[] = [
     subtitle: "Clean claim workflow",
     description:
       "Prepare, check, and submit claims with fewer preventable denials.",
-    price: 749,
+    price: 1200,
   },
   {
     id: "payment-posting",
@@ -73,7 +73,7 @@ export const deepDiveTopics: CatalogTopic[] = [
     subtitle: "Posting & reconciliation",
     description:
       "Post payer payments accurately and keep patient accounts balanced.",
-    price: 599,
+    price: 1100,
   },
   {
     id: "denial-management",
@@ -81,7 +81,7 @@ export const deepDiveTopics: CatalogTopic[] = [
     subtitle: "Appeals & rework",
     description:
       "Read denial reasons, prioritize rework, and improve follow-through.",
-    price: 749,
+    price: 1300,
   },
   {
     id: "ar-collections",
@@ -89,7 +89,7 @@ export const deepDiveTopics: CatalogTopic[] = [
     subtitle: "Aging & follow-up",
     description:
       "Work aged receivables and patient balances with a clear follow-up rhythm.",
-    price: 649,
+    price: 1200,
   },
   {
     id: "credentialing",
@@ -97,7 +97,7 @@ export const deepDiveTopics: CatalogTopic[] = [
     subtitle: "Enrollment pathway",
     description:
       "Understand credentialing packets, payer enrollment, and status tracking.",
-    price: 649,
+    price: 1400,
   },
 ];
 
@@ -124,13 +124,13 @@ export const deepDiveBundle: CatalogBundle = {
   eyebrow: "Live Zoom",
   subtitle: "Six specialized Medical VA topics in one discounted path",
   description:
-    "Deep-dive training across Insurance Verification, Claims, Payment Posting, Denials, A/R, and Credentialing. Live Zoom sessions. Coming soon for self-serve enrollment.",
+    "Deep-dive training across Insurance Verification, Claims, Payment Posting, Denials, A/R, and Credentialing. Live Zoom sessions. Pay with the same in-app QR Ph checkout.",
   price: 2499,
   format: "Live Zoom training",
   topics: deepDiveTopics,
-  available: false,
-  ctaLabel: "Coming soon",
-  ctaHref: "/member/course",
+  available: true,
+  ctaLabel: "Pay ₱2,499",
+  ctaHref: "/member/checkout/deep-dive",
 };
 
 export function deepDiveRegularTotal() {

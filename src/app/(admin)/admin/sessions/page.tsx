@@ -93,11 +93,11 @@ export default async function SessionsPage() {
         )}
 
         <div className="rounded-2xl border border-border bg-white p-5">
-          <h2 className="font-semibold">Create / update session</h2>
+          <h2 className="font-semibold">Create session</h2>
+          <p className="mt-1 text-sm text-muted">
+            Session ID is generated automatically when you save.
+          </p>
           <ActionForm action={upsertSession} className="mt-4 space-y-3" submitLabel="Save session">
-            <Field label="Session ID (optional for update)" htmlFor="id">
-              <Input id="id" name="id" placeholder="uuid" />
-            </Field>
             <Field label="Course" htmlFor="course_id">
               <select
                 id="course_id"
@@ -141,8 +141,19 @@ export default async function SessionsPage() {
                 </select>
               </Field>
             </div>
-            <Field label="Meeting URL" htmlFor="meeting_url">
-              <Input id="meeting_url" name="meeting_url" type="url" placeholder="https://" />
+            <Field
+              label="Meeting URL"
+              htmlFor="meeting_url"
+              hint="Optional. Add the Zoom or Meet link when ready."
+            >
+              <Input
+                id="meeting_url"
+                name="meeting_url"
+                type="text"
+                inputMode="url"
+                placeholder="https://…"
+                autoComplete="off"
+              />
             </Field>
             <input type="hidden" name="timezone" value="Asia/Manila" />
             <input type="hidden" name="format" value="Online" />

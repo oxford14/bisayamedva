@@ -144,15 +144,23 @@ function BundleCard({
         <div className="mt-auto border-t border-border pt-4">
           {pricing ? (
             <div className="mb-3 space-y-1">
-              <p className="text-xs text-muted">
-                Individual total{" "}
-                <span className="line-through">{pricing.regularLabel}</span>
+              <p className="text-xs font-medium tracking-wide text-muted uppercase">
+                Bundle sale
               </p>
-              <p className="font-display text-3xl font-semibold text-navy">
-                {pricing.bundleLabel}
-              </p>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <p
+                  className="font-display text-lg text-muted line-through decoration-navy/40"
+                  aria-label={`Regular total ${pricing.regularLabel}`}
+                >
+                  {pricing.regularLabel}
+                </p>
+                <p className="font-display text-3xl font-semibold text-navy">
+                  {pricing.bundleLabel}
+                </p>
+              </div>
               <p className="text-xs font-semibold text-navy/70">
-                Save {pricing.savingsLabel} ({pricing.percent}% off) as a bundle
+                Save {pricing.savingsLabel} ({pricing.percent}% off) vs buying
+                each topic
               </p>
             </div>
           ) : (
@@ -284,9 +292,15 @@ export function MemberCourseCatalog({
               Full Deep Dive topics
             </h2>
             <p className="mt-1 max-w-2xl text-sm text-muted">
-              Individual prices shown for transparency. Bundle everything for{" "}
-              {pricing.bundleLabel} instead of {pricing.regularLabel} — save{" "}
-              {pricing.savingsLabel}.
+              Individual prices from ₱1,000+. Buy the full bundle for{" "}
+              {pricing.bundleLabel}{" "}
+              <span className="text-muted">
+                instead of{" "}
+                <span className="line-through decoration-navy/40">
+                  {pricing.regularLabel}
+                </span>
+              </span>{" "}
+              — save {pricing.savingsLabel}.
             </p>
           </div>
         </div>

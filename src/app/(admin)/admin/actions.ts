@@ -13,8 +13,18 @@ function ok() {
   return { ok: true as const };
 }
 
+function failValidation(error: z.ZodError, fallback: string) {
+  const issue = error.issues[0];
+  if (!issue) return fail(fallback);
+  const field = issue.path.join(".");
+  return fail(field ? `${field}: ${issue.message}` : issue.message);
+}
+
+// Postgres accepts any 8-4-4-4-12 hex id, so avoid Zod's stricter RFC 9562 check.
+const uuid = z.guid();
+
 const courseSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: uuid.optional(),
   slug: z.string().min(2).max(80),
   title: z.string().min(2).max(160),
   subtitle: z.string().max(240).optional().nullable(),
@@ -40,7 +50,7 @@ export async function upsertCourse(formData: FormData) {
     status: formData.get("status"),
     sort_order: formData.get("sort_order") || 0,
   });
-  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Invalid course");
+  if (!parsed.success) return failValidation(parsed.error, "Invalid course");
 
   const supabase = await createClient();
   const payload = parsed.data;
@@ -55,16 +65,30 @@ export async function upsertCourse(formData: FormData) {
   return ok();
 }
 
+const optionalUrl = z.preprocess((value) => {
+  if (value == null) return null;
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}, z.string().url().nullable());
+
+const optionalUuid = z.preprocess((value) => {
+  if (value == null) return undefined;
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
+}, uuid.optional());
+
 const sessionSchema = z.object({
-  id: z.string().uuid().optional(),
-  course_id: z.string().uuid(),
+  id: optionalUuid,
+  course_id: uuid,
   title: z.string().min(2).max(160),
   starts_at: z.string().min(1),
   ends_at: z.string().min(1),
   timezone: z.string().default("Asia/Manila"),
   format: z.string().default("Online"),
   capacity: z.coerce.number().int().positive(),
-  meeting_url: z.string().url().optional().nullable().or(z.literal("")),
+  meeting_url: optionalUrl,
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
 });
 
@@ -79,20 +103,22 @@ export async function upsertSession(formData: FormData) {
     timezone: formData.get("timezone") || "Asia/Manila",
     format: formData.get("format") || "Online",
     capacity: formData.get("capacity"),
-    meeting_url: formData.get("meeting_url") || null,
+    meeting_url: formData.get("meeting_url"),
     status: formData.get("status"),
   });
-  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Invalid session");
+  if (!parsed.success) return failValidation(parsed.error, "Invalid session");
 
-  const data = {
-    ...parsed.data,
-    meeting_url: parsed.data.meeting_url || null,
+  const { id, ...rest } = parsed.data;
+  const payload = {
+    ...rest,
+    meeting_url: rest.meeting_url ?? null,
   };
 
   const supabase = await createClient();
-  const { error } = data.id
-    ? await supabase.from("sessions").update(data).eq("id", data.id)
-    : await supabase.from("sessions").insert(data);
+  // New sessions omit id so Postgres gen_random_uuid() fills it.
+  const { error } = id
+    ? await supabase.from("sessions").update(payload).eq("id", id)
+    : await supabase.from("sessions").insert(payload);
 
   if (error) return fail(error.message);
   revalidatePath("/admin/sessions");
@@ -102,9 +128,9 @@ export async function upsertSession(formData: FormData) {
 }
 
 const enrollmentSchema = z.object({
-  student_id: z.string().uuid(),
-  course_id: z.string().uuid(),
-  session_id: z.string().uuid(),
+  student_id: uuid,
+  course_id: uuid,
+  session_id: uuid,
   status: z.enum(["PENDING_PAYMENT", "ACTIVE", "CANCELLED", "COMPLETED"]).default("PENDING_PAYMENT"),
   notes: z.string().optional().nullable(),
 });
@@ -118,7 +144,7 @@ export async function createEnrollment(formData: FormData) {
     status: formData.get("status") || "PENDING_PAYMENT",
     notes: formData.get("notes") || null,
   });
-  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Invalid enrollment");
+  if (!parsed.success) return failValidation(parsed.error, "Invalid enrollment");
 
   const supabase = await createClient();
   const { data: enrollment, error } = await supabase

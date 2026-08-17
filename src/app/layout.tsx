@@ -22,6 +22,19 @@ export const metadata: Metadata = {
     template: `%s | ${site.name}`,
   },
   description: site.seo.description,
+  applicationName: site.name,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: site.name,
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   keywords: [
     "Medical VA training Philippines",
     "Medical Billing training Philippines",
@@ -50,9 +63,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png" },
-      { url: "/images/brand/logo-mark.png", type: "image/png", sizes: "512x512" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icons/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
   },
 };
 

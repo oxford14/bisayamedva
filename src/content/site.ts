@@ -130,10 +130,6 @@ export const curriculum = {
       body: "Become familiar with common Medical Billing terms used in real work.",
     },
     {
-      title: "Basic Coding Concepts",
-      body: "Introduction to the role of medical codes in billing. Not a full coding certification.",
-    },
-    {
       title: "Revenue Cycle Basics",
       body: "Understand where Medical Billing fits within the healthcare revenue cycle.",
     },

@@ -1,7 +1,6 @@
 import {
   BookOpen,
   ClipboardList,
-  Code2,
   FileText,
   Layers,
   Workflow,
@@ -9,7 +8,7 @@ import {
 import { Container, displayTitle, sectionPad } from "@/components/marketing/container";
 import { curriculum } from "@/content/site";
 
-const icons = [BookOpen, Workflow, ClipboardList, FileText, Layers, Code2];
+const icons = [BookOpen, Workflow, ClipboardList, FileText, Layers];
 
 export function Curriculum() {
   return (

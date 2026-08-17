@@ -1,3 +1,4 @@
+import { createAvatarSignedUrl } from "@/lib/member/avatar";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -13,10 +14,18 @@ export type AdminProfile = {
   experience_level: string | null;
   messenger_handle: string | null;
   referral_source: string | null;
+  avatar_path: string | null;
+  avatar_url: string | null;
 };
+
+export type MemberProfile = AdminProfile;
 
 export function isAdminRole(role: string | null | undefined) {
   return role === "SUPER_ADMIN" || role === "ADMIN";
+}
+
+export function isStudentRole(role: string | null | undefined) {
+  return role === "STUDENT";
 }
 
 export async function getCurrentProfile() {
@@ -29,12 +38,19 @@ export async function getCurrentProfile() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, role, mobile, occupation, experience_level, messenger_handle, referral_source",
+      "id, email, full_name, role, mobile, occupation, experience_level, messenger_handle, referral_source, avatar_path",
     )
     .eq("id", user.id)
     .maybeSingle();
 
-  return profile as AdminProfile | null;
+  if (!profile) return null;
+
+  const avatar_url = await createAvatarSignedUrl(supabase, profile.avatar_path);
+
+  return {
+    ...profile,
+    avatar_url,
+  } as AdminProfile;
 }
 
 export async function requireAdmin() {
@@ -54,4 +70,18 @@ export async function requireSuperAdmin() {
     redirect("/auth/access-denied");
   }
   return profile;
+}
+
+export async function requireStudent() {
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    redirect("/auth/login?next=/member");
+  }
+  if (!isStudentRole(profile.role)) {
+    if (isAdminRole(profile.role)) {
+      redirect("/admin");
+    }
+    redirect("/auth/access-denied");
+  }
+  return profile as MemberProfile;
 }

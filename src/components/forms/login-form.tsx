@@ -67,7 +67,9 @@ export function LoginForm() {
     if (profile?.role === "SUPER_ADMIN" || profile?.role === "ADMIN") {
       router.replace(safeNext?.startsWith("/admin") ? safeNext : "/admin");
     } else {
-      router.replace(safeNext && !safeNext.startsWith("/admin") ? safeNext : "/");
+      router.replace(
+        safeNext?.startsWith("/member") ? safeNext : "/member",
+      );
     }
     router.refresh();
   }

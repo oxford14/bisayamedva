@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,7 @@ import {
   referralSources,
   site,
 } from "@/content/site";
+import { readRegisterDraft, saveRegisterDraft } from "@/lib/register/draft";
 import { registerAccountSchema } from "@/lib/validations/auth";
 import { formatPeso } from "@/lib/utils";
 import { Field, selectClassName } from "./field";
@@ -45,8 +46,27 @@ export function RegisterFlow() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [account, setAccount] = useState<AccountState>(emptyAccount);
-  const [sessionId, setSessionId] = useState(site.nextSession.id);
+  const [sessionId, setSessionId] = useState<string>(site.nextSession.id);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const draft = readRegisterDraft();
+    if (!draft) return;
+    setAccount({
+      firstName: draft.firstName,
+      lastName: draft.lastName,
+      email: draft.email,
+      mobile: draft.mobile,
+      password: draft.password,
+      confirmPassword: draft.password,
+      occupation: draft.occupation ?? "",
+      experienceLevel: draft.experienceLevel ?? "",
+      messengerName: draft.messengerName ?? "",
+      referralSource: draft.referralSource ?? "",
+    });
+    setSessionId(draft.sessionId || site.nextSession.id);
+    setStep(3);
+  }, []);
 
   const price = formatPeso(site.featuredCourse.price);
   const session = site.nextSession;
@@ -94,6 +114,18 @@ export function RegisterFlow() {
     }
     setErrors({});
     setStep(3);
+    saveRegisterDraft({
+      firstName: account.firstName,
+      lastName: account.lastName,
+      email: account.email,
+      mobile: account.mobile,
+      password: account.password,
+      occupation: account.occupation || undefined,
+      experienceLevel: account.experienceLevel || undefined,
+      messengerName: account.messengerName || undefined,
+      referralSource: account.referralSource || undefined,
+      sessionId,
+    });
   }
 
   return (
@@ -344,7 +376,21 @@ export function RegisterFlow() {
               type="button"
               variant="accent"
               className="flex-1"
-              onClick={() => router.push("/register/checkout")}
+              onClick={() => {
+                saveRegisterDraft({
+                  firstName: account.firstName,
+                  lastName: account.lastName,
+                  email: account.email,
+                  mobile: account.mobile,
+                  password: account.password,
+                  occupation: account.occupation || undefined,
+                  experienceLevel: account.experienceLevel || undefined,
+                  messengerName: account.messengerName || undefined,
+                  referralSource: account.referralSource || undefined,
+                  sessionId,
+                });
+                router.push("/register/checkout");
+              }}
             >
               {authCopy.register.submitPayment}
             </Button>

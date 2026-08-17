@@ -309,10 +309,20 @@ export const authCopy = {
   },
   checkout: {
     eyebrow: "PAYMONGO",
-    title: "Payment setup comes next",
-    body: "Imo nang account details ready. PayMongo checkout is not live in this first slice. When it is connected, this step will collect the one-time Medical Billing payment and activate enrollment.",
+    title: "Scan to pay with QR Ph",
+    body: "I-scan ang live QR gamit ang imong bank or e-wallet app. For testing, you can also use Simulate Payment without scanning.",
     back: "Back to registration",
     home: "Back to home",
+    simulate: "Simulate Payment",
+    refresh: "Check payment status",
+    download: "Download QR",
+    retry: "Retry QR",
+    missingTitle: "Complete registration first",
+    missingDraft:
+      "Wala mi nakit-an nga registration details for this browser. Balik sa register, finish the steps, then click Proceed to payment.",
+    preparing: "Preparing your PayMongo QR…",
+    paid: "Nabayran na. Redirecting to your training dashboard…",
+    expiry: "This QR Ph code expires in about 30 minutes if unused.",
   },
 } as const;
 

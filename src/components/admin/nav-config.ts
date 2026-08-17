@@ -7,17 +7,73 @@ import {
   Users,
   FileText,
   ClipboardList,
+  type LucideIcon,
 } from "lucide-react";
 
-export const adminNav = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/admin/students", label: "Students", icon: Users },
-  { href: "/admin/courses", label: "Courses", icon: BookOpen },
-  { href: "/admin/sessions", label: "Sessions", icon: CalendarDays },
-  { href: "/admin/enrollments", label: "Enrollments", icon: ClipboardList },
-  { href: "/admin/payments", label: "Payments", icon: CreditCard },
-  { href: "/admin/content", label: "Content", icon: FileText },
-  { href: "/admin/settings", label: "Settings", icon: Settings, superAdminOnly: true },
-] as const;
+export type AdminNavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  superAdminOnly?: boolean;
+  /** Shown in mobile bottom bar (max ~4 + More). */
+  mobilePrimary?: boolean;
+  section: "manage" | "site";
+};
 
-export type AdminNavItem = (typeof adminNav)[number];
+export const adminNav: AdminNavItem[] = [
+  {
+    href: "/admin",
+    label: "Overview",
+    icon: LayoutDashboard,
+    exact: true,
+    mobilePrimary: true,
+    section: "manage",
+  },
+  {
+    href: "/admin/students",
+    label: "Students",
+    icon: Users,
+    mobilePrimary: true,
+    section: "manage",
+  },
+  {
+    href: "/admin/courses",
+    label: "Courses",
+    icon: BookOpen,
+    section: "manage",
+  },
+  {
+    href: "/admin/sessions",
+    label: "Sessions",
+    icon: CalendarDays,
+    section: "manage",
+  },
+  {
+    href: "/admin/enrollments",
+    label: "Enrollments",
+    icon: ClipboardList,
+    mobilePrimary: true,
+    section: "manage",
+  },
+  {
+    href: "/admin/payments",
+    label: "Payments",
+    icon: CreditCard,
+    mobilePrimary: true,
+    section: "manage",
+  },
+  {
+    href: "/admin/content",
+    label: "Content",
+    icon: FileText,
+    section: "site",
+  },
+  {
+    href: "/admin/settings",
+    label: "Settings",
+    icon: Settings,
+    superAdminOnly: true,
+    section: "site",
+  },
+];

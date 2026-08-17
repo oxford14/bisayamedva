@@ -3,12 +3,18 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { UserMenu } from "@/components/auth/user-menu";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/marketing/container";
 import { nav } from "@/content/site";
+import type { AdminProfile } from "@/lib/supabase/auth";
 
-export function SiteHeader() {
+export function SiteHeader({
+  profile,
+}: {
+  profile: AdminProfile | null;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,32 +39,38 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-4 lg:flex">
-          <Button
-            variant="ghost"
-            className="text-[11px] font-semibold tracking-[0.16em] uppercase"
-            asChild
+        <div className="flex items-center gap-2">
+          {profile ? (
+            <UserMenu profile={profile} />
+          ) : (
+            <div className="hidden items-center gap-4 lg:flex">
+              <Button
+                variant="ghost"
+                className="text-[11px] font-semibold tracking-[0.16em] uppercase"
+                asChild
+              >
+                <Link href={nav.login.href}>{nav.login.label}</Link>
+              </Button>
+              <Button
+                variant="accent"
+                className="rounded-md px-6 text-[11px] font-bold tracking-[0.16em] uppercase shadow-none"
+                asChild
+              >
+                <Link href={nav.register.href}>{nav.register.label}</Link>
+              </Button>
+            </div>
+          )}
+          <button
+            type="button"
+            className="inline-flex size-11 cursor-pointer items-center justify-center rounded-[10px] text-navy lg:hidden"
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            onClick={() => setOpen((v) => !v)}
           >
-            <Link href={nav.login.href}>{nav.login.label}</Link>
-          </Button>
-          <Button
-            variant="accent"
-            className="rounded-md px-6 text-[11px] font-bold tracking-[0.16em] uppercase shadow-none"
-            asChild
-          >
-            <Link href={nav.register.href}>{nav.register.label}</Link>
-          </Button>
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
+            <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
+          </button>
         </div>
-        <button
-          type="button"
-          className="inline-flex size-11 cursor-pointer items-center justify-center rounded-[10px] text-navy lg:hidden"
-          aria-expanded={open}
-          aria-controls="mobile-nav"
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
-          <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
-        </button>
       </Container>
       {open ? (
         <div
@@ -76,22 +88,26 @@ export function SiteHeader() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href={nav.login.href}
-              onClick={() => setOpen(false)}
-              className="rounded-[10px] px-3 py-3 text-sm font-semibold tracking-[0.12em] text-navy uppercase hover:bg-sand cursor-pointer"
-            >
-              {nav.login.label}
-            </Link>
-            <Button
-              variant="accent"
-              className="mt-2 w-full rounded-md text-[11px] font-bold tracking-[0.16em] uppercase shadow-none"
-              asChild
-            >
-              <Link href={nav.register.href} onClick={() => setOpen(false)}>
-                {nav.register.label}
-              </Link>
-            </Button>
+            {profile ? null : (
+              <>
+                <Link
+                  href={nav.login.href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-[10px] px-3 py-3 text-sm font-semibold tracking-[0.12em] text-navy uppercase hover:bg-sand cursor-pointer"
+                >
+                  {nav.login.label}
+                </Link>
+                <Button
+                  variant="accent"
+                  className="mt-2 w-full rounded-md text-[11px] font-bold tracking-[0.16em] uppercase shadow-none"
+                  asChild
+                >
+                  <Link href={nav.register.href} onClick={() => setOpen(false)}>
+                    {nav.register.label}
+                  </Link>
+                </Button>
+              </>
+            )}
           </Container>
         </div>
       ) : null}

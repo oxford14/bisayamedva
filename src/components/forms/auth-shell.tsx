@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { authCopy, images } from "@/content/site";
 
@@ -72,6 +73,12 @@ export function AuthShell({
           <div className="relative z-30 flex flex-col rounded-b-[1.75rem] bg-white px-6 py-8 sm:px-10 sm:py-10 lg:rounded-r-[1.75rem] lg:rounded-bl-none lg:px-12 lg:py-12">
             <div className="mb-7">
               <Logo />
+              <Link
+                href="/"
+                className="mt-2 inline-block text-xs font-medium text-muted transition-colors hover:text-navy"
+              >
+                Back to home
+              </Link>
             </div>
             <div className="flex flex-1 flex-col justify-center">{children}</div>
           </div>

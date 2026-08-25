@@ -75,8 +75,8 @@ export const hero = {
     alt: "Professional Bisaya woman sa desk, ready for Medical VA training.",
   },
   portrait: {
-    src: "/images/hero/portrait.webp",
-    alt: "Close-up of a Bisaya learner preparing for Medical Billing training.",
+    src: "/images/hero/why-billing-portrait.png",
+    alt: "Friendly Bisaya learner with glasses, ready for Medical Billing training.",
   },
 } as const;
 
@@ -306,10 +306,9 @@ export const authCopy = {
   checkout: {
     eyebrow: "PAYMONGO",
     title: "Scan to pay with QR Ph",
-    body: "I-scan ang live QR gamit ang imong bank or e-wallet app. For testing, you can also use Simulate Payment without scanning.",
+    body: "I-scan ang live QR gamit ang imong bank or e-wallet app. After a successful pay, we confirm automatically and open your training dashboard.",
     back: "Back to registration",
     home: "Back to home",
-    simulate: "Simulate Payment",
     refresh: "Check payment status",
     download: "Download QR",
     retry: "Retry QR",

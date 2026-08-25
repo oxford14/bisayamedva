@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   prepareDeepDivePayment,
   refreshDeepDivePaymentStatus,
-  simulateDeepDivePayment,
   type MemberCheckoutPrepareResult,
 } from "@/app/(member)/member/actions";
 import { Button } from "@/components/ui/button";
@@ -74,19 +73,6 @@ export function DeepDiveCheckoutPanel() {
     link.click();
   }
 
-  function onSimulate() {
-    if (!ready?.paymentId) return;
-    startTransition(async () => {
-      const result = await simulateDeepDivePayment(ready.paymentId);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setMessage("Nabayran na ang Deep Dive. Redirecting to Courses…");
-      router.replace(result.redirectTo ?? "/member/course");
-    });
-  }
-
   function onRefresh() {
     if (!ready?.paymentId) return;
     startTransition(async () => {
@@ -116,7 +102,7 @@ export function DeepDiveCheckoutPanel() {
       </h1>
       <p className="mt-3 leading-relaxed text-muted">
         I-scan ang live QR Ph gamit ang imong bank or e-wallet app — same checkout
-        flow as registration. For testing, you can also use Simulate Payment.
+        flow as registration. After you pay, we confirm automatically.
       </p>
 
       <div className="mt-6 rounded-2xl border border-border bg-white p-5">
@@ -193,16 +179,16 @@ export function DeepDiveCheckoutPanel() {
       ) : null}
 
       <div className="mt-6 flex flex-col gap-3">
-        <Button
-          type="button"
-          variant="accent"
-          className="w-full"
-          disabled={pending || !ready?.paymentId || ready.alreadyPaid}
-          onClick={onSimulate}
-        >
-          {pending ? "Working…" : authCopy.checkout.simulate}
-        </Button>
         <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            type="button"
+            variant="accent"
+            className="flex-1"
+            disabled={pending || !ready?.paymentId}
+            onClick={onRefresh}
+          >
+            {pending ? "Checking…" : authCopy.checkout.refresh}
+          </Button>
           <Button
             type="button"
             variant="secondary"
@@ -211,15 +197,6 @@ export function DeepDiveCheckoutPanel() {
             onClick={downloadQr}
           >
             {authCopy.checkout.download}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="flex-1"
-            disabled={pending || !ready?.paymentId}
-            onClick={onRefresh}
-          >
-            {authCopy.checkout.refresh}
           </Button>
         </div>
         {showPrepareError ? null : (

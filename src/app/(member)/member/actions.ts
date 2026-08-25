@@ -14,6 +14,7 @@ import {
   createLiveQrPhCheckout,
   retrievePaymentIntent,
 } from "@/lib/paymongo/client";
+import { activatePaidEnrollment } from "@/lib/paymongo/activate";
 import { normalizeQrSrc } from "@/lib/paymongo/qr";
 import { requireStudent } from "@/lib/supabase/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
@@ -298,29 +299,6 @@ function sessionLabel(session: {
   return `${day} · ${startTime}–${endTime} ${tz}`;
 }
 
-async function activatePaidPayment(paymentId: string, enrollmentId: string) {
-  const admin = createServiceClient();
-  const { error: payError } = await admin
-    .from("payments")
-    .update({ status: "PAID" })
-    .eq("id", paymentId);
-  if (payError) throw new Error(payError.message);
-
-  const { error: enrollError } = await admin
-    .from("enrollments")
-    .update({ status: "ACTIVE" })
-    .eq("id", enrollmentId);
-  if (enrollError) throw new Error(enrollError.message);
-
-  revalidatePath("/member");
-  revalidatePath("/member/payments");
-  revalidatePath("/member/course");
-  revalidatePath("/member/schedule");
-  revalidatePath("/member/checkout/deep-dive");
-  revalidatePath("/admin/payments");
-  revalidatePath("/admin/enrollments");
-}
-
 export async function prepareDeepDivePayment(): Promise<MemberCheckoutPrepareResult> {
   try {
     const profile = await requireStudent();
@@ -438,7 +416,7 @@ export async function prepareDeepDivePayment(): Promise<MemberCheckoutPrepareRes
       try {
         const intent = await retrievePaymentIntent(providerPaymentId);
         if (intent.attributes.status === "succeeded") {
-          await activatePaidPayment(payment.id, enrollment.id);
+          await activatePaidEnrollment({ paymentId: payment.id });
           return {
             ok: true,
             paymentId: payment.id,
@@ -497,39 +475,6 @@ export async function prepareDeepDivePayment(): Promise<MemberCheckoutPrepareRes
   }
 }
 
-export async function simulateDeepDivePayment(
-  paymentId: string,
-): Promise<MemberCheckoutActionResult> {
-  try {
-    if (!paymentId) return { ok: false, error: "Missing payment id." };
-
-    const profile = await requireStudent();
-    const admin = createServiceClient();
-    const { data: payment } = await admin
-      .from("payments")
-      .select("id, status, enrollment_id, enrollments(student_id, status)")
-      .eq("id", paymentId)
-      .maybeSingle();
-
-    if (!payment) return { ok: false, error: "Payment not found." };
-
-    const enrollment = Array.isArray(payment.enrollments)
-      ? payment.enrollments[0]
-      : payment.enrollments;
-    if (!enrollment || enrollment.student_id !== profile.id) {
-      return { ok: false, error: "This payment is not linked to your account." };
-    }
-
-    await activatePaidPayment(payment.id, payment.enrollment_id);
-    return { ok: true, redirectTo: "/member/course", status: "PAID" };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Simulate failed.",
-    };
-  }
-}
-
 export async function refreshDeepDivePaymentStatus(
   paymentId: string,
 ): Promise<MemberCheckoutActionResult> {
@@ -565,7 +510,7 @@ export async function refreshDeepDivePaymentStatus(
 
     const intent = await retrievePaymentIntent(payment.provider_payment_id);
     if (intent.attributes.status === "succeeded") {
-      await activatePaidPayment(payment.id, payment.enrollment_id);
+      await activatePaidEnrollment({ paymentId: payment.id });
       return { ok: true, redirectTo: "/member/course", status: "PAID" };
     }
 

@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   prepareCheckoutPayment,
   refreshCheckoutPaymentStatus,
-  simulateCheckoutPayment,
   type CheckoutPrepareResult,
 } from "@/app/register/actions";
 import { Button } from "@/components/ui/button";
@@ -102,20 +101,6 @@ export function CheckoutPaymentPanel() {
     }
     draftRef.current = draft;
     runPrepare(draft);
-  }
-
-  function onSimulate() {
-    if (!ready?.paymentId) return;
-    startTransition(async () => {
-      const result = await simulateCheckoutPayment(ready.paymentId);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      clearRegisterDraft();
-      setMessage(authCopy.checkout.paid);
-      router.replace(result.redirectTo ?? "/member");
-    });
   }
 
   function onRefresh() {
@@ -244,16 +229,16 @@ export function CheckoutPaymentPanel() {
       ) : null}
 
       <div className="mt-6 flex flex-col gap-3">
-        <Button
-          type="button"
-          variant="accent"
-          className="w-full"
-          disabled={pending || !ready?.paymentId || ready.alreadyPaid}
-          onClick={onSimulate}
-        >
-          {pending ? "Working…" : authCopy.checkout.simulate}
-        </Button>
         <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            type="button"
+            variant="accent"
+            className="flex-1"
+            disabled={pending || !ready?.paymentId}
+            onClick={onRefresh}
+          >
+            {pending ? "Checking…" : authCopy.checkout.refresh}
+          </Button>
           <Button
             type="button"
             variant="secondary"
@@ -262,15 +247,6 @@ export function CheckoutPaymentPanel() {
             onClick={downloadQr}
           >
             {authCopy.checkout.download}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="flex-1"
-            disabled={pending || !ready?.paymentId}
-            onClick={onRefresh}
-          >
-            {authCopy.checkout.refresh}
           </Button>
         </div>
         {showPrepareError ? null : (

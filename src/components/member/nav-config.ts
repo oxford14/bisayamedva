@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CreditCard,
   LayoutDashboard,
+  MessagesSquare,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -40,6 +41,11 @@ export const memberNav: MemberNavItem[] = [
     label: "Payments",
     icon: CreditCard,
     mobilePrimary: true,
+  },
+  {
+    href: "/member/lounge",
+    label: "Student Lounge",
+    icon: MessagesSquare,
   },
   {
     href: "/member/profile",

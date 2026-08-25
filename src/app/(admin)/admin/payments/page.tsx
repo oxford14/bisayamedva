@@ -40,7 +40,7 @@ export default async function PaymentsPage({
     <div>
       <AdminPageHeader
         title="Payments"
-        description="Generate a payment QR per record, download it as PNG, or share the pay link. Manual status changes are Super Admin only until PayMongo webhooks are live."
+        description="Generate a payment QR per record, download it as PNG, or share the pay link. Live PayMongo webhooks mark payments paid automatically; Super Admin can still adjust status manually when needed."
       />
 
       <div className="mb-5 flex flex-wrap gap-2">

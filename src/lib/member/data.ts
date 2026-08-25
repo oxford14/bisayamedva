@@ -224,3 +224,15 @@ export function canShowMeetingUrl(enrollment: MemberEnrollment) {
     (!enrollment.session?.status || enrollment.session.status === "PUBLISHED")
   );
 }
+
+/** Active/Completed enrollment or a PAID payment unlocks Student Lounge. */
+export async function canAccessStudentLounge(studentId: string) {
+  const enrollments = await getMemberEnrollments(studentId);
+  return enrollments.some(
+    (e) =>
+      e.status === "ACTIVE" ||
+      e.status === "COMPLETED" ||
+      e.payment?.status === "PAID",
+  );
+}
+

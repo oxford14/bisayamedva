@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { experienceLevels, referralSources } from "@/content/site";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { activatePaidEnrollment } from "@/lib/paymongo/activate";
 import {
   createLiveQrPhCheckout,
   retrievePaymentIntent,
@@ -225,28 +225,6 @@ async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
   return userId;
 }
 
-async function activatePaidPayment(paymentId: string, enrollmentId: string) {
-  const admin = createServiceClient();
-  const { error: payError } = await admin
-    .from("payments")
-    .update({ status: "PAID" })
-    .eq("id", paymentId);
-  if (payError) throw new Error(payError.message);
-
-  const { error: enrollError } = await admin
-    .from("enrollments")
-    .update({ status: "ACTIVE" })
-    .eq("id", enrollmentId);
-  if (enrollError) throw new Error(enrollError.message);
-
-  revalidatePath("/member");
-  revalidatePath("/member/payments");
-  revalidatePath("/member/course");
-  revalidatePath("/member/schedule");
-  revalidatePath("/admin/payments");
-  revalidatePath("/admin/enrollments");
-}
-
 export async function prepareCheckoutPayment(
   draftInput: unknown,
 ): Promise<CheckoutPrepareResult> {
@@ -338,7 +316,7 @@ export async function prepareCheckoutPayment(
       try {
         const intent = await retrievePaymentIntent(providerPaymentId);
         if (intent.attributes.status === "succeeded") {
-          await activatePaidPayment(payment.id, enrollment.id);
+          await activatePaidEnrollment({ paymentId: payment.id });
           return {
             ok: true,
             paymentId: payment.id,
@@ -397,44 +375,6 @@ export async function prepareCheckoutPayment(
   }
 }
 
-export async function simulateCheckoutPayment(
-  paymentId: string,
-): Promise<CheckoutActionResult> {
-  try {
-    if (!paymentId) return { ok: false, error: "Missing payment id." };
-
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "Please log in first." };
-
-    const admin = createServiceClient();
-    const { data: payment } = await admin
-      .from("payments")
-      .select("id, status, enrollment_id, enrollments(student_id, status)")
-      .eq("id", paymentId)
-      .maybeSingle();
-
-    if (!payment) return { ok: false, error: "Payment not found." };
-
-    const enrollment = Array.isArray(payment.enrollments)
-      ? payment.enrollments[0]
-      : payment.enrollments;
-    if (!enrollment || enrollment.student_id !== user.id) {
-      return { ok: false, error: "This payment is not linked to your account." };
-    }
-
-    await activatePaidPayment(payment.id, payment.enrollment_id);
-    return { ok: true, redirectTo: "/member", status: "PAID" };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Simulate failed.",
-    };
-  }
-}
-
 export async function refreshCheckoutPaymentStatus(
   paymentId: string,
 ): Promise<CheckoutActionResult> {
@@ -475,7 +415,7 @@ export async function refreshCheckoutPaymentStatus(
 
     const intent = await retrievePaymentIntent(payment.provider_payment_id);
     if (intent.attributes.status === "succeeded") {
-      await activatePaidPayment(payment.id, payment.enrollment_id);
+      await activatePaidEnrollment({ paymentId: payment.id });
       return { ok: true, redirectTo: "/member", status: "PAID" };
     }
 

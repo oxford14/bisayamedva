@@ -40,12 +40,12 @@ export const memberNav: MemberNavItem[] = [
     href: "/member/payments",
     label: "Payments",
     icon: CreditCard,
-    mobilePrimary: true,
   },
   {
     href: "/member/lounge",
     label: "Student Lounge",
     icon: MessagesSquare,
+    mobilePrimary: true,
   },
   {
     href: "/member/profile",

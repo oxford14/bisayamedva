@@ -4,6 +4,7 @@ import { formatPeso } from "@/lib/utils";
 export type MemberCourse = {
   id: string;
   title: string;
+  slug: string | null;
   subtitle: string | null;
   description: string | null;
   course_type: string | null;
@@ -58,6 +59,7 @@ export async function getMemberEnrollments(studentId: string) {
       courses (
         id,
         title,
+        slug,
         subtitle,
         description,
         course_type,

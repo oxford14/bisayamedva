@@ -124,6 +124,38 @@ export async function upsertSession(formData: FormData) {
   revalidatePath("/admin/sessions");
   revalidatePath("/admin");
   revalidatePath("/");
+  revalidatePath("/admin/content");
+  return ok();
+}
+
+export async function deleteSession(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const parsed = uuid.safeParse(id);
+  if (!parsed.success) return fail("Invalid session id.");
+
+  const supabase = await createClient();
+
+  const { count, error: countError } = await supabase
+    .from("enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", parsed.data)
+    .neq("status", "CANCELLED");
+
+  if (countError) return fail(countError.message);
+  if ((count ?? 0) > 0) {
+    return fail(
+      "Cannot delete a session with active enrollments. Set status to ARCHIVED instead.",
+    );
+  }
+
+  const { error } = await supabase.from("sessions").delete().eq("id", parsed.data);
+  if (error) return fail(error.message);
+
+  revalidatePath("/admin/sessions");
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/admin/content");
   return ok();
 }
 

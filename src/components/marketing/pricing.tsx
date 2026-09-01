@@ -3,7 +3,9 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Container, displayTitle, sectionPad } from "@/components/marketing/container";
+import { upskillCourses } from "@/content/courses";
 import type { FeaturedOffer } from "@/lib/content/featured-offer";
+import { formatPeso } from "@/lib/utils";
 
 const included = [
   "Medical Billing fundamentals",
@@ -47,8 +49,9 @@ export function Pricing({ offer }: { offer: FeaturedOffer }) {
             <Link href="/register">Register</Link>
           </Button>
           <p className="mt-4 text-center text-xs text-muted">
-            Specialized Upskill Topics are sold separately. No prices shown until
-            those courses launch.
+            Upskill Topics ({upskillCourses.map((c) => c.title).join(", ")}) are
+            sold separately from {formatPeso(upskillCourses[0]?.price ?? 1000)}{" "}
+            each inside your student account.
           </p>
         </div>
       </Container>

@@ -1,168 +1,94 @@
-import { formatPeso } from "@/lib/utils";
+export type CatalogCourseType = "FOUNDATION" | "UPSKILL";
 
-export type CatalogTopic = {
-  id: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  price: number;
-};
-
-export type CatalogBundle = {
+export type CatalogCourse = {
   id: string;
   slug: string;
   title: string;
-  eyebrow: string;
   subtitle: string;
   description: string;
   price: number;
-  format: string;
-  topics: CatalogTopic[];
-  available: boolean;
-  ctaLabel: string;
-  ctaHref: string;
+  courseType: CatalogCourseType;
+  /** Public register path — only for featured Foundation course */
+  registerPath?: string;
 };
 
-export const coreBeginnerTopics: CatalogTopic[] = [
+export const foundationCourses: CatalogCourse[] = [
   {
-    id: "basic-medva-front-desk",
-    title: "Basic Medical VA — Front Desk Fundamentals",
-    subtitle: "Front desk workflow",
+    id: "medical-va-masterclass",
+    slug: "medical-va-masterclass",
+    title: "Medical VA Masterclass",
+    subtitle: "Front desk, workflow, and Medical VA fundamentals",
     description:
-      "Patient intake, scheduling basics, and front-desk communication for aspiring Medical VAs.",
-    price: 0,
+      "Build your first Medical VA foundation — patient intake, scheduling basics, and day-to-day workflow from a Bisaya-English coach.",
+    price: 499,
+    courseType: "FOUNDATION",
   },
   {
-    id: "basic-medical-billing",
-    title: "Basic Medical Billing — Billing Fundamentals",
-    subtitle: "Billing foundation",
+    id: "medical-billing-masterclass",
+    slug: "medical-billing-masterclass",
+    title: "Medical Billing Masterclass",
+    subtitle: "Medical Billing fundamentals for aspiring Medical VAs",
     description:
-      "Core Medical Billing concepts, terminology, and where billing sits in the revenue cycle.",
-    price: 0,
-  },
-  {
-    id: "hipaa-privacy",
-    title: "HIPAA & Healthcare Privacy — Practical HIPAA Training",
-    subtitle: "Privacy essentials",
-    description:
-      "Practical HIPAA awareness for day-to-day Medical VA work — klaro, not legalese overload.",
-    price: 0,
+      "Core Medical Billing concepts, terminology, and where billing sits in the revenue cycle. Dili full job-ready claim — usa ka solid starting point.",
+    price: 499,
+    courseType: "FOUNDATION",
+    registerPath: "/register",
   },
 ];
 
-export const deepDiveTopics: CatalogTopic[] = [
+export const upskillCourses: CatalogCourse[] = [
   {
     id: "insurance-verification",
+    slug: "insurance-verification",
     title: "Insurance Verification",
     subtitle: "Eligibility & benefits",
     description:
       "Confirm coverage, benefits, and patient responsibility before the claim path starts.",
     price: 1000,
+    courseType: "UPSKILL",
   },
   {
-    id: "claims-processing",
-    title: "Claims Processing & Submission",
+    id: "claims",
+    slug: "claims",
+    title: "Claims",
     subtitle: "Clean claim workflow",
     description:
       "Prepare, check, and submit claims with fewer preventable denials.",
-    price: 1200,
+    price: 1000,
+    courseType: "UPSKILL",
   },
   {
-    id: "payment-posting",
-    title: "Payment Posting",
-    subtitle: "Posting & reconciliation",
-    description:
-      "Post payer payments accurately and keep patient accounts balanced.",
-    price: 1100,
-  },
-  {
-    id: "denial-management",
-    title: "Denial Management",
+    id: "denials",
+    slug: "denials",
+    title: "Denials",
     subtitle: "Appeals & rework",
     description:
       "Read denial reasons, prioritize rework, and improve follow-through.",
-    price: 1300,
-  },
-  {
-    id: "ar-collections",
-    title: "A/R & Collections",
-    subtitle: "Aging & follow-up",
-    description:
-      "Work aged receivables and patient balances with a clear follow-up rhythm.",
-    price: 1200,
-  },
-  {
-    id: "credentialing",
-    title: "Credentialing & Provider Enrollment",
-    subtitle: "Enrollment pathway",
-    description:
-      "Understand credentialing packets, payer enrollment, and status tracking.",
-    price: 1400,
+    price: 1000,
+    courseType: "UPSKILL",
   },
 ];
 
-export const coreBeginnerBundle: CatalogBundle = {
-  id: "core-beginner",
-  slug: "core-beginner-bundle",
-  title: "Core Beginner Bundle",
-  eyebrow: "Starter path",
-  subtitle: "Front desk, Medical Billing basics, and practical HIPAA",
-  description:
-    "Usa ka low-cost starting bundle for aspiring Medical VAs. Builds a usable foundation — dili full job-ready claim.",
-  price: 200,
-  format: "Weekend online training",
-  topics: coreBeginnerTopics,
-  available: true,
-  ctaLabel: "Enroll for ₱200",
-  ctaHref: "/register",
-};
+export const allCatalogCourses: CatalogCourse[] = [
+  ...foundationCourses,
+  ...upskillCourses,
+];
 
-export const deepDiveBundle: CatalogBundle = {
-  id: "full-deep-dive",
-  slug: "full-medva-deep-dive",
-  title: "Full MedVA Deep Dive Bundle",
-  eyebrow: "Live Zoom",
-  subtitle: "Six specialized Medical VA topics in one discounted path",
-  description:
-    "Deep-dive training across Insurance Verification, Claims, Payment Posting, Denials, A/R, and Credentialing. Live Zoom sessions. Pay with the same in-app QR Ph checkout.",
-  price: 2499,
-  format: "Live Zoom training",
-  topics: deepDiveTopics,
-  available: true,
-  ctaLabel: "Pay ₱2,499",
-  ctaHref: "/member/checkout/deep-dive",
-};
-
-export function deepDiveRegularTotal() {
-  return deepDiveTopics.reduce((sum, topic) => sum + topic.price, 0);
+export function getCatalogCourseBySlug(slug: string): CatalogCourse | undefined {
+  return allCatalogCourses.find((course) => course.slug === slug);
 }
 
-export function deepDiveSavings() {
-  return deepDiveRegularTotal() - deepDiveBundle.price;
+export function isCheckoutSlug(slug: string): boolean {
+  return allCatalogCourses.some(
+    (course) => course.slug === slug && !course.registerPath,
+  );
 }
 
-export function deepDiveSavingsPercent() {
-  const regular = deepDiveRegularTotal();
-  if (regular <= 0) return 0;
-  return Math.round((deepDiveSavings() / regular) * 100);
-}
-
-export function deepDivePricingSummary() {
-  const regular = deepDiveRegularTotal();
-  const savings = deepDiveSavings();
-  return {
-    regular,
-    bundle: deepDiveBundle.price,
-    savings,
-    percent: deepDiveSavingsPercent(),
-    regularLabel: formatPeso(regular),
-    bundleLabel: formatPeso(deepDiveBundle.price),
-    savingsLabel: formatPeso(savings),
-  };
+export function courseCheckoutPath(slug: string): string {
+  return `/member/checkout/${slug}`;
 }
 
 export const courseCatalog = {
-  core: coreBeginnerBundle,
-  deepDive: deepDiveBundle,
-  deepDiveTopics,
+  foundation: foundationCourses,
+  upskill: upskillCourses,
 } as const;

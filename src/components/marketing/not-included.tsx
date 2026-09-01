@@ -1,5 +1,7 @@
 import { Container, displayTitle, sectionPad } from "@/components/marketing/container";
+import { upskillCourses } from "@/content/courses";
 import { notIncluded } from "@/content/site";
+import { formatPeso } from "@/lib/utils";
 
 export function NotIncluded() {
   return (
@@ -14,13 +16,15 @@ export function NotIncluded() {
           {notIncluded.body}
         </p>
         <ul className="mt-10 flex flex-wrap gap-3">
-          {notIncluded.topics.map((topic) => (
+          {upskillCourses.map((course) => (
             <li
-              key={topic}
+              key={course.id}
               className="rounded-full border border-white/15 bg-white/6 px-5 py-2.5 text-sm"
             >
-              {topic}
-              <span className="ml-2 text-cream/50">Coming Soon</span>
+              {course.title}
+              <span className="ml-2 font-medium text-teal-bright">
+                {formatPeso(course.price)}
+              </span>
             </li>
           ))}
         </ul>

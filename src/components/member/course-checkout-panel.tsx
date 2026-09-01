@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
-  prepareDeepDivePayment,
-  refreshDeepDivePaymentStatus,
+  prepareCoursePayment,
+  refreshCoursePaymentStatus,
   type MemberCheckoutPrepareResult,
 } from "@/app/(member)/member/actions";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,13 @@ import { normalizeQrSrc } from "@/lib/paymongo/qr";
 
 type ReadyState = Extract<MemberCheckoutPrepareResult, { ok: true }>;
 
-export function DeepDiveCheckoutPanel() {
+export function CourseCheckoutPanel({
+  slug,
+  courseTitle,
+}: {
+  slug: string;
+  courseTitle: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -27,7 +33,7 @@ export function DeepDiveCheckoutPanel() {
     setError("");
     setMessage("");
     startTransition(async () => {
-      const result = await prepareDeepDivePayment();
+      const result = await prepareCoursePayment(slug);
       if (!result.ok) {
         setReady(null);
         setQrSrc("");
@@ -37,11 +43,11 @@ export function DeepDiveCheckoutPanel() {
       setReady(result);
       setQrSrc(normalizeQrSrc(result.qrImageUrl));
       if (result.alreadyPaid) {
-        setMessage("Nabayran na ang Deep Dive. Redirecting to Courses…");
+        setMessage("Nabayran na. Redirecting to Courses…");
         router.replace("/member/course");
       }
     });
-  }, [router]);
+  }, [router, slug]);
 
   useEffect(() => {
     if (bootstrapped.current) return;
@@ -54,9 +60,9 @@ export function DeepDiveCheckoutPanel() {
 
     const timer = window.setInterval(() => {
       startTransition(async () => {
-        const result = await refreshDeepDivePaymentStatus(ready.paymentId);
+        const result = await refreshCoursePaymentStatus(ready.paymentId);
         if (result.ok && result.redirectTo) {
-          setMessage("Nabayran na ang Deep Dive. Redirecting to Courses…");
+          setMessage("Nabayran na. Redirecting to Courses…");
           router.replace(result.redirectTo);
         }
       });
@@ -69,20 +75,20 @@ export function DeepDiveCheckoutPanel() {
     if (!qrSrc) return;
     const link = document.createElement("a");
     link.href = qrSrc;
-    link.download = `bisayamedva-deep-dive-${(ready?.paymentId ?? "qr").slice(0, 8)}.png`;
+    link.download = `bisayamedva-${slug}-${(ready?.paymentId ?? "qr").slice(0, 8)}.png`;
     link.click();
   }
 
   function onRefresh() {
     if (!ready?.paymentId) return;
     startTransition(async () => {
-      const result = await refreshDeepDivePaymentStatus(ready.paymentId);
+      const result = await refreshCoursePaymentStatus(ready.paymentId);
       if (!result.ok) {
         setError(result.error);
         return;
       }
       if (result.redirectTo) {
-        setMessage("Nabayran na ang Deep Dive. Redirecting to Courses…");
+        setMessage("Nabayran na. Redirecting to Courses…");
         router.replace(result.redirectTo);
         return;
       }
@@ -98,7 +104,7 @@ export function DeepDiveCheckoutPanel() {
         {authCopy.checkout.eyebrow}
       </p>
       <h1 className="mt-3 font-display text-3xl font-semibold text-navy">
-        Pay for Full Deep Dive
+        Pay for {courseTitle}
       </h1>
       <p className="mt-3 leading-relaxed text-muted">
         I-scan ang live QR Ph gamit ang imong bank or e-wallet app — same checkout
@@ -106,9 +112,7 @@ export function DeepDiveCheckoutPanel() {
       </p>
 
       <div className="mt-6 rounded-2xl border border-border bg-white p-5">
-        <p className="text-sm text-muted">
-          {ready?.courseTitle ?? "Full MedVA Deep Dive Bundle"}
-        </p>
+        <p className="text-sm text-muted">{ready?.courseTitle ?? courseTitle}</p>
         <p className="mt-1 font-display text-4xl font-semibold text-navy">
           {ready?.amountLabel ?? "—"}
         </p>
@@ -122,7 +126,6 @@ export function DeepDiveCheckoutPanel() {
           <p className="py-16 text-sm text-muted">{authCopy.checkout.preparing}</p>
         ) : qrSrc ? (
           <>
-            {/* PayMongo returns data URL, https URL, or raw base64 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={qrSrc}
@@ -143,8 +146,8 @@ export function DeepDiveCheckoutPanel() {
               {error}
             </p>
             <p className="mt-2 text-xs text-muted">
-              Check PayMongo keys and that the Deep Dive course/session is
-              published, then retry.
+              Check PayMongo keys and that this course/session is published, then
+              retry.
             </p>
             <Button
               type="button"

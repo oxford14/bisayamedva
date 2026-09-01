@@ -31,11 +31,11 @@ export const site = {
       "Learn practical Medical Billing skills with Bisaya MedVA and start building your foundation for a Medical Virtual Assistant career.",
   },
   featuredCourse: {
-    id: "medical-billing-training",
-    name: "Medical Billing Training",
+    id: "medical-billing-masterclass",
+    name: "Medical Billing Masterclass",
     subtitle: "Medical Billing Fundamentals for Aspiring Medical VAs",
     type: "BASIC" as const,
-    price: 200,
+    price: 499,
     currency: "PHP" as const,
     priceLabel: "One-time training",
   },
@@ -111,7 +111,7 @@ export const curriculum = {
   eyebrow: "WHAT YOU'LL LEARN",
   title: "Medical Billing fundamentals, step by step.",
   intro:
-    "The ₱200 course focuses only on Medical Billing. Exact lessons stay with the coach. These are the core ideas you will meet.",
+    `The ₱${site.featuredCourse.price} Medical Billing Masterclass focuses only on Medical Billing. Exact lessons stay with the coach. These are the core ideas you will meet.`,
   items: [
     {
       title: "Medical Billing Fundamentals",
@@ -139,16 +139,8 @@ export const curriculum = {
 export const notIncluded = {
   eyebrow: "UPSKILL TOPICS",
   title: "Want to go deeper?",
-  body: "After Medical Billing, Bisaya MedVA will offer specialized Upskill Topics. Each topic is a separate training offer with its own price, schedule, and enrollment.",
-  topics: [
-    "Insurance",
-    "Eligibility",
-    "Verification",
-    "Claims",
-    "Denial Management",
-    "EHR",
-  ],
-  note: "Prices for future courses stay unpublished until they are finalized.",
+  body: "After Foundation training, continue into specialized Upskill Topics. Each topic is a separate offer with its own price, schedule, and enrollment.",
+  note: "Upskill courses are available inside your student account after you register.",
 } as const;
 
 export const audiences = [
@@ -223,7 +215,7 @@ export const whyBisaya = {
     },
     {
       title: "Accessible entry",
-      body: "A low-cost introductory course so more aspiring Medical VAs can begin without a heavy first payment.",
+      body: "Foundation Masterclasses at a clear one-time price so more aspiring Medical VAs can begin without a heavy first payment.",
     },
     {
       title: "Career path, not a hospital brand",
@@ -242,8 +234,8 @@ export const faqs = [
     a: "Every weekend. The exact day and time can change, so the next open session is shown on this page. Timezone is Asia/Manila.",
   },
   {
-    q: "Naa ba Insurance, Claims, or EHR sa ₱200?",
-    a: "Wala. Insurance, Eligibility, Verification, Claims, Denial Management, and EHR are separate Upskill Topics. Each will have its own price and enrollment when it launches.",
+    q: `Naa ba Insurance Verification, Claims, or Denials sa ₱${site.featuredCourse.price} Medical Billing Masterclass?`,
+    a: "Wala. Insurance Verification, Claims, and Denials are separate Upskill Topics — each ₱1,000 with its own enrollment inside your student account.",
   },
   {
     q: "Unsa nga language ang gamiton?",
@@ -254,12 +246,12 @@ export const faqs = [
     a: "Yes. Weekend training is online. The meeting link is shared before the session.",
   },
   {
-    q: "Maka-job ready ba ko after ₱200?",
+    q: `Maka-job ready ba ko after ₱${site.featuredCourse.price}?`,
     a: "This course builds a foundation. It does not claim to make you fully job-ready by itself. After Medical Billing, you can continue into specialized Upskill Topics.",
   },
   {
     q: "Unsaon pagbayad?",
-    a: "Payment is ₱200 through PayMongo after you create your account and select a weekend session.",
+    a: `Payment is ₱${site.featuredCourse.price} through PayMongo after you create your account and select a weekend session.`,
   },
 ] as const;
 

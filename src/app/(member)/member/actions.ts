@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { experienceLevels, referralSources } from "@/content/site";
-import { deepDiveBundle } from "@/content/courses";
+import { getCatalogCourseBySlug } from "@/content/courses";
 import {
   AVATAR_BUCKET,
   AVATAR_MAX_BYTES,
@@ -299,15 +299,22 @@ function sessionLabel(session: {
   return `${day} · ${startTime}–${endTime} ${tz}`;
 }
 
-export async function prepareDeepDivePayment(): Promise<MemberCheckoutPrepareResult> {
+export async function prepareCoursePayment(
+  slug: string,
+): Promise<MemberCheckoutPrepareResult> {
   try {
+    const catalogCourse = getCatalogCourseBySlug(slug);
+    if (!catalogCourse || catalogCourse.registerPath) {
+      return { ok: false, error: "Invalid course for member checkout." };
+    }
+
     const profile = await requireStudent();
     const admin = createServiceClient();
 
     const { data: course } = await admin
       .from("courses")
       .select("id, title, price, currency, status, slug")
-      .eq("slug", deepDiveBundle.slug)
+      .eq("slug", slug)
       .eq("status", "PUBLISHED")
       .maybeSingle();
 
@@ -315,7 +322,7 @@ export async function prepareDeepDivePayment(): Promise<MemberCheckoutPrepareRes
       return {
         ok: false,
         error:
-          "Deep Dive course is not published yet. Message the team or try again later.",
+          "This course is not published yet. Message the team or try again later.",
       };
     }
 
@@ -333,7 +340,8 @@ export async function prepareDeepDivePayment(): Promise<MemberCheckoutPrepareRes
     if (!session) {
       return {
         ok: false,
-        error: "No published Deep Dive session yet. Message the team for the next cohort.",
+        error:
+          "No published session yet for this course. Message the team for the next cohort.",
       };
     }
 
@@ -475,7 +483,7 @@ export async function prepareDeepDivePayment(): Promise<MemberCheckoutPrepareRes
   }
 }
 
-export async function refreshDeepDivePaymentStatus(
+export async function refreshCoursePaymentStatus(
   paymentId: string,
 ): Promise<MemberCheckoutActionResult> {
   try {

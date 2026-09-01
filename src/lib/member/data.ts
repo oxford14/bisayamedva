@@ -229,12 +229,25 @@ export function canShowMeetingUrl(enrollment: MemberEnrollment) {
 
 /** Active/Completed enrollment or a PAID payment unlocks Student Lounge. */
 export async function canAccessStudentLounge(studentId: string) {
-  const enrollments = await getMemberEnrollments(studentId);
-  return enrollments.some(
-    (e) =>
-      e.status === "ACTIVE" ||
-      e.status === "COMPLETED" ||
-      e.payment?.status === "PAID",
-  );
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("status, payments(status)")
+    .eq("student_id", studentId)
+    .neq("status", "CANCELLED")
+    .limit(25);
+
+  if (error) {
+    console.error("canAccessStudentLounge", error.message);
+    return false;
+  }
+
+  return (data ?? []).some((row) => {
+    if (row.status === "ACTIVE" || row.status === "COMPLETED") return true;
+    const payment = Array.isArray(row.payments)
+      ? row.payments[0]
+      : row.payments;
+    return payment?.status === "PAID";
+  });
 }
 

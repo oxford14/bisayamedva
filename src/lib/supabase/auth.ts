@@ -1,6 +1,7 @@
+import { cache } from "react";
+import { redirect } from "next/navigation";
 import { createAvatarSignedUrl } from "@/lib/member/avatar";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 
 export type UserRole = "SUPER_ADMIN" | "ADMIN" | "STUDENT";
 
@@ -28,7 +29,8 @@ export function isStudentRole(role: string | null | undefined) {
   return role === "STUDENT";
 }
 
-export async function getCurrentProfile() {
+/** Profile row only — avatar_url deferred to keep nav fast. */
+export const getCurrentProfile = cache(async (): Promise<AdminProfile | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,12 +47,25 @@ export async function getCurrentProfile() {
 
   if (!profile) return null;
 
-  const avatar_url = await createAvatarSignedUrl(supabase, profile.avatar_path);
-
   return {
     ...profile,
-    avatar_url,
+    avatar_url: null,
   } as AdminProfile;
+});
+
+export const getProfileAvatarUrl = cache(
+  async (avatarPath: string | null | undefined) => {
+    if (!avatarPath) return null;
+    const supabase = await createClient();
+    return createAvatarSignedUrl(supabase, avatarPath);
+  },
+);
+
+export async function enrichProfileWithAvatar(
+  profile: AdminProfile,
+): Promise<AdminProfile> {
+  const avatar_url = await getProfileAvatarUrl(profile.avatar_path);
+  return { ...profile, avatar_url };
 }
 
 export async function requireAdmin() {
@@ -84,4 +99,24 @@ export async function requireStudent() {
     redirect("/auth/access-denied");
   }
   return profile as MemberProfile;
+}
+
+/** Use in member pages — layout already gates; shares cached profile fetch. */
+export async function getStudentProfile() {
+  return requireStudent();
+}
+
+/** Lightweight auth for server actions — no avatar signing. */
+export async function getActionUserId() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+export async function getActionStudentId() {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStudentRole(profile.role)) return null;
+  return profile.id;
 }

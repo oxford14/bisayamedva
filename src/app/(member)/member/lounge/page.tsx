@@ -3,20 +3,20 @@ import { LoungeGate } from "@/components/member/lounge/lounge-gate";
 import { MemberPageHeader } from "@/components/member/ui";
 import { canAccessStudentLounge } from "@/lib/member/data";
 import {
-  getLoungeComments,
+  getLoungeCommentsForPosts,
   getLoungeFeed,
   getLoungeNotifications,
   getUnreadLoungeNotificationCount,
   listLoungeStudentsForMentions,
 } from "@/lib/member/lounge";
-import { requireStudent } from "@/lib/supabase/auth";
+import { getStudentProfile } from "@/lib/supabase/auth";
 
 export default async function MemberLoungePage({
   searchParams,
 }: {
   searchParams?: Promise<{ post?: string }>;
 }) {
-  const profile = await requireStudent();
+  const profile = await getStudentProfile();
   const allowed = await canAccessStudentLounge(profile.id);
   const params = searchParams ? await searchParams : {};
   const highlightPostId = params.post ?? null;
@@ -40,10 +40,7 @@ export default async function MemberLoungePage({
     listLoungeStudentsForMentions(),
   ]);
 
-  const commentEntries = await Promise.all(
-    posts.map(async (post) => [post.id, await getLoungeComments(post.id)] as const),
-  );
-  const commentsByPost = Object.fromEntries(commentEntries);
+  const commentsByPost = await getLoungeCommentsForPosts(posts.map((p) => p.id));
 
   return (
     <div>

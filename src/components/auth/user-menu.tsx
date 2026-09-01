@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, LogOut, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
+import { AVATAR_BUCKET, AVATAR_SIGNED_URL_TTL_SECONDS } from "@/lib/member/avatar";
 import type { AdminProfile } from "@/lib/supabase/auth";
 import { cn } from "@/lib/utils";
 
 type UserMenuProfile = Pick<
   AdminProfile,
-  "email" | "full_name" | "role" | "avatar_url"
+  "email" | "full_name" | "role" | "avatar_path" | "avatar_url"
 >;
 
 function initials(name: string) {
@@ -51,7 +53,6 @@ function AvatarMark({
   const letters = initials(name || email);
   if (avatarUrl) {
     return (
-      // Signed URLs rotate; skip next/image caching.
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={avatarUrl}
@@ -83,6 +84,10 @@ export function UserMenu({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    profile.avatar_url ?? null,
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
   const admin = profile.role === "SUPER_ADMIN" || profile.role === "ADMIN";
   const student = profile.role === "STUDENT";
   const inAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
@@ -90,6 +95,21 @@ export function UserMenu({
   const showDashboard = (admin && !inAdmin) || (student && !inMember);
   const dashboardHref = admin ? "/admin" : "/member";
   const dashboardLabel = admin ? "Admin" : "My training";
+
+  useEffect(() => {
+    if (!menuOpen || avatarUrl || !profile.avatar_path) return;
+    let cancelled = false;
+    const supabase = createClient();
+    void supabase.storage
+      .from(AVATAR_BUCKET)
+      .createSignedUrl(profile.avatar_path, AVATAR_SIGNED_URL_TTL_SECONDS)
+      .then(({ data }) => {
+        if (!cancelled && data?.signedUrl) setAvatarUrl(data.signedUrl);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [menuOpen, avatarUrl, profile.avatar_path]);
 
   async function signOut() {
     const supabase = createClient();
@@ -99,7 +119,7 @@ export function UserMenu({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
       <DropdownMenuTrigger
         className={cn(
           "inline-flex size-10 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-navy text-[13px] font-semibold tracking-wide text-cream outline-none transition-[box-shadow,background-color] hover:bg-navy-deep focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-cream",
@@ -110,7 +130,7 @@ export function UserMenu({
         <AvatarMark
           name={profile.full_name}
           email={profile.email}
-          avatarUrl={profile.avatar_url}
+          avatarUrl={avatarUrl}
           sizeClassName="size-full"
           textClassName="text-[13px] font-semibold"
         />
@@ -125,7 +145,7 @@ export function UserMenu({
             <AvatarMark
               name={profile.full_name}
               email={profile.email}
-              avatarUrl={profile.avatar_url}
+              avatarUrl={avatarUrl}
               sizeClassName="size-full"
               textClassName="text-lg font-semibold"
             />

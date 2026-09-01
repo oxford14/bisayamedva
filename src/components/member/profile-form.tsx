@@ -1,17 +1,25 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useActionState, useId, useRef, useState } from "react";
 import {
   updateMemberProfile,
   type MemberActionState,
 } from "@/app/(member)/member/actions";
-import { AvatarCropDialog } from "@/components/member/avatar-crop-dialog";
 import { Field } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { experienceLevels, referralSources } from "@/content/site";
 import type { MemberProfile } from "@/lib/supabase/auth";
 import { cn } from "@/lib/utils";
+
+const AvatarCropDialog = dynamic(
+  () =>
+    import("@/components/member/avatar-crop-dialog").then(
+      (mod) => mod.AvatarCropDialog,
+    ),
+  { ssr: false },
+);
 
 const initialState: MemberActionState = {
   ok: false,

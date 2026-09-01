@@ -9,11 +9,11 @@ import {
 } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
 import { getMemberPayments } from "@/lib/member/data";
-import { requireStudent } from "@/lib/supabase/auth";
+import { getStudentProfile } from "@/lib/supabase/auth";
 import { formatPeso } from "@/lib/utils";
 
 export default async function MemberPaymentsPage() {
-  const profile = await requireStudent();
+  const profile = await getStudentProfile();
   const payments = await getMemberPayments(profile.id);
   const pending = payments.find((p) => p.status === "PENDING");
 

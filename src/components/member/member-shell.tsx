@@ -7,6 +7,7 @@ import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
 import { memberNav, type MemberNavItem } from "@/components/member/nav-config";
 import { UserMenu } from "@/components/auth/user-menu";
+import { ShellNavLink } from "@/components/navigation/shell-nav-link";
 import { cn } from "@/lib/utils";
 import type { MemberProfile } from "@/lib/supabase/auth";
 
@@ -28,6 +29,10 @@ export function MemberShell({
   const primaryMobile = memberNav.filter((item) => item.mobilePrimary);
   const moreMobile = memberNav.filter((item) => !item.mobilePrimary);
   const moreSheetOpen = moreOpen && moreOpenedAt === pathname;
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!moreSheetOpen) return;
@@ -89,7 +94,7 @@ export function MemberShell({
               const Icon = item.icon;
               const active = isActive(item);
               return (
-                <Link
+                <ShellNavLink
                   key={item.href}
                   href={item.href}
                   className={cn(
@@ -116,7 +121,7 @@ export function MemberShell({
                       aria-hidden
                     />
                   ) : null}
-                </Link>
+                </ShellNavLink>
               );
             })}
           </nav>
@@ -174,7 +179,7 @@ export function MemberShell({
             const active = isActive(item);
             return (
               <li key={item.href}>
-                <Link
+                <ShellNavLink
                   href={item.href}
                   className={cn(
                     "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-semibold tracking-wide transition-colors",
@@ -185,7 +190,7 @@ export function MemberShell({
                 >
                   <Icon className="size-[1.15rem]" aria-hidden />
                   <span className="max-w-full truncate">{item.label}</span>
-                </Link>
+                </ShellNavLink>
               </li>
             );
           })}
@@ -236,7 +241,7 @@ export function MemberShell({
                   const active = isActive(item);
                   return (
                     <li key={item.href}>
-                      <Link
+                      <ShellNavLink
                         href={item.href}
                         onClick={() => setMoreOpen(false)}
                         className={cn(
@@ -255,7 +260,7 @@ export function MemberShell({
                           <Icon className="size-4" aria-hidden />
                         </span>
                         {item.label}
-                      </Link>
+                      </ShellNavLink>
                     </li>
                   );
                 })}

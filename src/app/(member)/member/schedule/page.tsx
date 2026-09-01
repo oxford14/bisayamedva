@@ -13,10 +13,10 @@ import {
   getMemberEnrollments,
   pickPrimaryEnrollment,
 } from "@/lib/member/data";
-import { requireStudent } from "@/lib/supabase/auth";
+import { getStudentProfile } from "@/lib/supabase/auth";
 
 export default async function MemberSchedulePage() {
-  const profile = await requireStudent();
+  const profile = await getStudentProfile();
   const enrollments = await getMemberEnrollments(profile.id);
   const primary = pickPrimaryEnrollment(enrollments);
   const showMeeting = primary ? canShowMeetingUrl(primary) : false;

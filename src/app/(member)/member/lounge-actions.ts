@@ -13,7 +13,7 @@ import {
   type LoungeNotificationType,
   type LoungeReaction,
 } from "@/lib/member/lounge";
-import { requireStudent } from "@/lib/supabase/auth";
+import { getActionStudentId } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export type LoungeActionState = {
@@ -22,8 +22,17 @@ export type LoungeActionState = {
 };
 
 async function requireLoungeStudent() {
-  const profile = await requireStudent();
-  const allowed = await canAccessStudentLounge(profile.id);
+  const studentId = await getActionStudentId();
+  if (!studentId) {
+    return {
+      profile: null as null,
+      error: {
+        ok: false as const,
+        message: "Please log in to continue.",
+      },
+    };
+  }
+  const allowed = await canAccessStudentLounge(studentId);
   if (!allowed) {
     return {
       profile: null as null,
@@ -34,7 +43,7 @@ async function requireLoungeStudent() {
       },
     };
   }
-  return { profile, error: null };
+  return { profile: { id: studentId }, error: null };
 }
 
 function revalidateLounge(postId?: string | null) {

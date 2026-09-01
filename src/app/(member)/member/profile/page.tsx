@@ -1,10 +1,10 @@
 import { MemberCard, MemberPageHeader } from "@/components/member/ui";
 import { MemberPasswordForm } from "@/components/member/password-form";
 import { MemberProfileForm } from "@/components/member/profile-form";
-import { requireStudent } from "@/lib/supabase/auth";
+import { enrichProfileWithAvatar, getStudentProfile } from "@/lib/supabase/auth";
 
 export default async function MemberProfilePage() {
-  const profile = await requireStudent();
+  const profile = await enrichProfileWithAvatar(await getStudentProfile());
 
   return (
     <div className="space-y-6">

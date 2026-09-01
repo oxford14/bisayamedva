@@ -13,7 +13,6 @@ function revalidatePaymentPaths() {
   revalidatePath("/member/payments");
   revalidatePath("/member/course");
   revalidatePath("/member/schedule");
-  revalidatePath("/member/checkout/deep-dive");
   revalidatePath("/admin/payments");
   revalidatePath("/admin/enrollments");
 }

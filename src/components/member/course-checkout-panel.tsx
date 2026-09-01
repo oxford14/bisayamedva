@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import {
   prepareCoursePayment,
   refreshCoursePaymentStatus,
@@ -17,17 +17,22 @@ type ReadyState = Extract<MemberCheckoutPrepareResult, { ok: true }>;
 export function CourseCheckoutPanel({
   slug,
   courseTitle,
+  initial,
+  initialError,
 }: {
   slug: string;
   courseTitle: string;
+  initial?: ReadyState | null;
+  initialError?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
-  const [ready, setReady] = useState<ReadyState | null>(null);
+  const [error, setError] = useState(initialError ?? "");
+  const [ready, setReady] = useState<ReadyState | null>(initial ?? null);
   const [message, setMessage] = useState("");
-  const [qrSrc, setQrSrc] = useState("");
-  const bootstrapped = useRef(false);
+  const [qrSrc, setQrSrc] = useState(
+    initial?.qrImageUrl ? normalizeQrSrc(initial.qrImageUrl) : "",
+  );
 
   const runPrepare = useCallback(() => {
     setError("");
@@ -50,10 +55,10 @@ export function CourseCheckoutPanel({
   }, [router, slug]);
 
   useEffect(() => {
-    if (bootstrapped.current) return;
-    bootstrapped.current = true;
-    runPrepare();
-  }, [runPrepare]);
+    if (initial?.alreadyPaid) {
+      router.replace("/member/course");
+    }
+  }, [initial?.alreadyPaid, router]);
 
   useEffect(() => {
     if (!ready || ready.alreadyPaid || !ready.paymentId) return;
@@ -97,6 +102,7 @@ export function CourseCheckoutPanel({
   }
 
   const showPrepareError = Boolean(error) && !qrSrc && !ready?.alreadyPaid;
+  const needsQr = !qrSrc && !ready?.alreadyPaid && !showPrepareError;
 
   return (
     <div className="mx-auto max-w-lg">
@@ -117,7 +123,7 @@ export function CourseCheckoutPanel({
           {ready?.amountLabel ?? "—"}
         </p>
         <p className="mt-2 text-sm text-muted">
-          {ready?.sessionLabel ?? (pending ? "Loading session…" : "—")}
+          {ready?.sessionLabel ?? "—"}
         </p>
       </div>
 
@@ -157,6 +163,22 @@ export function CourseCheckoutPanel({
               onClick={runPrepare}
             >
               {pending ? "Retrying…" : authCopy.checkout.retry}
+            </Button>
+          </div>
+        ) : needsQr ? (
+          <div className="w-full py-10 text-center">
+            <p className="text-sm text-muted">
+              Ready na ang order summary. Generate your QR Ph code when you are
+              ready to pay.
+            </p>
+            <Button
+              type="button"
+              variant="accent"
+              className="mt-4"
+              disabled={pending}
+              onClick={runPrepare}
+            >
+              {pending ? "Generating…" : "Generate QR Ph"}
             </Button>
           </div>
         ) : (
@@ -202,7 +224,7 @@ export function CourseCheckoutPanel({
             {authCopy.checkout.download}
           </Button>
         </div>
-        {showPrepareError ? null : (
+        {qrSrc ? (
           <Button
             type="button"
             variant="secondary"
@@ -212,7 +234,7 @@ export function CourseCheckoutPanel({
           >
             {authCopy.checkout.retry}
           </Button>
-        )}
+        ) : null}
         <Button variant="secondary" className="w-full" asChild>
           <Link href="/member/course">Back to Courses</Link>
         </Button>

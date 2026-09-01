@@ -7,6 +7,7 @@ import { Ellipsis, Shield } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { adminNav, type AdminNavItem } from "@/components/admin/nav-config";
 import { UserMenu } from "@/components/auth/user-menu";
+import { ShellNavLink } from "@/components/navigation/shell-nav-link";
 import { cn } from "@/lib/utils";
 import type { AdminProfile } from "@/lib/supabase/auth";
 
@@ -156,7 +157,7 @@ export function AdminShell({
             const active = isActive(item);
             return (
               <li key={item.href}>
-                <Link
+                <ShellNavLink
                   href={item.href}
                   className={cn(
                     "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-semibold tracking-wide transition-colors",
@@ -167,7 +168,7 @@ export function AdminShell({
                 >
                   <Icon className="size-[1.15rem]" aria-hidden />
                   <span className="max-w-full truncate">{item.label}</span>
-                </Link>
+                </ShellNavLink>
               </li>
             );
           })}
@@ -270,7 +271,7 @@ function NavSection({
           const Icon = item.icon;
           const active = isActive(item);
           return (
-            <Link
+            <ShellNavLink
               key={item.href}
               href={item.href}
               className={cn(
@@ -297,7 +298,7 @@ function NavSection({
                   aria-hidden
                 />
               ) : null}
-            </Link>
+            </ShellNavLink>
           );
         })}
       </nav>

@@ -179,31 +179,32 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
     }
   }
 
-  const feed: LoungePost[] = [];
-  for (const post of posts) {
-    const author = authors.get(post.author_id) ?? {
-      id: post.author_id,
-      full_name: "Student",
-      avatar_url: null,
-    };
-    const image_url = await signStoragePath(
-      service,
-      LOUNGE_IMAGE_BUCKET,
-      post.image_path,
-    );
-    feed.push({
-      id: post.id,
-      body: post.body ?? "",
-      image_path: post.image_path,
-      image_url,
-      created_at: post.created_at,
-      updated_at: post.updated_at,
-      author,
-      comment_count: commentCount.get(post.id) ?? 0,
-      reaction_counts: reactionCounts.get(post.id) ?? emptyReactions(),
-      my_reaction: myReaction.get(post.id) ?? null,
-    });
-  }
+  const feed: LoungePost[] = await Promise.all(
+    posts.map(async (post) => {
+      const author = authors.get(post.author_id) ?? {
+        id: post.author_id,
+        full_name: "Student",
+        avatar_url: null,
+      };
+      const image_url = await signStoragePath(
+        service,
+        LOUNGE_IMAGE_BUCKET,
+        post.image_path,
+      );
+      return {
+        id: post.id,
+        body: post.body ?? "",
+        image_path: post.image_path,
+        image_url,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        author,
+        comment_count: commentCount.get(post.id) ?? 0,
+        reaction_counts: reactionCounts.get(post.id) ?? emptyReactions(),
+        my_reaction: myReaction.get(post.id) ?? null,
+      };
+    }),
+  );
 
   return feed;
 }
@@ -268,6 +269,82 @@ export async function getLoungeComments(postId: string) {
     }
   }
   return roots;
+}
+
+export async function getLoungeCommentsForPosts(postIds: string[]) {
+  if (!postIds.length) return {} as Record<string, LoungeComment[]>;
+
+  const supabase = await createClient();
+  const service = createServiceClient();
+
+  const { data, error } = await supabase
+    .from("lounge_comments")
+    .select("id, post_id, parent_id, author_id, body, created_at, updated_at")
+    .in("post_id", postIds)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("getLoungeCommentsForPosts", error.message);
+    return {} as Record<string, LoungeComment[]>;
+  }
+  if (!data?.length) {
+    return Object.fromEntries(postIds.map((id) => [id, [] as LoungeComment[]]));
+  }
+
+  const authorIds = [...new Set(data.map((c) => c.author_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_path")
+    .in("id", authorIds);
+
+  const authors = await mapAuthors(
+    service,
+    (profiles ?? []) as {
+      id: string;
+      full_name: string;
+      avatar_path: string | null;
+    }[],
+  );
+
+  const byPost = new Map<string, LoungeComment[]>();
+  for (const postId of postIds) {
+    byPost.set(postId, []);
+  }
+
+  const mapped: LoungeComment[] = data.map((row) => ({
+    id: row.id,
+    post_id: row.post_id,
+    parent_id: row.parent_id,
+    body: row.body,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    author: authors.get(row.author_id) ?? {
+      id: row.author_id,
+      full_name: "Student",
+      avatar_url: null,
+    },
+    replies: [],
+  }));
+
+  for (const postId of postIds) {
+    const postComments = mapped.filter((c) => c.post_id === postId);
+    const roots: LoungeComment[] = [];
+    const byId = new Map(postComments.map((c) => [c.id, c]));
+    for (const comment of postComments) {
+      if (comment.parent_id) {
+        const parent = byId.get(comment.parent_id);
+        if (parent && !parent.parent_id) {
+          parent.replies.push(comment);
+        }
+      } else {
+        roots.push(comment);
+      }
+    }
+    byPost.set(postId, roots);
+  }
+
+  return Object.fromEntries(byPost);
 }
 
 export async function getLoungeNotifications(userId: string, limit = 30) {

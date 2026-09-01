@@ -1,10 +1,10 @@
 import { MemberCourseCatalog } from "@/components/member/course-catalog";
 import { MemberPageHeader } from "@/components/member/ui";
 import { getMemberEnrollments } from "@/lib/member/data";
-import { requireStudent } from "@/lib/supabase/auth";
+import { getStudentProfile } from "@/lib/supabase/auth";
 
 export default async function MemberCoursePage() {
-  const profile = await requireStudent();
+  const profile = await getStudentProfile();
   const enrollments = await getMemberEnrollments(profile.id);
 
   return (

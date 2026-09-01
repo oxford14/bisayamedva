@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { CourseCheckoutPanel } from "@/components/member/course-checkout-panel";
 import { MemberPageHeader } from "@/components/member/ui";
 import { getCatalogCourseBySlug, isCheckoutSlug } from "@/content/courses";
+import { prepareCoursePaymentForStudent } from "@/lib/member/checkout-prepare";
+import { getStudentProfile } from "@/lib/supabase/auth";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -32,13 +34,25 @@ export default async function CourseCheckoutPage({ params }: Props) {
     notFound();
   }
 
+  const profile = await getStudentProfile();
+  const prepared = await prepareCoursePaymentForStudent(slug, profile.id);
+
+  if (prepared.ok && prepared.alreadyPaid) {
+    redirect("/member/course");
+  }
+
   return (
     <div>
       <MemberPageHeader
         title={`${course.title} payment`}
         description="Scan the live PayMongo QR Ph — same in-app payment style as registration."
       />
-      <CourseCheckoutPanel slug={slug} courseTitle={course.title} />
+      <CourseCheckoutPanel
+        slug={slug}
+        courseTitle={course.title}
+        initial={prepared.ok ? prepared : null}
+        initialError={prepared.ok ? null : prepared.error}
+      />
     </div>
   );
 }

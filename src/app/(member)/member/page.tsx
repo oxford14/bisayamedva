@@ -13,11 +13,11 @@ import {
   getMemberEnrollments,
   pickPrimaryEnrollment,
 } from "@/lib/member/data";
-import { requireStudent } from "@/lib/supabase/auth";
+import { getStudentProfile } from "@/lib/supabase/auth";
 import { formatPeso } from "@/lib/utils";
 
 export default async function MemberHomePage() {
-  const profile = await requireStudent();
+  const profile = await getStudentProfile();
   const enrollments = await getMemberEnrollments(profile.id);
   const primary = pickPrimaryEnrollment(enrollments);
   const next = enrollmentNextAction(primary);

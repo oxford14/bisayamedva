@@ -201,6 +201,42 @@ body {
   }
 }
 
+/* EKG loader: line draws in, then sweeps out. Static full line when motion is reduced. */
+.ekg-trace {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+@keyframes ekg-draw {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  55% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -1;
+  }
+}
+
+/* Lub-dub, then rest — synced to the trace loop. */
+@keyframes heartbeat {
+  0%,
+  55%,
+  100% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.25);
+  }
+  32% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.15);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .reveal {
     animation: fade-up 0.4s ease both;
@@ -220,5 +256,14 @@ body {
 
   .animate-pulse-soft {
     animation: pulse-soft 6s ease-in-out infinite;
+  }
+
+  .ekg-trace {
+    animation: ekg-draw 1.9s linear infinite;
+  }
+
+  .animate-heartbeat {
+    animation: heartbeat 1.9s ease-in-out infinite;
+    transform-origin: center;
   }
 }

@@ -18,6 +18,7 @@ export function LoginForm() {
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
+  const emailFromQuery = searchParams.get("email") ?? "";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -94,6 +95,7 @@ export function LoginForm() {
             type="email"
             autoComplete="email"
             placeholder="you@email.com"
+            defaultValue={emailFromQuery}
             aria-invalid={Boolean(errors.email)}
             className={
               errors.email

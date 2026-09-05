@@ -1,6 +1,5 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import {
   Heart,
   Lightbulb,
@@ -8,13 +7,17 @@ import {
   MoreHorizontal,
   PartyPopper,
   Pencil,
+  Pin,
   Trash2,
 } from "lucide-react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import {
   createLoungeComment,
   deleteLoungeComment,
   deleteLoungePost,
   setLoungeReaction,
+  togglePinLoungeComment,
+  togglePinLoungePost,
   updateLoungePost,
   type LoungeActionState,
 } from "@/app/(member)/member/lounge-actions";
@@ -22,6 +25,7 @@ import { MentionTextarea } from "@/components/member/lounge/mention-textarea";
 import { MemberCard } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
 import type {
+  LoungeBadge,
   LoungeComment,
   LoungeMentionCandidate,
   LoungePost,
@@ -30,6 +34,15 @@ import type {
 import { cn } from "@/lib/utils";
 
 const initial: LoungeActionState = { ok: false, message: "" };
+
+function LoungeBadgeChip({ badge }: { badge: LoungeBadge | null }) {
+  if (!badge) return null;
+  return (
+    <span className="inline-flex items-center rounded-full bg-teal/15 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-teal uppercase">
+      {badge === "COACH" ? "Coach" : "Admin"}
+    </span>
+  );
+}
 
 function Avatar({
   name,
@@ -89,22 +102,27 @@ function CommentBranch({
   comment,
   postId,
   viewerId,
+  viewerCanModerate,
   candidates,
   depth,
 }: {
   comment: LoungeComment;
   postId: string;
   viewerId: string;
+  viewerCanModerate: boolean;
   candidates: LoungeMentionCandidate[];
   depth: number;
 }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [state, action, pending] = useActionState(createLoungeComment, initial);
   const [pendingDelete, startDelete] = useTransition();
+  const [pendingPin, startPin] = useTransition();
 
   useEffect(() => {
     if (state.ok) setReplyOpen(false);
   }, [state]);
+
+  const isPinned = Boolean(comment.pinned_at);
 
   return (
     <div className={cn(depth > 0 && "ml-10 border-l border-border/70 pl-3")}>
@@ -112,9 +130,18 @@ function CommentBranch({
         <Avatar name={comment.author.full_name} url={comment.author.avatar_url} />
         <div className="min-w-0 flex-1">
           <div className="rounded-2xl bg-cream/80 px-3 py-2">
-            <p className="text-sm font-semibold text-ink">
-              {comment.author.full_name}
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="text-sm font-semibold text-ink">
+                {comment.author.full_name}
+              </p>
+              <LoungeBadgeChip badge={comment.author.lounge_badge} />
+              {isPinned ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-wide text-navy/70 uppercase">
+                  <Pin className="size-3" aria-hidden />
+                  Pinned
+                </span>
+              ) : null}
+            </div>
             <p className="mt-0.5 whitespace-pre-wrap text-sm text-ink/90">
               {comment.body}
             </p>
@@ -128,6 +155,23 @@ function CommentBranch({
                 onClick={() => setReplyOpen((v) => !v)}
               >
                 Reply
+              </button>
+            ) : null}
+            {viewerCanModerate && depth === 0 ? (
+              <button
+                type="button"
+                className="cursor-pointer font-semibold text-navy/70 hover:text-navy"
+                disabled={pendingPin}
+                onClick={() => {
+                  const fd = new FormData();
+                  fd.set("comment_id", comment.id);
+                  fd.set("post_id", postId);
+                  startPin(async () => {
+                    await togglePinLoungeComment(fd);
+                  });
+                }}
+              >
+                {isPinned ? "Unpin" : "Pin"}
               </button>
             ) : null}
             {comment.author.id === viewerId ? (
@@ -187,6 +231,7 @@ function CommentBranch({
               comment={reply}
               postId={postId}
               viewerId={viewerId}
+              viewerCanModerate={viewerCanModerate}
               candidates={candidates}
               depth={1}
             />
@@ -201,12 +246,14 @@ export function LoungePostCard({
   post,
   comments,
   viewerId,
+  viewerCanModerate,
   candidates,
   highlight,
 }: {
   post: LoungePost;
   comments: LoungeComment[];
   viewerId: string;
+  viewerCanModerate: boolean;
   candidates: LoungeMentionCandidate[];
   highlight?: boolean;
 }) {
@@ -225,6 +272,7 @@ export function LoungePostCard({
   );
   const [reactPending, startReact] = useTransition();
   const [deletePending, startDelete] = useTransition();
+  const [pinPending, startPin] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -242,194 +290,231 @@ export function LoungePostCard({
   }, [commentState]);
 
   const isMine = post.author.id === viewerId;
+  const isPinned = Boolean(post.pinned_at);
+  const showMenu = isMine || viewerCanModerate;
 
   return (
     <div id={`post-${post.id}`} ref={rootRef}>
-    <MemberCard
-      className={cn(highlight && "ring-2 ring-teal-bright/50")}
-    >
-      <div className="flex items-start gap-3">
-        <Avatar name={post.author.full_name} url={post.author.avatar_url} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="font-semibold text-ink">{post.author.full_name}</p>
-              <p className="text-[11px] text-muted">
-                {formatWhen(post.created_at)}
-                {post.updated_at !== post.created_at ? " · edited" : ""}
-              </p>
+      <MemberCard className={cn(highlight && "ring-2 ring-teal-bright/50")}>
+        <div className="flex items-start gap-3">
+          <Avatar name={post.author.full_name} url={post.author.avatar_url} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <p className="font-semibold text-ink">{post.author.full_name}</p>
+                  <LoungeBadgeChip badge={post.author.lounge_badge} />
+                </div>
+                <p className="text-[11px] text-muted">
+                  {isPinned ? (
+                    <span className="mr-1.5 inline-flex items-center gap-1 font-semibold text-navy/70">
+                      <Pin className="size-3" aria-hidden />
+                      Pinned
+                    </span>
+                  ) : null}
+                  {formatWhen(post.created_at)}
+                  {post.updated_at !== post.created_at ? " · edited" : ""}
+                </p>
+              </div>
+              {showMenu ? (
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="inline-flex size-9 cursor-pointer items-center justify-center rounded-xl text-navy/60 hover:bg-sand hover:text-navy"
+                    aria-label="Post options"
+                    onClick={() => setMenuOpen((v) => !v)}
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </button>
+                  {menuOpen ? (
+                    <div className="absolute top-10 right-0 z-10 w-40 rounded-xl border border-border bg-white py-1 shadow-lg">
+                      {viewerCanModerate ? (
+                        <button
+                          type="button"
+                          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sand"
+                          disabled={pinPending}
+                          onClick={() => {
+                            setMenuOpen(false);
+                            const fd = new FormData();
+                            fd.set("post_id", post.id);
+                            startPin(async () => {
+                              await togglePinLoungePost(fd);
+                            });
+                          }}
+                        >
+                          <Pin className="size-3.5" />
+                          {isPinned ? "Unpin" : "Pin"}
+                        </button>
+                      ) : null}
+                      {isMine ? (
+                        <>
+                          <button
+                            type="button"
+                            className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sand"
+                            onClick={() => {
+                              setEditing(true);
+                              setMenuOpen(false);
+                            }}
+                          >
+                            <Pencil className="size-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-sand"
+                            disabled={deletePending}
+                            onClick={() => {
+                              setMenuOpen(false);
+                              const fd = new FormData();
+                              fd.set("post_id", post.id);
+                              startDelete(async () => {
+                                await deleteLoungePost(fd);
+                              });
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                            Delete
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-            {isMine ? (
-              <div className="relative">
-                <button
-                  type="button"
-                  className="inline-flex size-9 cursor-pointer items-center justify-center rounded-xl text-navy/60 hover:bg-sand hover:text-navy"
-                  aria-label="Post options"
-                  onClick={() => setMenuOpen((v) => !v)}
-                >
-                  <MoreHorizontal className="size-4" />
-                </button>
-                {menuOpen ? (
-                  <div className="absolute top-10 right-0 z-10 w-40 rounded-xl border border-border bg-white py-1 shadow-lg">
-                    <button
-                      type="button"
-                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sand"
-                      onClick={() => {
-                        setEditing(true);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      <Pencil className="size-3.5" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-sand"
-                      disabled={deletePending}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        const fd = new FormData();
-                        fd.set("post_id", post.id);
-                        startDelete(async () => {
-                          await deleteLoungePost(fd);
-                        });
-                      }}
-                    >
-                      <Trash2 className="size-3.5" />
-                      Delete
-                    </button>
+
+            {editing ? (
+              <form action={editAction} className="mt-3 space-y-2">
+                <input type="hidden" name="post_id" value={post.id} />
+                <MentionTextarea
+                  id={`edit-${post.id}`}
+                  name="body"
+                  defaultValue={post.body}
+                  candidates={candidates}
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="accent"
+                    disabled={editPending}
+                  >
+                    {editPending ? "Saving…" : "Save"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditing(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                {editState.message && !editState.ok ? (
+                  <p className="text-xs text-destructive">{editState.message}</p>
+                ) : null}
+              </form>
+            ) : (
+              <>
+                {post.body ? (
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink">
+                    {post.body}
+                  </p>
+                ) : null}
+                {post.image_url ? (
+                  <div className="mt-3 overflow-hidden rounded-xl border border-border">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={post.image_url}
+                      alt=""
+                      className="max-h-[28rem] w-full object-cover"
+                    />
                   </div>
                 ) : null}
+              </>
+            )}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {reactionMeta.map(({ key, label, Icon }) => {
+                const count = post.reaction_counts[key] ?? 0;
+                const active = post.my_reaction === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={reactPending}
+                    className={cn(
+                      "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                      active
+                        ? "border-navy bg-navy text-cream"
+                        : "border-border bg-cream/70 text-navy/80 hover:border-navy/30 hover:bg-white",
+                    )}
+                    onClick={() => {
+                      const fd = new FormData();
+                      fd.set("post_id", post.id);
+                      fd.set("reaction", key);
+                      startReact(async () => {
+                        await setLoungeReaction(fd);
+                      });
+                    }}
+                  >
+                    <Icon className="size-3.5" aria-hidden />
+                    {label}
+                    {count > 0 ? <span>{count}</span> : null}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-cream/70 px-3 py-1.5 text-xs font-semibold text-navy/80 hover:bg-white"
+                onClick={() => setShowComments((v) => !v)}
+              >
+                <MessageCircle className="size-3.5" aria-hidden />
+                Comments
+                {post.comment_count > 0 ? <span>{post.comment_count}</span> : null}
+              </button>
+            </div>
+
+            {showComments ? (
+              <div className="mt-4 space-y-4 border-t border-border/70 pt-4">
+                {comments.map((comment) => (
+                  <CommentBranch
+                    key={comment.id}
+                    comment={comment}
+                    postId={post.id}
+                    viewerId={viewerId}
+                    viewerCanModerate={viewerCanModerate}
+                    candidates={candidates}
+                    depth={0}
+                  />
+                ))}
+                <form action={commentAction} className="space-y-2">
+                  <input type="hidden" name="post_id" value={post.id} />
+                  <MentionTextarea
+                    id={`comment-${post.id}`}
+                    name="body"
+                    rows={2}
+                    candidates={candidates}
+                    placeholder="Write a comment… Use @Name to mention."
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="accent"
+                    disabled={commentPending}
+                  >
+                    {commentPending ? "Posting…" : "Comment"}
+                  </Button>
+                  {commentState.message && !commentState.ok ? (
+                    <p className="text-xs text-destructive">{commentState.message}</p>
+                  ) : null}
+                </form>
               </div>
             ) : null}
           </div>
-
-          {editing ? (
-            <form action={editAction} className="mt-3 space-y-2">
-              <input type="hidden" name="post_id" value={post.id} />
-              <MentionTextarea
-                id={`edit-${post.id}`}
-                name="body"
-                defaultValue={post.body}
-                candidates={candidates}
-                rows={3}
-              />
-              <div className="flex gap-2">
-                <Button type="submit" size="sm" variant="accent" disabled={editPending}>
-                  {editPending ? "Saving…" : "Save"}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setEditing(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-              {editState.message && !editState.ok ? (
-                <p className="text-xs text-destructive">{editState.message}</p>
-              ) : null}
-            </form>
-          ) : (
-            <>
-              {post.body ? (
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink">
-                  {post.body}
-                </p>
-              ) : null}
-              {post.image_url ? (
-                <div className="mt-3 overflow-hidden rounded-xl border border-border">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={post.image_url}
-                    alt=""
-                    className="max-h-[28rem] w-full object-cover"
-                  />
-                </div>
-              ) : null}
-            </>
-          )}
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {reactionMeta.map(({ key, label, Icon }) => {
-              const count = post.reaction_counts[key] ?? 0;
-              const active = post.my_reaction === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  disabled={reactPending}
-                  className={cn(
-                    "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-                    active
-                      ? "border-navy bg-navy text-cream"
-                      : "border-border bg-cream/70 text-navy/80 hover:border-navy/30 hover:bg-white",
-                  )}
-                  onClick={() => {
-                    const fd = new FormData();
-                    fd.set("post_id", post.id);
-                    fd.set("reaction", key);
-                    startReact(async () => {
-                      await setLoungeReaction(fd);
-                    });
-                  }}
-                >
-                  <Icon className="size-3.5" aria-hidden />
-                  {label}
-                  {count > 0 ? <span>{count}</span> : null}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-cream/70 px-3 py-1.5 text-xs font-semibold text-navy/80 hover:bg-white"
-              onClick={() => setShowComments((v) => !v)}
-            >
-              <MessageCircle className="size-3.5" aria-hidden />
-              Comments
-              {post.comment_count > 0 ? <span>{post.comment_count}</span> : null}
-            </button>
-          </div>
-
-          {showComments ? (
-            <div className="mt-4 space-y-4 border-t border-border/70 pt-4">
-              {comments.map((comment) => (
-                <CommentBranch
-                  key={comment.id}
-                  comment={comment}
-                  postId={post.id}
-                  viewerId={viewerId}
-                  candidates={candidates}
-                  depth={0}
-                />
-              ))}
-              <form action={commentAction} className="space-y-2">
-                <input type="hidden" name="post_id" value={post.id} />
-                <MentionTextarea
-                  id={`comment-${post.id}`}
-                  name="body"
-                  rows={2}
-                  candidates={candidates}
-                  placeholder="Write a comment… Use @Name to mention."
-                />
-                <Button
-                  type="submit"
-                  size="sm"
-                  variant="accent"
-                  disabled={commentPending}
-                >
-                  {commentPending ? "Posting…" : "Comment"}
-                </Button>
-                {commentState.message && !commentState.ok ? (
-                  <p className="text-xs text-destructive">{commentState.message}</p>
-                ) : null}
-              </form>
-            </div>
-          ) : null}
         </div>
-      </div>
-    </MemberCard>
+      </MemberCard>
     </div>
   );
 }

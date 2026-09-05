@@ -2,11 +2,13 @@ import {
   BookOpen,
   CalendarDays,
   CreditCard,
+  Layers,
   LayoutDashboard,
   Settings,
   Users,
   FileText,
   ClipboardList,
+  TicketPercent,
   type LucideIcon,
 } from "lucide-react";
 
@@ -31,8 +33,8 @@ export const adminNav: AdminNavItem[] = [
     section: "manage",
   },
   {
-    href: "/admin/students",
-    label: "Students",
+    href: "/admin/users",
+    label: "Users",
     icon: Users,
     mobilePrimary: true,
     section: "manage",
@@ -41,6 +43,12 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/courses",
     label: "Courses",
     icon: BookOpen,
+    section: "manage",
+  },
+  {
+    href: "/admin/modules",
+    label: "Modules",
+    icon: Layers,
     section: "manage",
   },
   {
@@ -61,6 +69,12 @@ export const adminNav: AdminNavItem[] = [
     label: "Payments",
     icon: CreditCard,
     mobilePrimary: true,
+    section: "manage",
+  },
+  {
+    href: "/admin/promos",
+    label: "Promo codes",
+    icon: TicketPercent,
     section: "manage",
   },
   {

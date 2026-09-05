@@ -30,7 +30,7 @@ export default async function MemberPaymentsPage() {
           body="When you enroll, a pending payment will show here with a QR and pay link."
           action={
             <Button variant="accent" asChild>
-              <Link href="/register">Register</Link>
+              <Link href="/member/wallet">Open Wallet</Link>
             </Button>
           }
         />

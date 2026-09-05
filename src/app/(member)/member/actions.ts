@@ -255,14 +255,35 @@ export async function updateMemberPassword(
 export type { MemberCheckoutPrepareResult } from "@/lib/member/checkout-prepare";
 
 export type MemberCheckoutActionResult =
-  | { ok: true; redirectTo?: string; status?: string }
+  | { ok: true; redirectTo?: string; status?: string; enrolled?: boolean }
   | { ok: false; error: string };
+
+export async function quoteMemberPromo(slug: string, code: string) {
+  await requireStudent();
+  const admin = createServiceClient();
+  const { data: course } = await admin
+    .from("courses")
+    .select("price")
+    .eq("slug", slug)
+    .eq("status", "PUBLISHED")
+    .maybeSingle();
+  if (!course) return { ok: false as const, error: "Course not found." };
+  const { validateAndQuotePromo } = await import("@/lib/promo/codes");
+  return validateAndQuotePromo(code, Number(course.price));
+}
 
 export async function prepareCoursePayment(
   slug: string,
+  sessionId: string,
+  promoCode?: string,
 ): Promise<MemberCheckoutPrepareResult> {
   const profile = await requireStudent();
-  return prepareCoursePaymentForStudent(slug, profile.id);
+  return prepareCoursePaymentForStudent(
+    slug,
+    profile.id,
+    sessionId,
+    promoCode,
+  );
 }
 
 export async function refreshCoursePaymentStatus(
@@ -272,11 +293,15 @@ export async function refreshCoursePaymentStatus(
     if (!paymentId) return { ok: false, error: "Missing payment id." };
 
     const profile = await requireStudent();
+    const { expireStalePendingPayments } = await import(
+      "@/lib/payments/expire-pending"
+    );
+    await expireStalePendingPayments();
     const admin = createServiceClient();
     const { data: payment } = await admin
       .from("payments")
       .select(
-        "id, status, provider_payment_id, enrollment_id, enrollments(student_id)",
+        "id, status, provider_payment_id, enrollment_id, enrollments(student_id, status)",
       )
       .eq("id", paymentId)
       .maybeSingle();
@@ -294,21 +319,87 @@ export async function refreshCoursePaymentStatus(
       return { ok: true, redirectTo: "/member/course", status: "PAID" };
     }
 
-    if (!payment.provider_payment_id) {
-      return { ok: false, error: "No PayMongo intent yet." };
+    if (payment.provider_payment_id) {
+      const intent = await retrievePaymentIntent(payment.provider_payment_id);
+      if (intent.attributes.status === "succeeded") {
+        await activatePaidEnrollment({ paymentId: payment.id });
+        return { ok: true, redirectTo: "/member/course", status: "PAID" };
+      }
+      if (payment.status === "FAILED" || enrollment.status === "CANCELLED") {
+        return { ok: true, status: "EXPIRED" };
+      }
+      return { ok: true, status: intent.attributes.status };
     }
 
-    const intent = await retrievePaymentIntent(payment.provider_payment_id);
-    if (intent.attributes.status === "succeeded") {
-      await activatePaidEnrollment({ paymentId: payment.id });
-      return { ok: true, redirectTo: "/member/course", status: "PAID" };
+    if (payment.status === "FAILED" || enrollment.status === "CANCELLED") {
+      return { ok: true, status: "EXPIRED" };
     }
 
-    return { ok: true, status: intent.attributes.status };
+    return { ok: false, error: "No PayMongo intent yet." };
   } catch (error) {
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Status check failed.",
     };
   }
+}
+
+export async function prepareMemberWalletTopup(amountPesos: number) {
+  const profile = await requireStudent();
+  const { prepareWalletTopup } = await import("@/lib/wallet/topup");
+  return prepareWalletTopup({
+    studentId: profile.id,
+    amountPesos,
+  });
+}
+
+export async function refreshMemberWalletTopup(topupId: string) {
+  const profile = await requireStudent();
+  const admin = createServiceClient();
+  const { data: topup } = await admin
+    .from("wallet_topups")
+    .select("id, student_id")
+    .eq("id", topupId)
+    .maybeSingle();
+
+  if (!topup || topup.student_id !== profile.id) {
+    return { ok: false as const, error: "Top-up not found." };
+  }
+
+  const { refreshWalletTopupStatus } = await import("@/lib/wallet/topup");
+  return refreshWalletTopupStatus(topupId);
+}
+
+export async function enrollCourseWithWallet(input: {
+  slug: string;
+  sessionId: string;
+}) {
+  const profile = await requireStudent();
+  const admin = createServiceClient();
+  const { data: course } = await admin
+    .from("courses")
+    .select("id")
+    .eq("slug", input.slug)
+    .eq("status", "PUBLISHED")
+    .maybeSingle();
+
+  if (!course) {
+    return { ok: false as const, error: "Course not found." };
+  }
+
+  const { enrollWithWallet } = await import("@/lib/wallet/enroll");
+  const result = await enrollWithWallet({
+    studentId: profile.id,
+    courseId: course.id,
+    sessionId: input.sessionId,
+  });
+
+  if (result.ok) {
+    revalidatePath("/member");
+    revalidatePath("/member/wallet");
+    revalidatePath("/member/course");
+    revalidatePath("/member/schedule");
+  }
+
+  return result;
 }

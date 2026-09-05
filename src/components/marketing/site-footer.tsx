@@ -3,7 +3,7 @@ import { Logo } from "@/components/brand/logo";
 import { Container } from "@/components/marketing/container";
 import { nav, site } from "@/content/site";
 
-export function SiteFooter() {
+export function SiteFooter({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <footer className="w-full border-t border-navy/8 bg-navy text-cream">
       <Container className="grid gap-10 py-16 md:grid-cols-[1.5fr_1fr_1fr] lg:py-20">
@@ -28,14 +28,16 @@ export function SiteFooter() {
                 </Link>
               </li>
             ))}
-            <li>
-              <Link
-                href={nav.register.href}
-                className="text-cream/80 hover:text-cream cursor-pointer"
-              >
-                {nav.register.label}
-              </Link>
-            </li>
+            {signedIn ? null : (
+              <li>
+                <Link
+                  href={nav.register.href}
+                  className="text-cream/80 hover:text-cream cursor-pointer"
+                >
+                  {nav.register.label}
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
         <div>

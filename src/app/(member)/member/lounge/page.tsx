@@ -3,6 +3,7 @@ import { LoungeGate } from "@/components/member/lounge/lounge-gate";
 import { MemberPageHeader } from "@/components/member/ui";
 import { canAccessStudentLounge } from "@/lib/member/data";
 import {
+  canModerateLounge,
   getLoungeCommentsForPosts,
   getLoungeFeed,
   getLoungeNotifications,
@@ -54,6 +55,7 @@ export default async function MemberLoungePage({
         notifications={notifications}
         unreadCount={unreadCount}
         viewerId={profile.id}
+        viewerCanModerate={canModerateLounge(profile)}
         candidates={candidates.filter((c) => c.id !== profile.id)}
         highlightPostId={highlightPostId}
       />

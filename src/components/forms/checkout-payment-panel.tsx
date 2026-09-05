@@ -9,7 +9,8 @@ import {
   type CheckoutPrepareResult,
 } from "@/app/register/actions";
 import { Button } from "@/components/ui/button";
-import { authCopy } from "@/content/site";
+import { authCopy, nav } from "@/content/site";
+import { PaymentHoldCountdown } from "@/components/payments/payment-hold-countdown";
 import { normalizeQrSrc } from "@/lib/paymongo/qr";
 import {
   clearRegisterDraft,
@@ -24,15 +25,18 @@ export function CheckoutPaymentPanel() {
   const [pending, startTransition] = useTransition();
   const [missingDraft, setMissingDraft] = useState(false);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState<"" | "EMAIL_TAKEN">("");
   const [ready, setReady] = useState<ReadyState | null>(null);
   const [message, setMessage] = useState("");
   const [qrSrc, setQrSrc] = useState("");
+  const [holdExpired, setHoldExpired] = useState(false);
   const draftRef = useRef<RegisterDraft | null>(null);
   const bootstrapped = useRef(false);
 
   const runPrepare = useCallback(
     (draft: RegisterDraft) => {
       setError("");
+      setErrorCode("");
       setMessage("");
       startTransition(async () => {
         const result = await prepareCheckoutPayment(draft);
@@ -40,8 +44,11 @@ export function CheckoutPaymentPanel() {
           setReady(null);
           setQrSrc("");
           setError(result.error);
+          setErrorCode(result.code === "EMAIL_TAKEN" ? "EMAIL_TAKEN" : "");
           return;
         }
+        setErrorCode("");
+        setHoldExpired(false);
         setReady(result);
         setQrSrc(normalizeQrSrc(result.qrImageUrl));
         if (result.alreadyPaid) {
@@ -69,7 +76,7 @@ export function CheckoutPaymentPanel() {
   }, [runPrepare]);
 
   useEffect(() => {
-    if (!ready || ready.alreadyPaid || !ready.paymentId) return;
+    if (!ready || ready.alreadyPaid || !ready.paymentId || holdExpired) return;
 
     const timer = window.setInterval(() => {
       startTransition(async () => {
@@ -78,12 +85,16 @@ export function CheckoutPaymentPanel() {
           clearRegisterDraft();
           setMessage(authCopy.checkout.paid);
           router.replace(result.redirectTo);
+          return;
+        }
+        if (result.ok && result.status === "EXPIRED") {
+          setHoldExpired(true);
         }
       });
     }, 8000);
 
     return () => window.clearInterval(timer);
-  }, [ready, router]);
+  }, [holdExpired, ready, router]);
 
   function downloadQr() {
     if (!qrSrc) return;
@@ -115,6 +126,10 @@ export function CheckoutPaymentPanel() {
         clearRegisterDraft();
         setMessage(authCopy.checkout.paid);
         router.replace(result.redirectTo);
+        return;
+      }
+      if (result.status === "EXPIRED") {
+        setHoldExpired(true);
         return;
       }
       setMessage(`PayMongo status: ${result.status ?? "pending"}`);
@@ -172,29 +187,10 @@ export function CheckoutPaymentPanel() {
       <div className="mt-6 flex flex-col items-center rounded-2xl border border-border bg-cream/70 p-5">
         {pending && !qrSrc && !showPrepareError ? (
           <p className="py-16 text-sm text-muted">{authCopy.checkout.preparing}</p>
-        ) : qrSrc ? (
-          <>
-            {/* PayMongo returns data URL, https URL, or raw base64 */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={qrSrc}
-              alt="PayMongo QR Ph payment code"
-              className="size-[220px] rounded-xl border border-border bg-white object-contain p-2"
-            />
-            <p className="mt-3 text-center text-xs text-muted">
-              {authCopy.checkout.expiry}
-            </p>
-          </>
-        ) : ready?.alreadyPaid ? (
-          <p className="py-10 text-sm text-navy">{authCopy.checkout.paid}</p>
-        ) : showPrepareError ? (
-          <div className="w-full py-6 text-center">
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {error}
-            </p>
-            <p className="mt-2 text-xs text-muted">
-              Check PayMongo keys and that a published course/session exists in
-              Admin Content, then retry.
+        ) : holdExpired ? (
+          <div className="w-full py-8 text-center">
+            <p className="text-sm font-medium text-destructive" role="status">
+              {authCopy.checkout.expired}
             </p>
             <Button
               type="button"
@@ -205,6 +201,59 @@ export function CheckoutPaymentPanel() {
             >
               {pending ? "Retrying…" : authCopy.checkout.retry}
             </Button>
+          </div>
+        ) : qrSrc ? (
+          <>
+            {/* PayMongo returns data URL, https URL, or raw base64 */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrSrc}
+              alt="PayMongo QR Ph payment code"
+              className="size-[220px] rounded-xl border border-border bg-white object-contain p-2"
+            />
+            {ready?.expiresAt ? (
+              <PaymentHoldCountdown
+                expiresAt={ready.expiresAt}
+                onExpired={() => setHoldExpired(true)}
+              />
+            ) : (
+              <p className="mt-3 text-center text-xs text-muted">
+                {authCopy.checkout.expiry}
+              </p>
+            )}
+          </>
+        ) : ready?.alreadyPaid ? (
+          <p className="py-10 text-sm text-navy">{authCopy.checkout.paid}</p>
+        ) : showPrepareError ? (
+          <div className="w-full py-6 text-center">
+            <p className="text-sm font-medium text-destructive" role="alert">
+              {error}
+            </p>
+            {errorCode === "EMAIL_TAKEN" ? (
+              <Button variant="accent" className="mt-4" asChild>
+                <Link
+                  href={`${nav.login.href}?email=${encodeURIComponent(draftRef.current?.email ?? "")}`}
+                >
+                  {nav.login.label}
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <p className="mt-2 text-xs text-muted">
+                  Check PayMongo keys and that a published course/session exists
+                  in Admin Content, then retry.
+                </p>
+                <Button
+                  type="button"
+                  variant="accent"
+                  className="mt-4"
+                  disabled={pending}
+                  onClick={onRetry}
+                >
+                  {pending ? "Retrying…" : authCopy.checkout.retry}
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <p className="py-10 text-sm text-muted">{authCopy.checkout.preparing}</p>
@@ -234,7 +283,7 @@ export function CheckoutPaymentPanel() {
             type="button"
             variant="accent"
             className="flex-1"
-            disabled={pending || !ready?.paymentId}
+            disabled={pending || holdExpired || !ready?.paymentId}
             onClick={onRefresh}
           >
             {pending ? "Checking…" : authCopy.checkout.refresh}
@@ -243,7 +292,7 @@ export function CheckoutPaymentPanel() {
             type="button"
             variant="secondary"
             className="flex-1"
-            disabled={pending || !qrSrc}
+            disabled={pending || holdExpired || !qrSrc}
             onClick={downloadQr}
           >
             {authCopy.checkout.download}

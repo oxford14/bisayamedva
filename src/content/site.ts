@@ -35,7 +35,7 @@ export const site = {
     name: "Medical Billing Masterclass",
     subtitle: "Medical Billing Fundamentals for Aspiring Medical VAs",
     type: "BASIC" as const,
-    price: 499,
+    price: 299,
     currency: "PHP" as const,
     priceLabel: "One-time training",
   },
@@ -56,6 +56,7 @@ export const site = {
 export const nav = {
   links: [
     { href: "/#medical-billing", label: "Medical Billing" },
+    { href: "/#meet-trainer", label: "Trainer" },
     { href: "/#how-it-works", label: "How It Works" },
     { href: "/#faq", label: "FAQ" },
   ],
@@ -173,6 +174,36 @@ export const audiences = [
     alt: "Filipina professional with customer service background exploring Medical VA work.",
   },
 ] as const;
+
+export const trainer = {
+  eyebrow: "MEET YOUR TRAINER",
+  title: "Learn from someone who started from the bottom.",
+  name: "Joy Manongsong",
+  nickname: "Jhoie",
+  role: "Medical VA Coach · Bisaya MedVA",
+  yearsLabel: "8 years as a Medical Virtual Assistant",
+  greeting: "Hi, I'm Jhoie.",
+  body: [
+    "I've been working as a Medical Virtual Assistant for 8 years and counting. My journey did not begin at the top — I started from the bottom, learning workflows, making mistakes, asking questions, and gradually gaining experience across different clients and systems.",
+    "Through Bisaya MedVA, I teach how the work actually happens in a real workplace: the basics, the habits, the communication with clients, the mistakes to avoid, and what to do when you are stuck. Dili theory dump — practical lessons I wish someone had taught me when I was starting.",
+  ],
+  closing:
+    "My goal is not to make you memorize hundreds of definitions. I want you to feel more confident when you enter a real Medical VA workplace — and to know how to approach the work even when you don't know everything yet.",
+  philosophy: [
+    { title: "Ask", body: "Don't assume. Clients appreciate clear questions." },
+    { title: "Listen", body: "Understand before you respond." },
+    { title: "Communicate", body: "Conversational, clear, and professional." },
+    { title: "Take notes", body: "Don't rely on memory alone." },
+    { title: "Follow the workflow", body: "Every client and practice may work differently." },
+    { title: "Know your limits", body: "Don't guess when something is outside your role." },
+    { title: "Work smarter", body: "Build habits that prevent mistakes." },
+  ],
+  image: {
+    src: "/images/people/trainer-jhoie.webp",
+    alt: "Joy Manongsong, Medical VA coach at Bisaya MedVA.",
+  },
+  cta: { href: "/register", label: "Train with Jhoie" },
+} as const;
 
 export const howItWorks = {
   eyebrow: "HOW IT WORKS",
@@ -294,6 +325,9 @@ export const authCopy = {
     submitAccount: "Continue to session",
     submitSession: "Review order",
     submitPayment: "Proceed to payment",
+    checkingEmail: "Checking email…",
+    emailTaken:
+      "Naa na ni nga email. Login to continue — dili ka maka-enroll gamit ang same email.",
   },
   checkout: {
     eyebrow: "PAYMONGO",
@@ -309,8 +343,42 @@ export const authCopy = {
       "Wala mi nakit-an nga registration details for this browser. Balik sa register, finish the steps, then click Proceed to payment.",
     preparing: "Preparing your PayMongo QR…",
     paid: "Nabayran na. Redirecting to your training dashboard…",
-    expiry: "This QR Ph code expires in about 30 minutes if unused.",
+    expiry: "This QR holds your seat for 10 minutes. After that, the seat goes back if wala pa bayad.",
+    expired:
+      "Napasagdan ang 10-minute hold. Retry para mag-reserve og new seat.",
   },
+} as const;
+
+export const modulesCopy = {
+  nav: "Modules",
+  title: "Modules",
+  description:
+    "Open the lessons and quizzes for courses you enrolled in. Locked sila until your Zoom session starts.",
+  emptyTitle: "Wala pa kay enrolled course",
+  emptyBody:
+    "Enroll sa course una. Modules mo-open when your Zoom session starts.",
+  emptyCta: "Browse courses",
+  filterAll: "All courses",
+  lockedBadge: "Locked",
+  openBadge: "Open",
+  lockedTitle: "Locked pa ni",
+  lockedBody: "Open ni during your scheduled Zoom and after.",
+  unlocksAt: "Opens",
+  filesTitle: "Lesson files",
+  quizTitle: "Quiz",
+  quizCta: "Take the quiz",
+  quizSubmit: "Submit quiz",
+  quizRetake: "Retake quiz",
+  quizScore: "Your score",
+  noModulesTitle: "No modules yet",
+  noModulesBody: "The team is still preparing the lessons for this course.",
+  noFiles: "No files uploaded yet for this module.",
+  noQuiz: "Wala pa quiz for this module.",
+  download: "Download",
+  openFile: "Open file",
+  notEnrolledTitle: "Kini nga course wala sa imong Modules",
+  notEnrolledBody:
+    "You can only open modules for courses you already enrolled and activated.",
 } as const;
 
 export const images = {

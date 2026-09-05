@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { expireStalePendingPayments } from "@/lib/payments/expire-pending";
 import {
   AdminPageHeader,
   EmptyState,
@@ -6,9 +7,16 @@ import {
 import {
   SessionManager,
   type SessionManagerRow,
+  type SessionRosterStudent,
 } from "@/components/admin/session-manager";
 
+function one<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
 export default async function SessionsPage() {
+  await expireStalePendingPayments();
   const supabase = await createClient();
   const [{ data: sessions }, { data: courses }] = await Promise.all([
     supabase
@@ -27,17 +35,36 @@ export default async function SessionsPage() {
     sessionIds.length > 0
       ? await supabase
           .from("enrollments")
-          .select("session_id")
+          .select("session_id, status, profiles(full_name, email)")
           .in("session_id", sessionIds)
           .neq("status", "CANCELLED")
-      : { data: [] as { session_id: string }[] };
+      : {
+          data: [] as {
+            session_id: string;
+            status: string;
+            profiles:
+              | { full_name: string | null; email: string | null }
+              | { full_name: string | null; email: string | null }[]
+              | null;
+          }[],
+        };
 
-  const enrollmentCounts = new Map<string, number>();
+  const rosters: Record<string, SessionRosterStudent[]> = {};
   for (const row of enrollmentRows ?? []) {
-    enrollmentCounts.set(
-      row.session_id,
-      (enrollmentCounts.get(row.session_id) ?? 0) + 1,
+    if (!row.session_id) continue;
+    const profile = one(
+      row.profiles as
+        | { full_name: string | null; email: string | null }
+        | { full_name: string | null; email: string | null }[]
+        | null,
     );
+    const list = rosters[row.session_id] ?? [];
+    list.push({
+      fullName: profile?.full_name?.trim() || "Unnamed student",
+      email: profile?.email?.trim() || "—",
+      status: row.status,
+    });
+    rosters[row.session_id] = list;
   }
 
   const rows: SessionManagerRow[] = (sessions ?? []).map((session) => {
@@ -56,7 +83,7 @@ export default async function SessionsPage() {
       meeting_url: session.meeting_url,
       status: session.status,
       courseTitle: course?.title ?? "—",
-      enrolled: enrollmentCounts.get(session.id) ?? 0,
+      enrolled: rosters[session.id]?.length ?? 0,
     };
   });
 
@@ -79,6 +106,7 @@ export default async function SessionsPage() {
             id: course.id,
             title: course.title,
           }))}
+          rosters={rosters}
         />
       )}
     </div>

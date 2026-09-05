@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, LogOut, UserRound } from "lucide-react";
+import { GraduationCap, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   DropdownMenu,
@@ -92,9 +92,10 @@ export function UserMenu({
   const student = profile.role === "STUDENT";
   const inAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const inMember = pathname === "/member" || pathname.startsWith("/member/");
-  const showDashboard = (admin && !inAdmin) || (student && !inMember);
-  const dashboardHref = admin ? "/admin" : "/member";
-  const dashboardLabel = admin ? "Admin" : "My training";
+  const showAdmin = admin && !inAdmin;
+  const showStudentApp = admin && !inMember;
+  const showMyTraining = student && !inMember;
+  const showNavLinks = showAdmin || showStudentApp || showMyTraining || student;
 
   useEffect(() => {
     if (!menuOpen || avatarUrl || !profile.avatar_path) return;
@@ -161,16 +162,34 @@ export function UserMenu({
           </span>
         </div>
 
-        {showDashboard || student ? (
+        {showNavLinks ? (
           <>
             <DropdownMenuSeparator className="mx-1 bg-border" />
-            {showDashboard ? (
+            {showAdmin ? (
               <DropdownMenuItem
-                render={<Link href={dashboardHref} />}
+                render={<Link href="/admin" />}
                 className={itemClassName}
               >
                 <LayoutDashboard className="size-4" aria-hidden />
-                {dashboardLabel}
+                Admin
+              </DropdownMenuItem>
+            ) : null}
+            {showStudentApp ? (
+              <DropdownMenuItem
+                render={<Link href="/member" />}
+                className={itemClassName}
+              >
+                <GraduationCap className="size-4" aria-hidden />
+                Show student app
+              </DropdownMenuItem>
+            ) : null}
+            {showMyTraining ? (
+              <DropdownMenuItem
+                render={<Link href="/member" />}
+                className={itemClassName}
+              >
+                <LayoutDashboard className="size-4" aria-hidden />
+                My training
               </DropdownMenuItem>
             ) : null}
             {student ? (

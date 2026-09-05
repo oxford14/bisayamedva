@@ -18,11 +18,13 @@ export type LoungeNotificationType =
   | "REPLY"
   | "REACTION"
   | "MENTION";
+export type LoungeBadge = "COACH" | "ADMIN";
 
 export type LoungeAuthor = {
   id: string;
   full_name: string;
   avatar_url: string | null;
+  lounge_badge: LoungeBadge | null;
 };
 
 export type LoungePost = {
@@ -32,6 +34,7 @@ export type LoungePost = {
   image_url: string | null;
   created_at: string;
   updated_at: string;
+  pinned_at: string | null;
   author: LoungeAuthor;
   comment_count: number;
   reaction_counts: Record<LoungeReaction, number>;
@@ -45,6 +48,7 @@ export type LoungeComment = {
   body: string;
   created_at: string;
   updated_at: string;
+  pinned_at: string | null;
   author: LoungeAuthor;
   replies: LoungeComment[];
 };
@@ -85,9 +89,50 @@ async function signStoragePath(
   return data.signedUrl;
 }
 
+function displayName(fullName: string | null | undefined) {
+  const trimmed = fullName?.trim();
+  return trimmed || "Member";
+}
+
+function normalizeLoungeBadge(
+  value: string | null | undefined,
+): LoungeBadge | null {
+  return value === "COACH" || value === "ADMIN" ? value : null;
+}
+
+function missingAuthor(id: string): LoungeAuthor {
+  return { id, full_name: "Member", avatar_url: null, lounge_badge: null };
+}
+
+export function canModerateLounge(profile: {
+  role?: string | null;
+  lounge_badge?: string | null;
+}) {
+  if (profile.role === "ADMIN" || profile.role === "SUPER_ADMIN") return true;
+  return (
+    profile.lounge_badge === "COACH" || profile.lounge_badge === "ADMIN"
+  );
+}
+
+function sortPinnedFirst<T extends { pinned_at: string | null; created_at: string }>(
+  items: T[],
+) {
+  return [...items].sort((a, b) => {
+    const aPinned = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
+    const bPinned = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
+    if (aPinned !== bPinned) return bPinned - aPinned;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 async function mapAuthors(
   service: SupabaseClient,
-  rows: { id: string; full_name: string; avatar_path: string | null }[],
+  rows: {
+    id: string;
+    full_name: string;
+    avatar_path: string | null;
+    lounge_badge: string | null;
+  }[],
 ) {
   const authors = new Map<string, LoungeAuthor>();
   await Promise.all(
@@ -99,8 +144,9 @@ async function mapAuthors(
       );
       authors.set(row.id, {
         id: row.id,
-        full_name: row.full_name,
+        full_name: displayName(row.full_name),
         avatar_url,
+        lounge_badge: normalizeLoungeBadge(row.lounge_badge),
       });
     }),
   );
@@ -119,8 +165,9 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
 
   const { data: posts, error } = await supabase
     .from("lounge_posts")
-    .select("id, author_id, body, image_path, created_at, updated_at")
+    .select("id, author_id, body, image_path, created_at, updated_at, pinned_at")
     .is("deleted_at", null)
+    .order("pinned_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -135,9 +182,9 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
 
   const [{ data: profiles }, { data: reactions }, { data: commentRows }] =
     await Promise.all([
-      supabase
+      service
         .from("profiles")
-        .select("id, full_name, avatar_path")
+        .select("id, full_name, avatar_path, lounge_badge")
         .in("id", authorIds),
       supabase
         .from("lounge_reactions")
@@ -156,6 +203,7 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
       id: string;
       full_name: string;
       avatar_path: string | null;
+      lounge_badge: string | null;
     }[],
   );
 
@@ -181,11 +229,7 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
 
   const feed: LoungePost[] = await Promise.all(
     posts.map(async (post) => {
-      const author = authors.get(post.author_id) ?? {
-        id: post.author_id,
-        full_name: "Student",
-        avatar_url: null,
-      };
+      const author = authors.get(post.author_id) ?? missingAuthor(post.author_id);
       const image_url = await signStoragePath(
         service,
         LOUNGE_IMAGE_BUCKET,
@@ -198,6 +242,7 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
         image_url,
         created_at: post.created_at,
         updated_at: post.updated_at,
+        pinned_at: post.pinned_at ?? null,
         author,
         comment_count: commentCount.get(post.id) ?? 0,
         reaction_counts: reactionCounts.get(post.id) ?? emptyReactions(),
@@ -206,7 +251,7 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
     }),
   );
 
-  return feed;
+  return sortPinnedFirst(feed);
 }
 
 export async function getLoungeComments(postId: string) {
@@ -215,7 +260,9 @@ export async function getLoungeComments(postId: string) {
 
   const { data, error } = await supabase
     .from("lounge_comments")
-    .select("id, post_id, parent_id, author_id, body, created_at, updated_at")
+    .select(
+      "id, post_id, parent_id, author_id, body, created_at, updated_at, pinned_at",
+    )
     .eq("post_id", postId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
@@ -227,9 +274,9 @@ export async function getLoungeComments(postId: string) {
   if (!data?.length) return [];
 
   const authorIds = [...new Set(data.map((c) => c.author_id))];
-  const { data: profiles } = await supabase
+  const { data: profiles } = await service
     .from("profiles")
-    .select("id, full_name, avatar_path")
+    .select("id, full_name, avatar_path, lounge_badge")
     .in("id", authorIds);
 
   const authors = await mapAuthors(
@@ -238,6 +285,7 @@ export async function getLoungeComments(postId: string) {
       id: string;
       full_name: string;
       avatar_path: string | null;
+      lounge_badge: string | null;
     }[],
   );
 
@@ -248,11 +296,8 @@ export async function getLoungeComments(postId: string) {
     body: row.body,
     created_at: row.created_at,
     updated_at: row.updated_at,
-    author: authors.get(row.author_id) ?? {
-      id: row.author_id,
-      full_name: "Student",
-      avatar_url: null,
-    },
+    pinned_at: row.pinned_at ?? null,
+    author: authors.get(row.author_id) ?? missingAuthor(row.author_id),
     replies: [],
   }));
 
@@ -268,7 +313,7 @@ export async function getLoungeComments(postId: string) {
       roots.push(comment);
     }
   }
-  return roots;
+  return sortPinnedFirst(roots);
 }
 
 export async function getLoungeCommentsForPosts(postIds: string[]) {
@@ -279,7 +324,9 @@ export async function getLoungeCommentsForPosts(postIds: string[]) {
 
   const { data, error } = await supabase
     .from("lounge_comments")
-    .select("id, post_id, parent_id, author_id, body, created_at, updated_at")
+    .select(
+      "id, post_id, parent_id, author_id, body, created_at, updated_at, pinned_at",
+    )
     .in("post_id", postIds)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
@@ -293,9 +340,9 @@ export async function getLoungeCommentsForPosts(postIds: string[]) {
   }
 
   const authorIds = [...new Set(data.map((c) => c.author_id))];
-  const { data: profiles } = await supabase
+  const { data: profiles } = await service
     .from("profiles")
-    .select("id, full_name, avatar_path")
+    .select("id, full_name, avatar_path, lounge_badge")
     .in("id", authorIds);
 
   const authors = await mapAuthors(
@@ -304,6 +351,7 @@ export async function getLoungeCommentsForPosts(postIds: string[]) {
       id: string;
       full_name: string;
       avatar_path: string | null;
+      lounge_badge: string | null;
     }[],
   );
 
@@ -319,11 +367,8 @@ export async function getLoungeCommentsForPosts(postIds: string[]) {
     body: row.body,
     created_at: row.created_at,
     updated_at: row.updated_at,
-    author: authors.get(row.author_id) ?? {
-      id: row.author_id,
-      full_name: "Student",
-      avatar_url: null,
-    },
+    pinned_at: row.pinned_at ?? null,
+    author: authors.get(row.author_id) ?? missingAuthor(row.author_id),
     replies: [],
   }));
 
@@ -341,7 +386,7 @@ export async function getLoungeCommentsForPosts(postIds: string[]) {
         roots.push(comment);
       }
     }
-    byPost.set(postId, roots);
+    byPost.set(postId, sortPinnedFirst(roots));
   }
 
   return Object.fromEntries(byPost);
@@ -365,9 +410,9 @@ export async function getLoungeNotifications(userId: string, limit = 30) {
   if (!data?.length) return [];
 
   const actorIds = [...new Set(data.map((n) => n.actor_id))];
-  const { data: profiles } = await supabase
+  const { data: profiles } = await service
     .from("profiles")
-    .select("id, full_name, avatar_path")
+    .select("id, full_name, avatar_path, lounge_badge")
     .in("id", actorIds);
 
   const authors = await mapAuthors(
@@ -376,6 +421,7 @@ export async function getLoungeNotifications(userId: string, limit = 30) {
       id: string;
       full_name: string;
       avatar_path: string | null;
+      lounge_badge: string | null;
     }[],
   );
 
@@ -388,11 +434,7 @@ export async function getLoungeNotifications(userId: string, limit = 30) {
         comment_id: row.comment_id,
         read_at: row.read_at,
         created_at: row.created_at,
-        actor: authors.get(row.actor_id) ?? {
-          id: row.actor_id,
-          full_name: "Student",
-          avatar_url: null,
-        },
+        actor: authors.get(row.actor_id) ?? missingAuthor(row.actor_id),
       }) satisfies LoungeNotification,
   );
 }
@@ -416,8 +458,8 @@ export async function searchLoungeMentionCandidates(query: string) {
   const q = query.trim();
   if (q.length < 1) return [] as LoungeMentionCandidate[];
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const service = createServiceClient();
+  const { data, error } = await service
     .from("profiles")
     .select("id, full_name")
     .eq("role", "STUDENT")
@@ -429,12 +471,15 @@ export async function searchLoungeMentionCandidates(query: string) {
     console.error("searchLoungeMentionCandidates", error.message);
     return [];
   }
-  return (data ?? []) as LoungeMentionCandidate[];
+  return ((data ?? []) as LoungeMentionCandidate[]).map((row) => ({
+    id: row.id,
+    full_name: displayName(row.full_name),
+  }));
 }
 
 export async function listLoungeStudentsForMentions() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const service = createServiceClient();
+  const { data, error } = await service
     .from("profiles")
     .select("id, full_name")
     .eq("role", "STUDENT")
@@ -445,7 +490,10 @@ export async function listLoungeStudentsForMentions() {
     console.error("listLoungeStudentsForMentions", error.message);
     return [] as LoungeMentionCandidate[];
   }
-  return (data ?? []) as LoungeMentionCandidate[];
+  return ((data ?? []) as LoungeMentionCandidate[]).map((row) => ({
+    id: row.id,
+    full_name: displayName(row.full_name),
+  }));
 }
 
 /** Match @Full Name tokens against known student names (longest first). */

@@ -25,7 +25,7 @@ export function Field({
         <p className="text-xs text-muted">{hint}</p>
       ) : null}
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p id={`${htmlFor}-error`} className="text-sm text-destructive" role="alert">
           {error}
         </p>
       ) : null}

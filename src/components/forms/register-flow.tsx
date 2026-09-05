@@ -2,16 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { checkRegisterEmail, prepareCheckoutPayment, quoteRegisterPromo } from "@/app/register/actions";
 import {
   authCopy,
   experienceLevels,
+  nav,
   referralSources,
-  site,
 } from "@/content/site";
-import { readRegisterDraft, saveRegisterDraft } from "@/lib/register/draft";
+import type { FeaturedOffer } from "@/lib/content/featured-offer";
+import {
+  clearRegisterDraft,
+  readRegisterDraft,
+  saveRegisterDraft,
+} from "@/lib/register/draft";
 import { registerAccountSchema } from "@/lib/validations/auth";
 import { formatPeso } from "@/lib/utils";
 import { Field, selectClassName } from "./field";
@@ -42,12 +48,32 @@ const emptyAccount: AccountState = {
   referralSource: "",
 };
 
-export function RegisterFlow() {
+export function RegisterFlow({
+  course,
+  session,
+}: {
+  course: FeaturedOffer["course"];
+  session: FeaturedOffer["session"];
+}) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [account, setAccount] = useState<AccountState>(emptyAccount);
-  const [sessionId, setSessionId] = useState<string>(site.nextSession.id);
+  const [sessionId, setSessionId] = useState<string>(session.id);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailTaken, setEmailTaken] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountLabel: string;
+    finalLabel: string;
+    originalLabel: string;
+    finalAmount: number;
+  } | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoPending, startPromoTransition] = useTransition();
+  const [enrollPending, startEnrollTransition] = useTransition();
+  const [enrollError, setEnrollError] = useState("");
 
   useEffect(() => {
     const draft = readRegisterDraft();
@@ -64,12 +90,28 @@ export function RegisterFlow() {
       messengerName: draft.messengerName ?? "",
       referralSource: draft.referralSource ?? "",
     });
-    setSessionId(draft.sessionId || site.nextSession.id);
+    setSessionId(session.id);
+    if (draft.promoCode) {
+      setPromoInput(draft.promoCode);
+      startPromoTransition(async () => {
+        const result = await quoteRegisterPromo(draft.promoCode!);
+        if (result.ok) {
+          setAppliedPromo({
+            code: result.code,
+            discountLabel: result.discountLabel,
+            finalLabel: result.finalLabel,
+            originalLabel: result.originalLabel,
+            finalAmount: result.finalAmount,
+          });
+        }
+      });
+    }
     setStep(3);
-  }, []);
+  }, [session.id]);
 
-  const price = formatPeso(site.featuredCourse.price);
-  const session = site.nextSession;
+  const price = formatPeso(course.price);
+  const displayTotal = appliedPromo?.finalLabel ?? price;
+  const isFreeEnrollment = appliedPromo?.finalAmount === 0;
 
   const steps = useMemo(
     () => [
@@ -82,9 +124,44 @@ export function RegisterFlow() {
 
   function update<K extends keyof AccountState>(key: K, value: AccountState[K]) {
     setAccount((prev) => ({ ...prev, [key]: value }));
+    if (key === "email" && (errors.email || emailTaken)) {
+      setEmailTaken(false);
+      setErrors((prev) => {
+        if (!prev.email) return prev;
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+    }
   }
 
-  function submitAccount(e: React.FormEvent) {
+  async function verifyEmailAvailable(email: string) {
+    try {
+      const result = await checkRegisterEmail(email);
+      if (!result.ok) {
+        setEmailTaken(result.code === "EMAIL_TAKEN");
+        setErrors((prev) => ({ ...prev, email: result.error }));
+        return false;
+      }
+      setEmailTaken(false);
+      setErrors((prev) => {
+        if (!prev.email) return prev;
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+      return true;
+    } catch {
+      setEmailTaken(false);
+      setErrors((prev) => ({
+        ...prev,
+        email: "Could not verify this email right now. Try again.",
+      }));
+      return false;
+    }
+  }
+
+  async function submitAccount(e: React.FormEvent) {
     e.preventDefault();
     const parsed = registerAccountSchema.safeParse({
       ...account,
@@ -99,7 +176,15 @@ export function RegisterFlow() {
         const key = String(issue.path[0]);
         if (!next[key]) next[key] = issue.message;
       }
+      setEmailTaken(false);
       setErrors(next);
+      return;
+    }
+    setCheckingEmail(true);
+    const available = await verifyEmailAvailable(parsed.data.email);
+    setCheckingEmail(false);
+    if (!available) {
+      document.getElementById("email")?.focus();
       return;
     }
     setErrors({});
@@ -181,10 +266,33 @@ export function RegisterFlow() {
               type="email"
               value={account.email}
               onChange={(e) => update("email", e.target.value)}
+              onBlur={(e) => {
+                const value = e.target.value.trim();
+                if (!value) return;
+                void verifyEmailAvailable(value);
+              }}
               autoComplete="email"
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              className={
+                errors.email
+                  ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
+                  : undefined
+              }
               required
             />
           </Field>
+          {emailTaken ? (
+            <p className="text-sm text-muted">
+              {authCopy.login.noAccount}{" "}
+              <Link
+                href={`${nav.login.href}?email=${encodeURIComponent(account.email.trim())}`}
+                className="font-semibold text-navy hover:text-teal cursor-pointer"
+              >
+                {nav.login.label}
+              </Link>
+            </p>
+          ) : null}
           <Field label="Mobile number" htmlFor="mobile" error={errors.mobile}>
             <Input
               id="mobile"
@@ -277,8 +385,16 @@ export function RegisterFlow() {
               ))}
             </select>
           </Field>
-          <Button type="submit" variant="accent" className="w-full" size="lg">
-            {authCopy.register.submitAccount}
+          <Button
+            type="submit"
+            variant="accent"
+            className="w-full"
+            size="lg"
+            disabled={checkingEmail}
+          >
+            {checkingEmail
+              ? authCopy.register.checkingEmail
+              : authCopy.register.submitAccount}
           </Button>
         </form>
       ) : null}
@@ -347,7 +463,7 @@ export function RegisterFlow() {
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Course</dt>
                 <dd className="text-right text-navy">
-                  {site.featuredCourse.name}
+                  {course.name}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
@@ -357,18 +473,101 @@ export function RegisterFlow() {
                   {session.timezoneLabel}
                 </dd>
               </div>
+            </dl>
+
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-xs font-semibold tracking-wide text-muted uppercase">
+                Promo code
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  placeholder="Enter code"
+                  className="flex-1"
+                  disabled={Boolean(appliedPromo)}
+                />
+                {appliedPromo ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setAppliedPromo(null);
+                      setPromoInput("");
+                      setPromoError("");
+                      setEnrollError("");
+                    }}
+                  >
+                    Remove
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={promoPending || !promoInput.trim()}
+                    onClick={() => {
+                      setPromoError("");
+                      startPromoTransition(async () => {
+                        const result = await quoteRegisterPromo(promoInput);
+                        if (!result.ok) {
+                          setAppliedPromo(null);
+                          setPromoError(result.error);
+                          return;
+                        }
+                        setAppliedPromo({
+                          code: result.code,
+                          discountLabel: result.discountLabel,
+                          finalLabel: result.finalLabel,
+                          originalLabel: result.originalLabel,
+                          finalAmount: result.finalAmount,
+                        });
+                      });
+                    }}
+                  >
+                    {promoPending ? "…" : "Apply"}
+                  </Button>
+                )}
+              </div>
+              {promoError ? (
+                <p className="mt-2 text-sm text-destructive" role="alert">
+                  {promoError}
+                </p>
+              ) : null}
+              {appliedPromo ? (
+                <p className="mt-2 text-sm text-navy">
+                  Applied <span className="font-semibold">{appliedPromo.code}</span>{" "}
+                  (−{appliedPromo.discountLabel})
+                </p>
+              ) : null}
+            </div>
+
+            <dl className="mt-4 space-y-3 text-sm">
+              {appliedPromo ? (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Subtotal</dt>
+                  <dd className="text-right text-muted line-through">
+                    {appliedPromo.originalLabel}
+                  </dd>
+                </div>
+              ) : null}
               <div className="flex justify-between gap-4 border-t border-border pt-3">
                 <dt className="font-semibold text-navy">Total</dt>
-                <dd className="font-display text-2xl text-navy">{price}</dd>
+                <dd className="font-display text-2xl text-navy">{displayTotal}</dd>
               </div>
             </dl>
           </div>
+          {enrollError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {enrollError}
+            </p>
+          ) : null}
           <div className="flex gap-3">
             <Button
               type="button"
               variant="secondary"
               className="flex-1"
               onClick={() => setStep(2)}
+              disabled={enrollPending}
             >
               Back
             </Button>
@@ -376,8 +575,10 @@ export function RegisterFlow() {
               type="button"
               variant="accent"
               className="flex-1"
+              disabled={enrollPending}
               onClick={() => {
-                saveRegisterDraft({
+                setEnrollError("");
+                const draft = {
                   firstName: account.firstName,
                   lastName: account.lastName,
                   email: account.email,
@@ -388,11 +589,31 @@ export function RegisterFlow() {
                   messengerName: account.messengerName || undefined,
                   referralSource: account.referralSource || undefined,
                   sessionId,
-                });
+                  promoCode: appliedPromo?.code,
+                };
+                saveRegisterDraft(draft);
+
+                if (isFreeEnrollment) {
+                  startEnrollTransition(async () => {
+                    const result = await prepareCheckoutPayment(draft);
+                    if (!result.ok) {
+                      setEnrollError(result.error);
+                      return;
+                    }
+                    clearRegisterDraft();
+                    router.push("/member");
+                  });
+                  return;
+                }
+
                 router.push("/register/checkout");
               }}
             >
-              {authCopy.register.submitPayment}
+              {enrollPending
+                ? "Completing…"
+                : isFreeEnrollment
+                  ? "Complete enrollment"
+                  : authCopy.register.submitPayment}
             </Button>
           </div>
         </div>
@@ -401,10 +622,10 @@ export function RegisterFlow() {
       <p className="mt-6 text-sm text-muted">
         Naa na kay account?{" "}
         <Link
-          href="/auth/login"
+          href={nav.login.href}
           className="font-semibold text-navy hover:text-teal cursor-pointer"
         >
-          Login
+          {nav.login.label}
         </Link>
       </p>
     </div>

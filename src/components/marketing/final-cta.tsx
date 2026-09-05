@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/marketing/container";
 import { finalCta, images } from "@/content/site";
 
-export function FinalCta() {
+export function FinalCta({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <section className="relative min-h-[28rem] w-full overflow-hidden bg-navy text-cream">
       <Image
@@ -21,9 +21,11 @@ export function FinalCta() {
             {finalCta.title}
           </h2>
           <p className="mt-5 max-w-lg text-lg text-cream/78">{finalCta.body}</p>
-          <Button variant="accent" size="lg" className="mt-8" asChild>
-            <Link href={finalCta.cta.href}>{finalCta.cta.label}</Link>
-          </Button>
+          {signedIn ? null : (
+            <Button variant="accent" size="lg" className="mt-8" asChild>
+              <Link href={finalCta.cta.href}>{finalCta.cta.label}</Link>
+            </Button>
+          )}
         </div>
       </Container>
     </section>

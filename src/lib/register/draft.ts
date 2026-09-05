@@ -11,6 +11,7 @@ export type RegisterDraft = {
   messengerName?: string;
   referralSource?: string;
   sessionId: string;
+  promoCode?: string;
 };
 
 export function saveRegisterDraft(draft: RegisterDraft) {

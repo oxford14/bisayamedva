@@ -78,6 +78,8 @@ export function extractActivationRefs(event: PaymongoWebhookEvent): {
   eventType: string | null;
   providerPaymentId: string | null;
   paymentId: string | null;
+  topupId: string | null;
+  kind: string | null;
 } {
   const eventType = event.data?.attributes?.type ?? null;
   const resource = event.data?.attributes?.data;
@@ -85,20 +87,25 @@ export function extractActivationRefs(event: PaymongoWebhookEvent): {
 
   let providerPaymentId: string | null = null;
   let paymentId: string | null = null;
+  let topupId: string | null = null;
+  let kind: string | null = null;
+
+  const meta = attrs?.metadata;
+  if (meta?.kind && typeof meta.kind === "string") {
+    kind = meta.kind;
+  }
+  if (meta?.topup_id && typeof meta.topup_id === "string") {
+    topupId = meta.topup_id;
+  }
+  if (meta?.payment_id && typeof meta.payment_id === "string") {
+    paymentId = meta.payment_id;
+  }
 
   if (eventType === "payment.paid") {
     providerPaymentId = attrs?.payment_intent_id ?? null;
-    const meta = attrs?.metadata;
-    if (meta?.payment_id && typeof meta.payment_id === "string") {
-      paymentId = meta.payment_id;
-    }
   } else if (eventType === "payment_intent.succeeded") {
     providerPaymentId = resource?.id ?? null;
-    const meta = attrs?.metadata;
-    if (meta?.payment_id && typeof meta.payment_id === "string") {
-      paymentId = meta.payment_id;
-    }
   }
 
-  return { eventType, providerPaymentId, paymentId };
+  return { eventType, providerPaymentId, paymentId, topupId, kind };
 }

@@ -7,7 +7,13 @@ import { images } from "@/content/site";
 import type { FeaturedOffer } from "@/lib/content/featured-offer";
 import { formatPeso } from "@/lib/utils";
 
-export function WeekendTraining({ offer }: { offer: FeaturedOffer }) {
+export function WeekendTraining({
+  offer,
+  signedIn = false,
+}: {
+  offer: FeaturedOffer;
+  signedIn?: boolean;
+}) {
   const session = offer.session;
 
   return (
@@ -51,9 +57,11 @@ export function WeekendTraining({ offer }: { offer: FeaturedOffer }) {
           <p className="mt-8 font-display text-5xl font-semibold">
             {formatPeso(offer.course.price)}
           </p>
-          <Button variant="accent" size="lg" className="mt-7" asChild>
-            <Link href="/register">Reserve Your Slot</Link>
-          </Button>
+          {signedIn ? null : (
+            <Button variant="accent" size="lg" className="mt-7" asChild>
+              <Link href="/register">Reserve Your Slot</Link>
+            </Button>
+          )}
         </div>
       </Container>
     </section>

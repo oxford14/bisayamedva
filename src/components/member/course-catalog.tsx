@@ -1,16 +1,20 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { Video } from "lucide-react";
 import {
-  courseCheckoutPath,
   foundationCourses,
   upskillCourses,
   type CatalogCourse,
 } from "@/content/courses";
 import { site } from "@/content/site";
 import { Button } from "@/components/ui/button";
+import { EnrollScheduleModal } from "@/components/member/enroll-schedule-modal";
 import { MemberStatusBadge } from "@/components/member/ui";
 import { cn, formatPeso } from "@/lib/utils";
 import type { MemberEnrollment } from "@/lib/member/data";
+import type { OpenFutureSession } from "@/lib/member/open-sessions-shared";
 
 function primaryOwned(enrollments: MemberEnrollment[]) {
   const priority = ["ACTIVE", "PENDING_PAYMENT", "COMPLETED", "CANCELLED"];
@@ -76,18 +80,16 @@ function CourseThumb({
 function CourseCard({
   course,
   enrollment,
+  sessions,
+  onEnroll,
 }: {
   course: CatalogCourse;
   enrollment?: MemberEnrollment;
+  sessions: OpenFutureSession[];
+  onEnroll: (course: CatalogCourse, sessions: OpenFutureSession[]) => void;
 }) {
   const owned = isOwnedEnrollment(enrollment);
   const accent = course.courseType === "FOUNDATION" ? "foundation" : "upskill";
-  const ctaHref = course.registerPath ?? courseCheckoutPath(course.slug);
-  const ctaLabel = course.registerPath
-    ? "Register"
-    : owned
-      ? "View schedule"
-      : `Enroll · ${formatPeso(course.price)}`;
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-[0_8px_24px_rgba(47,56,38,0.04)]">
@@ -125,11 +127,16 @@ function CourseCard({
 
           {owned ? (
             <Button variant="secondary" className="w-full" asChild>
-              <Link href="/member/schedule">{ctaLabel}</Link>
+              <Link href="/member/schedule">View schedule</Link>
             </Button>
           ) : (
-            <Button variant="accent" className="w-full" asChild>
-              <Link href={ctaHref}>{ctaLabel}</Link>
+            <Button
+              variant="accent"
+              className="w-full"
+              type="button"
+              onClick={() => onEnroll(course, sessions)}
+            >
+              {`Enroll · ${formatPeso(course.price)}`}
             </Button>
           )}
         </div>
@@ -140,10 +147,36 @@ function CourseCard({
 
 export function MemberCourseCatalog({
   enrollments,
+  openSessions,
 }: {
   enrollments: MemberEnrollment[];
+  openSessions: OpenFutureSession[];
 }) {
   const primary = primaryOwned(enrollments);
+  const [modalCourse, setModalCourse] = useState<CatalogCourse | null>(null);
+  const [modalSessions, setModalSessions] = useState<OpenFutureSession[]>([]);
+
+  const sessionsBySlug = useMemo(() => {
+    const map = new Map<string, OpenFutureSession[]>();
+    for (const session of openSessions) {
+      const slug = session.course.slug;
+      if (!slug) continue;
+      const list = map.get(slug) ?? [];
+      list.push(session);
+      map.set(slug, list);
+    }
+    return map;
+  }, [openSessions]);
+
+  function openEnroll(course: CatalogCourse, sessions: OpenFutureSession[]) {
+    setModalCourse(course);
+    setModalSessions(sessions);
+  }
+
+  function closeEnroll() {
+    setModalCourse(null);
+    setModalSessions([]);
+  }
 
   return (
     <div className="space-y-10">
@@ -179,7 +212,7 @@ export function MemberCourseCatalog({
                 <Link href="/member/schedule">Open schedule</Link>
               </Button>
               <Button variant="secondary" asChild>
-                <Link href="/member/payments">View payments</Link>
+                <Link href="/member/wallet">Open wallet</Link>
               </Button>
             </div>
           </div>
@@ -188,11 +221,13 @@ export function MemberCourseCatalog({
 
       <section>
         <div className="mb-4">
-          <h2 className="font-display text-xl font-semibold text-ink">Foundation</h2>
+          <h2 className="font-display text-xl font-semibold text-ink">
+            Foundation
+          </h2>
           <p className="mt-1 text-sm text-muted">
-            Duha ka Masterclasses — {formatPeso(foundationCourses[0]?.price ?? 499)}{" "}
-            each. Start with Medical Billing through public register, or add Medical
-            VA inside your account.
+            Duha ka Masterclasses —{" "}
+            {formatPeso(foundationCourses[0]?.price ?? 499)} each. Enroll and
+            pick an open weekend schedule inside your account.
           </p>
         </div>
         <div className="grid gap-5 lg:grid-cols-2">
@@ -201,6 +236,8 @@ export function MemberCourseCatalog({
               key={course.id}
               course={course}
               enrollment={enrollmentForCourse(enrollments, course)}
+              sessions={sessionsBySlug.get(course.slug) ?? []}
+              onEnroll={openEnroll}
             />
           ))}
         </div>
@@ -210,8 +247,9 @@ export function MemberCourseCatalog({
         <div className="mb-4">
           <h2 className="font-display text-xl font-semibold text-ink">Upskill</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Specialized Medical VA topics — {formatPeso(upskillCourses[0]?.price ?? 1000)}{" "}
-            each. Enroll individually after your Foundation training.
+            Specialized Medical VA topics —{" "}
+            {formatPeso(upskillCourses[0]?.price ?? 1000)} each. Enroll
+            individually after your Foundation training.
           </p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -220,10 +258,23 @@ export function MemberCourseCatalog({
               key={course.id}
               course={course}
               enrollment={enrollmentForCourse(enrollments, course)}
+              sessions={sessionsBySlug.get(course.slug) ?? []}
+              onEnroll={openEnroll}
             />
           ))}
         </div>
       </section>
+
+      {modalCourse ? (
+        <EnrollScheduleModal
+          open
+          courseTitle={modalCourse.title}
+          courseSlug={modalCourse.slug}
+          coursePrice={modalCourse.price}
+          sessions={modalSessions}
+          onClose={closeEnroll}
+        />
+      ) : null}
     </div>
   );
 }

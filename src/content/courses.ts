@@ -30,7 +30,7 @@ export const foundationCourses: CatalogCourse[] = [
     subtitle: "Medical Billing fundamentals for aspiring Medical VAs",
     description:
       "Core Medical Billing concepts, terminology, and where billing sits in the revenue cycle. Dili full job-ready claim — usa ka solid starting point.",
-    price: 499,
+    price: 299,
     courseType: "FOUNDATION",
     registerPath: "/register",
   },
@@ -78,10 +78,9 @@ export function getCatalogCourseBySlug(slug: string): CatalogCourse | undefined 
   return allCatalogCourses.find((course) => course.slug === slug);
 }
 
+/** Any catalog course can use member checkout when the student is logged in. */
 export function isCheckoutSlug(slug: string): boolean {
-  return allCatalogCourses.some(
-    (course) => course.slug === slug && !course.registerPath,
-  );
+  return allCatalogCourses.some((course) => course.slug === slug);
 }
 
 export function courseCheckoutPath(slug: string): string {

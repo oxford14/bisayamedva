@@ -11,6 +11,7 @@ export type ActivateResult = {
 function revalidatePaymentPaths() {
   revalidatePath("/member");
   revalidatePath("/member/payments");
+  revalidatePath("/member/wallet");
   revalidatePath("/member/course");
   revalidatePath("/member/schedule");
   revalidatePath("/admin/payments");

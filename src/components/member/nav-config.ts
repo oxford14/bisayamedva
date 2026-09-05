@@ -1,10 +1,11 @@
 import {
   BookOpen,
   CalendarDays,
-  CreditCard,
+  Layers,
   LayoutDashboard,
   MessagesSquare,
   UserRound,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -31,15 +32,20 @@ export const memberNav: MemberNavItem[] = [
     mobilePrimary: true,
   },
   {
+    href: "/member/modules",
+    label: "Modules",
+    icon: Layers,
+  },
+  {
     href: "/member/schedule",
     label: "Schedule",
     icon: CalendarDays,
     mobilePrimary: true,
   },
   {
-    href: "/member/payments",
-    label: "Payments",
-    icon: CreditCard,
+    href: "/member/wallet",
+    label: "Wallet",
+    icon: Wallet,
   },
   {
     href: "/member/lounge",

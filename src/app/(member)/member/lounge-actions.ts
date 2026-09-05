@@ -7,13 +7,15 @@ import {
   LOUNGE_IMAGE_BUCKET,
   LOUNGE_IMAGE_MAX_BYTES,
   LOUNGE_IMAGE_MIME,
+  canModerateLounge,
   listLoungeStudentsForMentions,
   loungeImageObjectPath,
   resolveMentionsFromBody,
   type LoungeNotificationType,
   type LoungeReaction,
 } from "@/lib/member/lounge";
-import { getActionStudentId } from "@/lib/supabase/auth";
+import { createServiceClient } from "@/lib/supabase/admin";
+import { getActionStudentId, getCurrentProfile } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export type LoungeActionState = {
@@ -445,6 +447,93 @@ export async function deleteLoungeComment(
   if (error) return { ok: false, message: error.message };
   revalidateLounge(postId || null);
   return { ok: true, message: "Comment removed." };
+}
+
+async function requireLoungeModerator() {
+  const gate = await requireLoungeStudent();
+  if (gate.error || !gate.profile) return gate;
+
+  const profile = await getCurrentProfile();
+  if (!profile || !canModerateLounge(profile)) {
+    return {
+      profile: null as null,
+      error: {
+        ok: false as const,
+        message: "Only Coach or Admin can pin items in the Lounge.",
+      },
+    };
+  }
+
+  return { profile: gate.profile, error: null };
+}
+
+export async function togglePinLoungePost(
+  formData: FormData,
+): Promise<LoungeActionState> {
+  const gate = await requireLoungeModerator();
+  if (gate.error || !gate.profile) return gate.error!;
+
+  const postId = String(formData.get("post_id") ?? "");
+  if (!postId) return { ok: false, message: "Missing post." };
+
+  const service = createServiceClient();
+  const { data: post, error: fetchError } = await service
+    .from("lounge_posts")
+    .select("id, pinned_at")
+    .eq("id", postId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (fetchError) return { ok: false, message: fetchError.message };
+  if (!post) return { ok: false, message: "Post not found." };
+
+  const nextPinnedAt = post.pinned_at ? null : new Date().toISOString();
+  const { error } = await service
+    .from("lounge_posts")
+    .update({ pinned_at: nextPinnedAt })
+    .eq("id", postId);
+
+  if (error) return { ok: false, message: error.message };
+  revalidateLounge(postId);
+  return {
+    ok: true,
+    message: nextPinnedAt ? "Post pinned." : "Post unpinned.",
+  };
+}
+
+export async function togglePinLoungeComment(
+  formData: FormData,
+): Promise<LoungeActionState> {
+  const gate = await requireLoungeModerator();
+  if (gate.error || !gate.profile) return gate.error!;
+
+  const commentId = String(formData.get("comment_id") ?? "");
+  const postId = String(formData.get("post_id") ?? "");
+  if (!commentId) return { ok: false, message: "Missing comment." };
+
+  const service = createServiceClient();
+  const { data: comment, error: fetchError } = await service
+    .from("lounge_comments")
+    .select("id, pinned_at, post_id")
+    .eq("id", commentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (fetchError) return { ok: false, message: fetchError.message };
+  if (!comment) return { ok: false, message: "Comment not found." };
+
+  const nextPinnedAt = comment.pinned_at ? null : new Date().toISOString();
+  const { error } = await service
+    .from("lounge_comments")
+    .update({ pinned_at: nextPinnedAt })
+    .eq("id", commentId);
+
+  if (error) return { ok: false, message: error.message };
+  revalidateLounge(postId || comment.post_id);
+  return {
+    ok: true,
+    message: nextPinnedAt ? "Comment pinned." : "Comment unpinned.",
+  };
 }
 
 export async function markLoungeNotificationsRead(): Promise<LoungeActionState> {

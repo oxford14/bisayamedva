@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { expireStalePendingPayments } from "@/lib/payments/expire-pending";
 import { createClient } from "@/lib/supabase/server";
 import {
   AdminPageHeader,
@@ -17,6 +18,7 @@ function money(n: number, currency = "PHP") {
 }
 
 export default async function AdminOverviewPage() {
+  await expireStalePendingPayments();
   const supabase = await createClient();
 
   const [

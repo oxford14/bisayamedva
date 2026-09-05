@@ -32,7 +32,7 @@ function unwrapSetting(value: unknown): string | null {
   return String(value);
 }
 
-function formatSession(session: {
+export function formatSession(session: {
   id: string;
   title: string;
   starts_at: string;
@@ -110,7 +110,7 @@ export async function getFeaturedOffer(): Promise<FeaturedOffer> {
         : Promise.resolve({ data: null }),
     ]);
 
-    if (course && session) {
+    if (course && session && session.course_id === course.id) {
       return {
         course: {
           id: course.id,

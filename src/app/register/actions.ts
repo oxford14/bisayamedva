@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { experienceLevels, referralSources } from "@/content/site";
+import { authCopy, experienceLevels, referralSources } from "@/content/site";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { activatePaidEnrollment } from "@/lib/paymongo/activate";
@@ -11,11 +11,20 @@ import {
 } from "@/lib/paymongo/client";
 import { normalizeQrSrc } from "@/lib/paymongo/qr";
 import { formatPeso } from "@/lib/utils";
+import {
+  bindPromoToPayment,
+  validateAndQuotePromo,
+} from "@/lib/promo/codes";
+import {
+  expireStalePendingPayments,
+  isPendingHoldFresh,
+  pendingHoldExpiresAt,
+} from "@/lib/payments/expire-pending";
 
 const draftSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  email: z.string().email(),
+  email: z.string().email().transform((value) => value.trim().toLowerCase()),
   mobile: z.string().min(10),
   password: z.string().min(8),
   occupation: z.string().optional(),
@@ -23,6 +32,7 @@ const draftSchema = z.object({
   messengerName: z.string().optional(),
   referralSource: z.enum(referralSources).optional(),
   sessionId: z.string().min(1),
+  promoCode: z.string().optional(),
 });
 
 export type CheckoutPrepareResult =
@@ -36,8 +46,62 @@ export type CheckoutPrepareResult =
       sessionLabel: string;
       providerPaymentId: string;
       alreadyPaid: boolean;
+      expiresAt?: string;
     }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code?: "EMAIL_TAKEN" };
+
+export type CheckRegisterEmailResult =
+  | { ok: true }
+  | { ok: false; error: string; code: "EMAIL_TAKEN" | "INVALID_EMAIL" };
+
+class RegisterEmailTakenError extends Error {
+  readonly code = "EMAIL_TAKEN" as const;
+
+  constructor() {
+    super(authCopy.register.emailTaken);
+    this.name = "RegisterEmailTakenError";
+  }
+}
+
+function escapeIlikePattern(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+async function findProfileIdByEmail(email: string) {
+  const admin = createServiceClient();
+  const normalized = email.trim().toLowerCase();
+  const { data } = await admin
+    .from("profiles")
+    .select("id")
+    .ilike("email", escapeIlikePattern(normalized))
+    .limit(1)
+    .maybeSingle();
+  return (data?.id as string | undefined) ?? null;
+}
+
+export async function checkRegisterEmail(
+  email: string,
+): Promise<CheckRegisterEmailResult> {
+  const parsed = z.string().email().safeParse(email.trim());
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Please enter a valid email address.",
+      code: "INVALID_EMAIL",
+    };
+  }
+
+  const existingId = await findProfileIdByEmail(parsed.data);
+  if (existingId) {
+    return {
+      ok: false,
+      error: authCopy.register.emailTaken,
+      code: "EMAIL_TAKEN",
+    };
+  }
+
+  return { ok: true };
+}
 
 export type CheckoutActionResult =
   | { ok: true; redirectTo?: string; status?: string }
@@ -157,6 +221,7 @@ function sessionLabel(session: {
 
 async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
   const admin = createServiceClient();
+  const email = draft.email.trim().toLowerCase();
   const fullName = `${draft.firstName} ${draft.lastName}`.trim();
   const metadata = {
     full_name: fullName,
@@ -169,38 +234,30 @@ async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
     referral_source: draft.referralSource ?? null,
   };
 
-  const { data: existingProfile } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("email", draft.email)
-    .maybeSingle();
-
-  let userId = existingProfile?.id as string | undefined;
-
-  if (!userId) {
-    const { data, error } = await admin.auth.admin.createUser({
-      email: draft.email,
-      password: draft.password,
-      email_confirm: true,
-      user_metadata: metadata,
-    });
-    if (error || !data.user) {
-      throw new Error(error?.message ?? "Could not create your account.");
-    }
-    userId = data.user.id;
-  } else {
-    const { error } = await admin.auth.admin.updateUserById(userId, {
-      password: draft.password,
-      user_metadata: metadata,
-    });
-    if (error) {
-      throw new Error(error.message);
-    }
+  const existingId = await findProfileIdByEmail(email);
+  if (existingId) {
+    throw new RegisterEmailTakenError();
   }
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password: draft.password,
+    email_confirm: true,
+    user_metadata: metadata,
+  });
+  if (error || !data.user) {
+    const message = error?.message ?? "Could not create your account.";
+    if (/already/i.test(message)) {
+      throw new RegisterEmailTakenError();
+    }
+    throw new Error(message);
+  }
+
+  const userId = data.user.id;
 
   await admin.from("profiles").upsert({
     id: userId,
-    email: draft.email,
+    email,
     full_name: fullName,
     role: "STUDENT",
     mobile: draft.mobile,
@@ -212,7 +269,7 @@ async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
 
   const supabase = await createClient();
   const { error: signInError } = await supabase.auth.signInWithPassword({
-    email: draft.email,
+    email,
     password: draft.password,
   });
   if (signInError) {
@@ -223,6 +280,12 @@ async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
   }
 
   return userId;
+}
+
+export async function quoteRegisterPromo(code: string) {
+  const { getFeaturedOffer } = await import("@/lib/content/featured-offer");
+  const offer = await getFeaturedOffer();
+  return validateAndQuotePromo(code, offer.course.price);
 }
 
 export async function prepareCheckoutPayment(
@@ -240,11 +303,27 @@ export async function prepareCheckoutPayment(
     const draft = parsed.data;
     const { course, session } = await resolveOfferIds(draft.sessionId);
     const userId = await ensureStudentUser(draft);
+    await expireStalePendingPayments();
     const admin = createServiceClient();
+
+    const coursePrice = Number(course.price);
+    let finalAmount = coursePrice;
+    let originalAmount = coursePrice;
+    let promoId: string | null = null;
+
+    if (draft.promoCode?.trim()) {
+      const quote = await validateAndQuotePromo(draft.promoCode, coursePrice);
+      if (!quote.ok) {
+        return { ok: false, error: quote.error };
+      }
+      finalAmount = quote.finalAmount;
+      originalAmount = quote.originalAmount;
+      promoId = quote.promoId;
+    }
 
     let { data: enrollment } = await admin
       .from("enrollments")
-      .select("id, status")
+      .select("id, status, created_at")
       .eq("student_id", userId)
       .eq("course_id", course.id)
       .eq("session_id", session.id)
@@ -252,47 +331,119 @@ export async function prepareCheckoutPayment(
       .limit(1)
       .maybeSingle();
 
-    if (!enrollment) {
-      const { data: created, error } = await admin
-        .from("enrollments")
-        .insert({
-          student_id: userId,
-          course_id: course.id,
-          session_id: session.id,
-          status: "PENDING_PAYMENT",
-        })
-        .select("id, status")
-        .single();
-      if (error || !created) {
-        return { ok: false, error: error?.message ?? "Could not create enrollment." };
+    const reuseHold =
+      enrollment?.status === "PENDING_PAYMENT" &&
+      isPendingHoldFresh(enrollment.created_at);
+    const alreadySeated =
+      enrollment?.status === "ACTIVE" || enrollment?.status === "COMPLETED";
+
+    if (!alreadySeated && !reuseHold) {
+      const nowIso = new Date().toISOString();
+      if (enrollment) {
+        const { data: reopened, error } = await admin
+          .from("enrollments")
+          .update({
+            status: "PENDING_PAYMENT",
+            created_at: nowIso,
+            session_id: session.id,
+          })
+          .eq("id", enrollment.id)
+          .select("id, status, created_at")
+          .single();
+        if (error || !reopened) {
+          return {
+            ok: false,
+            error: error?.message ?? "Could not reserve a new seat.",
+          };
+        }
+        enrollment = reopened;
+      } else {
+        const { data: created, error } = await admin
+          .from("enrollments")
+          .insert({
+            student_id: userId,
+            course_id: course.id,
+            session_id: session.id,
+            status: "PENDING_PAYMENT",
+          })
+          .select("id, status, created_at")
+          .single();
+        if (error || !created) {
+          return { ok: false, error: error?.message ?? "Could not create enrollment." };
+        }
+        enrollment = created;
       }
-      enrollment = created;
+    }
+
+    if (!enrollment) {
+      return { ok: false, error: "Could not create enrollment." };
     }
 
     let { data: payment } = await admin
       .from("payments")
-      .select("id, amount, currency, status, provider_payment_id")
+      .select(
+        "id, amount, currency, status, provider_payment_id, promo_code_id, original_amount",
+      )
       .eq("enrollment_id", enrollment.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (!alreadySeated && !reuseHold) {
+      payment = null;
+    } else if (
+      payment &&
+      (payment.status === "FAILED" || payment.status === "REFUNDED")
+    ) {
+      payment = null;
+    }
 
     if (!payment) {
       const { data: createdPayment, error } = await admin
         .from("payments")
         .insert({
           enrollment_id: enrollment.id,
-          amount: course.price,
+          amount: finalAmount,
+          original_amount: originalAmount,
           currency: course.currency || "PHP",
           status: "PENDING",
           provider: "PAYMONGO",
         })
-        .select("id, amount, currency, status, provider_payment_id")
+        .select(
+          "id, amount, currency, status, provider_payment_id, promo_code_id, original_amount",
+        )
         .single();
       if (error || !createdPayment) {
         return { ok: false, error: error?.message ?? "Could not create payment." };
       }
       payment = createdPayment;
+    }
+
+    if (promoId) {
+      const bound = await bindPromoToPayment({
+        paymentId: payment.id,
+        promoId,
+        originalAmount,
+        finalAmount,
+      });
+      if (!bound.ok) {
+        return { ok: false, error: bound.error };
+      }
+      payment = {
+        ...payment,
+        amount: finalAmount,
+        original_amount: originalAmount,
+        promo_code_id: promoId,
+      };
+    } else if (!payment.promo_code_id) {
+      await admin
+        .from("payments")
+        .update({
+          amount: finalAmount,
+          original_amount: originalAmount,
+        })
+        .eq("id", payment.id);
+      payment = { ...payment, amount: finalAmount, original_amount: originalAmount };
     }
 
     if (payment.status === "PAID" || enrollment.status === "ACTIVE") {
@@ -305,6 +456,29 @@ export async function prepareCheckoutPayment(
         courseTitle: course.title,
         sessionLabel: sessionLabel(session),
         providerPaymentId: payment.provider_payment_id ?? "",
+        alreadyPaid: true,
+      };
+    }
+
+    // Complimentary (100% off)
+    if (Number(payment.amount) === 0) {
+      await admin
+        .from("payments")
+        .update({ status: "PAID", provider: "PAYMONGO" })
+        .eq("id", payment.id);
+      await admin
+        .from("enrollments")
+        .update({ status: "ACTIVE" })
+        .eq("id", enrollment.id);
+      return {
+        ok: true,
+        paymentId: payment.id,
+        enrollmentId: enrollment.id,
+        qrImageUrl: "",
+        amountLabel: formatPeso(0),
+        courseTitle: course.title,
+        sessionLabel: sessionLabel(session),
+        providerPaymentId: "",
         alreadyPaid: true,
       };
     }
@@ -353,6 +527,7 @@ export async function prepareCheckoutPayment(
         provider: "PAYMONGO",
         provider_payment_id: providerPaymentId,
         status: "PENDING",
+        amount: Number(payment.amount),
       })
       .eq("id", payment.id);
 
@@ -366,8 +541,12 @@ export async function prepareCheckoutPayment(
       sessionLabel: sessionLabel(session),
       providerPaymentId,
       alreadyPaid: false,
+      expiresAt: pendingHoldExpiresAt(enrollment.created_at).toISOString(),
     };
   } catch (error) {
+    if (error instanceof RegisterEmailTakenError) {
+      return { ok: false, error: error.message, code: "EMAIL_TAKEN" };
+    }
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Checkout failed.",
@@ -387,11 +566,13 @@ export async function refreshCheckoutPaymentStatus(
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Please log in first." };
 
+    await expireStalePendingPayments();
+
     const admin = createServiceClient();
     const { data: payment } = await admin
       .from("payments")
       .select(
-        "id, status, provider_payment_id, enrollment_id, enrollments(student_id)",
+        "id, status, provider_payment_id, enrollment_id, enrollments(student_id, status)",
       )
       .eq("id", paymentId)
       .maybeSingle();
@@ -409,17 +590,23 @@ export async function refreshCheckoutPaymentStatus(
       return { ok: true, redirectTo: "/member", status: "PAID" };
     }
 
-    if (!payment.provider_payment_id) {
-      return { ok: false, error: "No PayMongo intent yet." };
+    if (payment.provider_payment_id) {
+      const intent = await retrievePaymentIntent(payment.provider_payment_id);
+      if (intent.attributes.status === "succeeded") {
+        await activatePaidEnrollment({ paymentId: payment.id });
+        return { ok: true, redirectTo: "/member", status: "PAID" };
+      }
+      if (payment.status === "FAILED" || enrollment.status === "CANCELLED") {
+        return { ok: true, status: "EXPIRED" };
+      }
+      return { ok: true, status: intent.attributes.status };
     }
 
-    const intent = await retrievePaymentIntent(payment.provider_payment_id);
-    if (intent.attributes.status === "succeeded") {
-      await activatePaidEnrollment({ paymentId: payment.id });
-      return { ok: true, redirectTo: "/member", status: "PAID" };
+    if (payment.status === "FAILED" || enrollment.status === "CANCELLED") {
+      return { ok: true, status: "EXPIRED" };
     }
 
-    return { ok: true, status: intent.attributes.status };
+    return { ok: false, error: "No PayMongo intent yet." };
   } catch (error) {
     return {
       ok: false,

@@ -13,9 +13,11 @@ export default async function MarketingLayout({
   return (
     <div className="flex min-h-full flex-col">
       <SiteHeader profile={profile} />
-      <main className="flex-1 pb-20 md:pb-0">{children}</main>
-      <SiteFooter />
-      <MobileCta />
+      <main className={profile ? "flex-1" : "flex-1 pb-20 md:pb-0"}>
+        {children}
+      </main>
+      <SiteFooter signedIn={Boolean(profile)} />
+      {profile ? null : <MobileCta />}
     </div>
   );
 }

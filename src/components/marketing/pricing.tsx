@@ -15,7 +15,13 @@ const included = [
   "Pathway to future Upskill Topics",
 ];
 
-export function Pricing({ offer }: { offer: FeaturedOffer }) {
+export function Pricing({
+  offer,
+  signedIn = false,
+}: {
+  offer: FeaturedOffer;
+  signedIn?: boolean;
+}) {
   return (
     <section className={`bg-white bg-grid ${sectionPad}`}>
       <Container className="grid items-center gap-12 lg:grid-cols-[1fr_1fr] lg:gap-20">
@@ -45,9 +51,11 @@ export function Pricing({ offer }: { offer: FeaturedOffer }) {
               </li>
             ))}
           </ul>
-          <Button variant="accent" size="lg" className="mt-8 w-full" asChild>
-            <Link href="/register">Register</Link>
-          </Button>
+          {signedIn ? null : (
+            <Button variant="accent" size="lg" className="mt-8 w-full" asChild>
+              <Link href="/register">Register</Link>
+            </Button>
+          )}
           <p className="mt-4 text-center text-xs text-muted">
             Upskill Topics ({upskillCourses.map((c) => c.title).join(", ")}) are
             sold separately from {formatPeso(upskillCourses[0]?.price ?? 1000)}{" "}

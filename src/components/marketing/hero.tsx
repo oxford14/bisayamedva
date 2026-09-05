@@ -11,7 +11,13 @@ import type { FeaturedOffer } from "@/lib/content/featured-offer";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-export function Hero({ session }: { session: FeaturedOffer["session"] }) {
+export function Hero({
+  session,
+  signedIn = false,
+}: {
+  session: FeaturedOffer["session"];
+  signedIn?: boolean;
+}) {
   const reduceMotion = useReducedMotion();
 
   const fadeUp = (delay = 0) =>
@@ -49,17 +55,19 @@ export function Hero({ session }: { session: FeaturedOffer["session"] }) {
             className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center"
             {...fadeUp(0.28)}
           >
-            <Button
-              variant="accent"
-              size="lg"
-              className="rounded-md shadow-none"
-              asChild
-            >
-              <Link href={hero.primaryCta.href}>
-                {hero.primaryCta.label}
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
+            {signedIn ? null : (
+              <Button
+                variant="accent"
+                size="lg"
+                className="rounded-md shadow-none"
+                asChild
+              >
+                <Link href={hero.primaryCta.href}>
+                  {hero.primaryCta.label}
+                  <ArrowRight className="size-4" aria-hidden />
+                </Link>
+              </Button>
+            )}
             <Button
               variant="secondary"
               size="lg"
@@ -164,12 +172,14 @@ export function Hero({ session }: { session: FeaturedOffer["session"] }) {
           <p className="mt-4 text-xs tracking-wide text-muted uppercase">
             {session.format}
           </p>
-          <Link
-            href="/register"
-            className="mt-5 inline-flex text-sm font-semibold text-navy underline decoration-teal-bright decoration-2 underline-offset-4 transition-colors hover:text-navy-deep cursor-pointer"
-          >
-            Register
-          </Link>
+          {signedIn ? null : (
+            <Link
+              href="/register"
+              className="mt-5 inline-flex text-sm font-semibold text-navy underline decoration-teal-bright decoration-2 underline-offset-4 transition-colors hover:text-navy-deep cursor-pointer"
+            >
+              Register
+            </Link>
+          )}
         </motion.aside>
       </Container>
     </section>

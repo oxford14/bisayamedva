@@ -4,12 +4,14 @@ import { createAvatarSignedUrl } from "@/lib/member/avatar";
 import { createClient } from "@/lib/supabase/server";
 
 export type UserRole = "SUPER_ADMIN" | "ADMIN" | "STUDENT";
+export type LoungeBadge = "COACH" | "ADMIN";
 
 export type AdminProfile = {
   id: string;
   email: string;
   full_name: string;
   role: UserRole;
+  lounge_badge: LoungeBadge | null;
   mobile: string | null;
   occupation: string | null;
   experience_level: string | null;
@@ -29,6 +31,10 @@ export function isStudentRole(role: string | null | undefined) {
   return role === "STUDENT";
 }
 
+export function canAccessMemberApp(role: string | null | undefined) {
+  return isStudentRole(role) || isAdminRole(role);
+}
+
 /** Profile row only — avatar_url deferred to keep nav fast. */
 export const getCurrentProfile = cache(async (): Promise<AdminProfile | null> => {
   const supabase = await createClient();
@@ -40,7 +46,7 @@ export const getCurrentProfile = cache(async (): Promise<AdminProfile | null> =>
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, role, mobile, occupation, experience_level, messenger_handle, referral_source, avatar_path",
+      "id, email, full_name, role, lounge_badge, mobile, occupation, experience_level, messenger_handle, referral_source, avatar_path",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -49,6 +55,10 @@ export const getCurrentProfile = cache(async (): Promise<AdminProfile | null> =>
 
   return {
     ...profile,
+    lounge_badge:
+      profile.lounge_badge === "COACH" || profile.lounge_badge === "ADMIN"
+        ? profile.lounge_badge
+        : null,
     avatar_url: null,
   } as AdminProfile;
 });
@@ -92,10 +102,7 @@ export async function requireStudent() {
   if (!profile) {
     redirect("/auth/login?next=/member");
   }
-  if (!isStudentRole(profile.role)) {
-    if (isAdminRole(profile.role)) {
-      redirect("/admin");
-    }
+  if (!canAccessMemberApp(profile.role)) {
     redirect("/auth/access-denied");
   }
   return profile as MemberProfile;
@@ -117,6 +124,6 @@ export async function getActionUserId() {
 
 export async function getActionStudentId() {
   const profile = await getCurrentProfile();
-  if (!profile || !isStudentRole(profile.role)) return null;
+  if (!profile || !canAccessMemberApp(profile.role)) return null;
   return profile.id;
 }

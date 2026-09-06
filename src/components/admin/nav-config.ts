@@ -1,6 +1,7 @@
 import {
   BookOpen,
   CalendarDays,
+  Banknote,
   CreditCard,
   Layers,
   LayoutDashboard,
@@ -69,6 +70,12 @@ export const adminNav: AdminNavItem[] = [
     label: "Payments",
     icon: CreditCard,
     mobilePrimary: true,
+    section: "manage",
+  },
+  {
+    href: "/admin/withdrawals",
+    label: "Withdrawals",
+    icon: Banknote,
     section: "manage",
   },
   {

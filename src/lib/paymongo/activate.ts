@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { creditReferralReward } from "@/lib/referrals/reward";
 import { createServiceClient } from "@/lib/supabase/admin";
 
 export type ActivateResult = {
@@ -14,6 +15,7 @@ function revalidatePaymentPaths() {
   revalidatePath("/member/wallet");
   revalidatePath("/member/course");
   revalidatePath("/member/schedule");
+  revalidatePath("/member/refer");
   revalidatePath("/admin/payments");
   revalidatePath("/admin/enrollments");
 }
@@ -72,6 +74,8 @@ export async function activatePaidEnrollment(input: {
   }
 
   if (payment.status === "PAID" && enrollment.status === "ACTIVE") {
+    await creditReferralReward(enrollment.id);
+    revalidatePaymentPaths();
     return {
       ok: true,
       paymentId: payment.id,
@@ -96,6 +100,7 @@ export async function activatePaidEnrollment(input: {
     if (enrollError) throw new Error(enrollError.message);
   }
 
+  await creditReferralReward(enrollment.id);
   revalidatePaymentPaths();
 
   return {

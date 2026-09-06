@@ -6,6 +6,7 @@ import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { modulesCopy } from "@/content/site";
 import { Button } from "@/components/ui/button";
+import { PageLoader } from "@/components/ui/page-loader";
 
 GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
@@ -35,7 +36,6 @@ export function ModulePdfViewer({ src }: { src: string }) {
           return;
         }
         setPdf(doc);
-        setLoading(false);
       })
       .catch(() => {
         if (!cancelled) {
@@ -63,6 +63,7 @@ export function ModulePdfViewer({ src }: { src: string }) {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await pdfPage.render({ canvasContext: context, canvas, viewport }).promise;
+      if (!cancelled) setLoading(false);
     };
     void render();
     return () => {
@@ -128,11 +129,17 @@ export function ModulePdfViewer({ src }: { src: string }) {
           <Plus className="size-4" />
         </Button>
       </div>
-      <div className="flex-1 overflow-auto p-4">
+      <div className="relative flex-1 overflow-auto p-4">
         {loading ? (
-          <p className="p-2 text-sm text-muted">{modulesCopy.pdfLoading}</p>
+          <PageLoader
+            compact
+            className="absolute inset-0 min-h-0 py-0"
+          />
         ) : null}
-        <canvas ref={canvasRef} className="mx-auto block max-w-full bg-white shadow-sm" />
+        <canvas
+          ref={canvasRef}
+          className={`mx-auto block max-w-full bg-white shadow-sm ${loading ? "invisible" : ""}`}
+        />
       </div>
     </div>
   );

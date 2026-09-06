@@ -12,11 +12,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ ref?: string }>;
+}) {
   const offer = await getFeaturedOffer();
+  const params = searchParams ? await searchParams : {};
+  const refCode = params.ref?.trim() || undefined;
   return (
     <AuthShell image="hero">
-      <RegisterFlow course={offer.course} />
+      <RegisterFlow course={offer.course} refCode={refCode} />
     </AuthShell>
   );
 }

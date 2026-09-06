@@ -1,4 +1,5 @@
 import { bindPromoToPayment } from "@/lib/promo/codes";
+import { creditReferralReward } from "@/lib/referrals/reward";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { debitWallet } from "@/lib/wallet/ledger";
 
@@ -84,6 +85,7 @@ export async function enrollWithWallet(input: {
   }
 
   if (enrollment?.status === "ACTIVE" || enrollment?.status === "COMPLETED") {
+    await creditReferralReward(enrollment.id);
     return {
       ok: true,
       enrollmentId: enrollment.id,
@@ -100,6 +102,7 @@ export async function enrollWithWallet(input: {
       .eq("status", "PAID")
       .maybeSingle();
     if (paidPayment) {
+      await creditReferralReward(enrollment.id);
       return {
         ok: true,
         enrollmentId: enrollment.id,
@@ -269,6 +272,8 @@ export async function enrollWithWallet(input: {
       finalAmount: price,
     });
   }
+
+  await creditReferralReward(enrollment.id);
 
   return {
     ok: true,

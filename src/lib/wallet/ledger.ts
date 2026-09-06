@@ -5,7 +5,10 @@ export type WalletTxnType =
   | "TOP_UP"
   | "ENROLL_SPEND"
   | "SESSION_REFUND"
-  | "ADMIN_ADJUST";
+  | "ADMIN_ADJUST"
+  | "REFERRAL_EARNINGS"
+  | "WITHDRAWAL"
+  | "WITHDRAWAL_REFUND";
 
 export type WalletRow = {
   student_id: string;
@@ -119,7 +122,14 @@ export async function getOrCreateWallet(studentId: string): Promise<WalletRow> {
 export async function creditWallet(input: {
   studentId: string;
   amount: number;
-  type: Extract<WalletTxnType, "TOP_UP" | "SESSION_REFUND" | "ADMIN_ADJUST">;
+  type: Extract<
+    WalletTxnType,
+    | "TOP_UP"
+    | "SESSION_REFUND"
+    | "ADMIN_ADJUST"
+    | "REFERRAL_EARNINGS"
+    | "WITHDRAWAL_REFUND"
+  >;
   referenceType?: string | null;
   referenceId?: string | null;
   note?: string | null;
@@ -139,7 +149,7 @@ export async function creditWallet(input: {
 export async function debitWallet(input: {
   studentId: string;
   amount: number;
-  type: Extract<WalletTxnType, "ENROLL_SPEND" | "ADMIN_ADJUST">;
+  type: Extract<WalletTxnType, "ENROLL_SPEND" | "ADMIN_ADJUST" | "WITHDRAWAL">;
   referenceType?: string | null;
   referenceId?: string | null;
   note?: string | null;
@@ -199,6 +209,12 @@ export function walletTxnLabel(txn: WalletTransaction) {
       return "Schedule refund credit";
     case "ADMIN_ADJUST":
       return "Admin adjustment";
+    case "REFERRAL_EARNINGS":
+      return "Referral earnings";
+    case "WITHDRAWAL":
+      return "Withdrawal";
+    case "WITHDRAWAL_REFUND":
+      return "Withdrawal returned";
     default:
       return txn.type;
   }

@@ -19,6 +19,8 @@ export type AdminProfile = {
   referral_source: string | null;
   avatar_path: string | null;
   avatar_url: string | null;
+  withdrawal_number: string | null;
+  has_withdrawal_pin: boolean;
 };
 
 export type MemberProfile = AdminProfile;
@@ -46,20 +48,24 @@ export const getCurrentProfile = cache(async (): Promise<AdminProfile | null> =>
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, role, lounge_badge, mobile, occupation, experience_level, messenger_handle, referral_source, avatar_path",
+      "id, email, full_name, role, lounge_badge, mobile, occupation, experience_level, messenger_handle, referral_source, avatar_path, withdrawal_number, withdrawal_pin_set_at",
     )
     .eq("id", user.id)
     .maybeSingle();
 
   if (!profile) return null;
 
+  const { withdrawal_pin_set_at: pinSetAt, ...row } = profile;
+
   return {
-    ...profile,
+    ...row,
     lounge_badge:
-      profile.lounge_badge === "COACH" || profile.lounge_badge === "ADMIN"
-        ? profile.lounge_badge
+      row.lounge_badge === "COACH" || row.lounge_badge === "ADMIN"
+        ? row.lounge_badge
         : null,
     avatar_url: null,
+    withdrawal_number: (row.withdrawal_number as string | null) ?? null,
+    has_withdrawal_pin: Boolean(pinSetAt),
   } as AdminProfile;
 });
 

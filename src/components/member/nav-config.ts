@@ -1,6 +1,7 @@
 import {
   BookOpen,
   CalendarDays,
+  Gift,
   Layers,
   LayoutDashboard,
   MessagesSquare,
@@ -46,6 +47,11 @@ export const memberNav: MemberNavItem[] = [
     href: "/member/wallet",
     label: "Wallet",
     icon: Wallet,
+  },
+  {
+    href: "/member/refer",
+    label: "Refer a Friend",
+    icon: Gift,
   },
   {
     href: "/member/lounge",

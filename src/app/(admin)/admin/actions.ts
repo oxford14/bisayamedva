@@ -736,3 +736,79 @@ export async function togglePromoActive(formData: FormData) {
   revalidatePath("/admin/promos");
   return ok();
 }
+
+export async function saveReferralCommissions(formData: FormData) {
+  await requireSuperAdmin();
+  const courseIds = formData
+    .getAll("course_ids")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  if (courseIds.length === 0) {
+    return fail("No courses to save.");
+  }
+
+  const rows: {
+    course_id: string;
+    mode: "FIXED" | "PERCENT";
+    value: number;
+    enabled: boolean;
+    updated_at: string;
+  }[] = [];
+
+  for (const courseId of courseIds) {
+    const parsedId = uuid.safeParse(courseId);
+    if (!parsedId.success) return fail("Invalid course id.");
+    const modeRaw = String(formData.get(`mode_${courseId}`) ?? "FIXED");
+    const mode = modeRaw === "PERCENT" ? "PERCENT" : "FIXED";
+    const value = Number(formData.get(`value_${courseId}`) ?? 0);
+    if (!Number.isFinite(value) || value < 0) {
+      return fail("Commission value must be 0 or more.");
+    }
+    if (mode === "PERCENT" && value > 100) {
+      return fail("Percent commission cannot exceed 100.");
+    }
+    rows.push({
+      course_id: parsedId.data,
+      mode,
+      value,
+      enabled: String(formData.get(`enabled_${courseId}`) ?? "") === "on",
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("course_referral_commissions")
+    .upsert(rows, { onConflict: "course_id" });
+  if (error) return fail(error.message);
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/member/refer");
+  return ok();
+}
+
+export async function reviewWalletWithdrawal(formData: FormData) {
+  const profile = await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const reviewNote = String(formData.get("review_note") ?? "");
+
+  if (!id || !["APPROVED", "REJECTED"].includes(decision)) {
+    return fail("Invalid withdrawal review.");
+  }
+
+  const { reviewWithdrawal } = await import("@/lib/wallet/withdraw");
+  const result = await reviewWithdrawal({
+    adminId: profile.id,
+    withdrawalId: id,
+    decision: decision as "APPROVED" | "REJECTED",
+    reviewNote,
+  });
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath("/admin/withdrawals");
+  revalidatePath("/admin");
+  revalidatePath("/member/wallet");
+  return ok();
+}

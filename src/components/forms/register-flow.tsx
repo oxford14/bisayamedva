@@ -50,8 +50,10 @@ const emptyAccount: AccountState = {
 
 export function RegisterFlow({
   course,
+  refCode,
 }: {
   course: FeaturedOffer["course"];
+  refCode?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -71,9 +73,17 @@ export function RegisterFlow({
   const [promoPending, startPromoTransition] = useTransition();
   const [enrollPending, startEnrollTransition] = useTransition();
   const [enrollError, setEnrollError] = useState("");
+  const [storedRef, setStoredRef] = useState(refCode ?? "");
+  const refLocked = Boolean(refCode?.trim());
 
   useEffect(() => {
     const draft = readRegisterDraft();
+    if (refCode) {
+      setStoredRef(refCode);
+      if (draft) saveRegisterDraft({ ...draft, refCode });
+    } else if (draft?.refCode) {
+      setStoredRef(draft.refCode);
+    }
     if (!draft) return;
     setAccount({
       firstName: draft.firstName,
@@ -201,6 +211,7 @@ export function RegisterFlow({
       experienceLevel: account.experienceLevel || undefined,
       messengerName: account.messengerName || undefined,
       referralSource: account.referralSource || undefined,
+      refCode: storedRef || undefined,
     });
   }
 
@@ -356,6 +367,25 @@ export function RegisterFlow({
               id="messengerName"
               value={account.messengerName}
               onChange={(e) => update("messengerName", e.target.value)}
+            />
+          </Field>
+          <Field
+            label={authCopy.register.refCode}
+            htmlFor="refCode"
+            hint={refLocked ? authCopy.register.refCodeLocked : undefined}
+          >
+            <Input
+              id="refCode"
+              name="refCode"
+              value={storedRef}
+              readOnly={refLocked}
+              disabled={refLocked}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => {
+                if (refLocked) return;
+                setStoredRef(e.target.value.trim());
+              }}
             />
           </Field>
           <Field
@@ -564,6 +594,7 @@ export function RegisterFlow({
                   messengerName: account.messengerName || undefined,
                   referralSource: account.referralSource || undefined,
                   promoCode: appliedPromo?.code,
+                  refCode: storedRef || undefined,
                 };
                 saveRegisterDraft(draft);
 

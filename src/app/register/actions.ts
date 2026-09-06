@@ -20,6 +20,8 @@ import {
   isPendingHoldFresh,
   pendingHoldExpiresAt,
 } from "@/lib/payments/expire-pending";
+import { applyReferredBy, resolveReferralCode } from "@/lib/referrals/codes";
+import { creditReferralReward } from "@/lib/referrals/reward";
 
 const draftSchema = z.object({
   firstName: z.string().min(1),
@@ -32,6 +34,7 @@ const draftSchema = z.object({
   messengerName: z.string().optional(),
   referralSource: z.enum(referralSources).optional(),
   promoCode: z.string().optional(),
+  refCode: z.string().optional(),
 });
 
 export type CheckoutPrepareResult =
@@ -160,6 +163,10 @@ async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
   const admin = createServiceClient();
   const email = draft.email.trim().toLowerCase();
   const fullName = `${draft.firstName} ${draft.lastName}`.trim();
+  const referrer = await resolveReferralCode(draft.refCode);
+  const referralSource = referrer
+    ? draft.referralSource || "Referral"
+    : draft.referralSource ?? null;
   const metadata = {
     full_name: fullName,
     first_name: draft.firstName,
@@ -168,7 +175,7 @@ async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
     occupation: draft.occupation ?? null,
     experience_level: draft.experienceLevel ?? null,
     messenger_handle: draft.messengerName ?? null,
-    referral_source: draft.referralSource ?? null,
+    referral_source: referralSource,
   };
 
   const existingId = await findProfileIdByEmail(email);
@@ -201,8 +208,12 @@ async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
     occupation: draft.occupation ?? null,
     experience_level: draft.experienceLevel ?? null,
     messenger_handle: draft.messengerName ?? null,
-    referral_source: draft.referralSource ?? null,
+    referral_source: referralSource,
   });
+
+  if (referrer) {
+    await applyReferredBy(userId, draft.refCode);
+  }
 
   const supabase = await createClient();
   const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -404,6 +415,7 @@ export async function prepareCheckoutPayment(
         .from("enrollments")
         .update({ status: "ACTIVE" })
         .eq("id", enrollment.id);
+      await creditReferralReward(enrollment.id);
       return {
         ok: true,
         paymentId: payment.id,

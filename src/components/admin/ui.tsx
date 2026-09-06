@@ -53,11 +53,15 @@ export function StatusBadge({
     status === "PUBLISHED" ||
     status === "ACTIVE" ||
     status === "PAID" ||
-    status === "COMPLETED"
+    status === "COMPLETED" ||
+    status === "APPROVED"
       ? "bg-teal-bright/25 text-navy"
       : status === "DRAFT" || status === "PENDING" || status === "PENDING_PAYMENT"
         ? "bg-sand text-navy/80"
-        : status === "FAILED" || status === "CANCELLED" || status === "ARCHIVED"
+        : status === "FAILED" ||
+            status === "CANCELLED" ||
+            status === "ARCHIVED" ||
+            status === "REJECTED"
           ? "bg-destructive/10 text-destructive"
           : "bg-sand text-muted";
 

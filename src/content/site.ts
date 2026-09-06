@@ -331,6 +331,8 @@ export const authCopy = {
     checkingEmail: "Checking email…",
     emailTaken:
       "Naa na ni nga email. Login to continue — dili ka maka-enroll gamit ang same email.",
+    refCode: "Referral code (optional)",
+    refCodeLocked: "Gi-lock ni. You opened a referral link.",
   },
   checkout: {
     eyebrow: "PAYMONGO",
@@ -350,6 +352,89 @@ export const authCopy = {
     expired:
       "Napasagdan ang 10-minute hold. Retry para mag-reserve og new seat.",
   },
+} as const;
+
+export const referCopy = {
+  nav: "Refer a Friend",
+  title: "Refer a Friend",
+  description:
+    "Share your link. When a friend registers through it and enrolls sa course, you earn referral commission — credited to your Wallet.",
+  codeLabel: "Your referral code",
+  linkLabel: "Your referral link",
+  copyLink: "Copy link",
+  copied: "Copied",
+  friends: "Referred friends",
+  earnings: "Referral earnings",
+  enrolled: "Enrolled courses",
+  listTitle: "Direct referrals",
+  emptyTitle: "Wala pa kay referred friends",
+  emptyBody:
+    "Share your Bisaya MedVA link. Commission mo-credit when they enroll and pay.",
+  friend: "Friend",
+  course: "Course",
+  commission: "Commission",
+  date: "Date",
+  friendCourses: "Enrolled courses",
+  noFriendCourses: "Wala pa enrolled course.",
+} as const;
+
+export const walletCopy = {
+  button: "Top up",
+  title: "Top up wallet",
+  body: "Enter an amount, generate a QR Ph, then i-scan gamit ang imong bank or e-wallet app.",
+  generate: "Generate QR Ph",
+  generating: "Generating…",
+  amountLabel: "Amount (PHP)",
+  close: "Close",
+  emptyActivity: "Tap Top up to add funds, or enroll after you add balance.",
+  confirmed: "Top-up confirmed. Updating wallet…",
+  confirmedShort: "Top-up confirmed.",
+  minAmount: "Minimum top-up is ₱20 (PayMongo QR Ph).",
+} as const;
+
+export const withdrawCopy = {
+  button: "Withdraw",
+  title: "Request withdrawal",
+  body: "I-request ang cash-out from your wallet. Admin will review, then send the payout to your GCash, Maya, or bank.",
+  amountLabel: "Amount (PHP)",
+  methodLabel: "Payout method",
+  accountName: "Account name",
+  accountNumber: "Account number / mobile",
+  bankName: "Bank name",
+  submit: "Send request",
+  submitting: "Sending…",
+  close: "Close",
+  minAmount: "Minimum withdrawal is ₱200.",
+  insufficient: "Kulang imong wallet balance for this amount.",
+  profileSection: "Withdrawal",
+  profileSectionBody:
+    "Save your payout number and a 6-digit PIN. You still enter payout details when you withdraw, plus this PIN.",
+  profileNumber: "Withdrawal number",
+  profilePin: "Withdrawal PIN",
+  profilePinConfirm: "Confirm PIN",
+  profilePinCurrent: "Current PIN",
+  profilePinSet: "PIN is set. Enter your current PIN to change it.",
+  profilePinHint: "6 digits. I-enter ni nimo when you request a withdrawal.",
+  profileSave: "Save withdrawal settings",
+  profileSaving: "Saving…",
+  profileSaved: "Saved. Updated na ang imong withdrawal details.",
+  pinLabel: "Withdrawal PIN",
+  pinRequired: "Set your withdrawal PIN on Profile first.",
+  pinWrong: "Incorrect withdrawal PIN.",
+  pinInvalid: "PIN must be 6 digits.",
+  pinMismatch: "New PIN and confirm PIN do not match.",
+  pendingOne: "Naa na kay pending withdrawal. Wait for admin review, or cancel it first.",
+  pendingTitle: "Pending withdrawal",
+  pendingBody:
+    "Gihuwat na ang admin review. This amount is on hold sa imong wallet.",
+  cancel: "Cancel request",
+  cancelling: "Cancelling…",
+  listTitle: "Withdrawal requests",
+  emptyList: "Wala pa kay withdrawal request.",
+  gcash: "GCash",
+  maya: "Maya",
+  bank: "Bank transfer",
+  sent: "Request sent. Admin will review your withdrawal.",
 } as const;
 
 export const scheduleCopy = {

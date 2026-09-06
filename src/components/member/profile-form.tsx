@@ -3,14 +3,16 @@
 import dynamic from "next/dynamic";
 import { useActionState, useId, useRef, useState } from "react";
 import {
+  saveMemberWithdrawalSettings,
   updateMemberProfile,
   type MemberActionState,
 } from "@/app/(member)/member/actions";
 import { Field } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { experienceLevels, referralSources } from "@/content/site";
+import { experienceLevels, referralSources, withdrawCopy } from "@/content/site";
 import type { MemberProfile } from "@/lib/supabase/auth";
+import { WITHDRAWAL_PIN_LENGTH } from "@/lib/wallet/withdraw-shared";
 import { cn } from "@/lib/utils";
 
 const AvatarCropDialog = dynamic(
@@ -40,6 +42,10 @@ const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export function MemberProfileForm({ profile }: { profile: MemberProfile }) {
   const [state, action, pending] = useActionState(
     updateMemberProfile,
+    initialState,
+  );
+  const [withdrawState, withdrawAction, withdrawPending] = useActionState(
+    saveMemberWithdrawalSettings,
     initialState,
   );
   const fileInputId = useId();
@@ -283,6 +289,110 @@ export function MemberProfileForm({ profile }: { profile: MemberProfile }) {
 
         <Button type="submit" variant="accent" disabled={pending}>
           {pending ? "Saving…" : "Save profile"}
+        </Button>
+      </form>
+
+      <form
+        action={withdrawAction}
+        className="mt-8 space-y-5 border-t border-border pt-6"
+      >
+        <div>
+          <h3 className="font-display text-lg font-semibold text-ink">
+            {withdrawCopy.profileSection}
+          </h3>
+          <p className="mt-1 text-sm text-muted">
+            {withdrawCopy.profileSectionBody}
+          </p>
+        </div>
+
+        <Field
+          label={withdrawCopy.profileNumber}
+          htmlFor="withdrawal_number"
+          error={withdrawState.fieldErrors?.withdrawal_number}
+        >
+          <Input
+            id="withdrawal_number"
+            name="withdrawal_number"
+            defaultValue={profile.withdrawal_number ?? ""}
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="09xxxxxxxxx"
+            aria-invalid={Boolean(withdrawState.fieldErrors?.withdrawal_number)}
+          />
+        </Field>
+
+        {profile.has_withdrawal_pin ? (
+          <p className="rounded-xl bg-teal-bright/20 px-3.5 py-2.5 text-sm text-navy">
+            {withdrawCopy.profilePinSet}
+          </p>
+        ) : null}
+
+        {profile.has_withdrawal_pin ? (
+          <Field
+            label={withdrawCopy.profilePinCurrent}
+            htmlFor="current_pin"
+            error={withdrawState.fieldErrors?.current_pin}
+          >
+            <Input
+              id="current_pin"
+              name="current_pin"
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={WITHDRAWAL_PIN_LENGTH}
+              aria-invalid={Boolean(withdrawState.fieldErrors?.current_pin)}
+            />
+          </Field>
+        ) : null}
+
+        <Field
+          label={withdrawCopy.profilePin}
+          htmlFor="pin"
+          error={withdrawState.fieldErrors?.pin}
+          hint={withdrawCopy.profilePinHint}
+        >
+          <Input
+            id="pin"
+            name="pin"
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
+            maxLength={WITHDRAWAL_PIN_LENGTH}
+            aria-invalid={Boolean(withdrawState.fieldErrors?.pin)}
+          />
+        </Field>
+
+        <Field
+          label={withdrawCopy.profilePinConfirm}
+          htmlFor="confirm_pin"
+          error={withdrawState.fieldErrors?.confirm_pin}
+        >
+          <Input
+            id="confirm_pin"
+            name="confirm_pin"
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
+            maxLength={WITHDRAWAL_PIN_LENGTH}
+            aria-invalid={Boolean(withdrawState.fieldErrors?.confirm_pin)}
+          />
+        </Field>
+
+        {withdrawState.message ? (
+          <p
+            className={
+              withdrawState.ok
+                ? "rounded-xl bg-teal-bright/20 px-3.5 py-2.5 text-sm text-navy"
+                : "rounded-xl bg-sand px-3.5 py-2.5 text-sm text-destructive"
+            }
+            role="status"
+          >
+            {withdrawState.message}
+          </p>
+        ) : null}
+
+        <Button type="submit" variant="accent" disabled={withdrawPending}>
+          {withdrawPending ? withdrawCopy.profileSaving : withdrawCopy.profileSave}
         </Button>
       </form>
 

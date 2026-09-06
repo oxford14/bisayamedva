@@ -73,6 +73,16 @@ body {
   font-family: var(--font-plus-jakarta), system-ui, sans-serif;
 }
 
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  appearance: textfield;
+}
+
 ::selection {
   background: color-mix(in srgb, var(--teal) 28%, white);
   color: var(--navy);

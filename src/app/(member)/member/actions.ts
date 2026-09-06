@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { experienceLevels, referralSources } from "@/content/site";
+import { experienceLevels, referralSources, withdrawCopy } from "@/content/site";
 import { prepareCoursePaymentForStudent } from "@/lib/member/checkout-prepare";
 import type { MemberCheckoutPrepareResult } from "@/lib/member/checkout-prepare";
 import {
@@ -480,4 +480,73 @@ export async function assignEnrollmentSession(
   revalidatePath("/member/modules");
   revalidatePath("/member/course");
   return { ok: true };
+}
+
+export async function saveMemberWithdrawalSettings(
+  _prev: MemberActionState,
+  formData: FormData,
+): Promise<MemberActionState> {
+  const profile = await requireStudent();
+  const { saveWithdrawalSettings } = await import(
+    "@/lib/wallet/withdrawal-settings"
+  );
+  const result = await saveWithdrawalSettings({
+    studentId: profile.id,
+    withdrawalNumber: String(formData.get("withdrawal_number") ?? ""),
+    pin: String(formData.get("pin") ?? ""),
+    confirmPin: String(formData.get("confirm_pin") ?? ""),
+    currentPin: String(formData.get("current_pin") ?? ""),
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      message: result.error,
+      fieldErrors: result.fieldErrors,
+    };
+  }
+
+  revalidatePath("/member/profile");
+  revalidatePath("/member/wallet");
+  return { ok: true, message: withdrawCopy.profileSaved };
+}
+
+export async function requestMemberWithdrawal(input: {
+  amountPesos: number;
+  method: string;
+  accountName: string;
+  accountNumber: string;
+  bankName?: string;
+  pin: string;
+}) {
+  const profile = await requireStudent();
+  const { requestWithdrawal } = await import("@/lib/wallet/withdraw");
+  const result = await requestWithdrawal({
+    studentId: profile.id,
+    amountPesos: input.amountPesos,
+    method: input.method,
+    accountName: input.accountName,
+    accountNumber: input.accountNumber,
+    bankName: input.bankName,
+    pin: input.pin,
+  });
+  if (result.ok) {
+    revalidatePath("/member/wallet");
+    revalidatePath("/admin/withdrawals");
+  }
+  return result;
+}
+
+export async function cancelMemberWithdrawal(withdrawalId: string) {
+  const profile = await requireStudent();
+  const { cancelWithdrawal } = await import("@/lib/wallet/withdraw");
+  const result = await cancelWithdrawal({
+    studentId: profile.id,
+    withdrawalId,
+  });
+  if (result.ok) {
+    revalidatePath("/member/wallet");
+    revalidatePath("/admin/withdrawals");
+  }
+  return result;
 }

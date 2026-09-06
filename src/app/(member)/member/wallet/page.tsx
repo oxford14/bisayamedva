@@ -5,7 +5,10 @@ import {
   MemberPageHeader,
 } from "@/components/member/ui";
 import { WalletTopupPanel } from "@/components/member/wallet-topup-panel";
+import { WalletWithdrawList } from "@/components/member/wallet-withdraw-list";
+import { WalletWithdrawPanel } from "@/components/member/wallet-withdraw-panel";
 import { Button } from "@/components/ui/button";
+import { walletCopy, withdrawCopy } from "@/content/site";
 import { getMemberPayments } from "@/lib/member/data";
 import { getStudentProfile } from "@/lib/supabase/auth";
 import { formatPeso } from "@/lib/utils";
@@ -15,14 +18,17 @@ import {
   getWalletTransactions,
   walletTxnLabel,
 } from "@/lib/wallet/ledger";
+import { listStudentWithdrawals } from "@/lib/wallet/withdraw";
 
 export default async function MemberWalletPage() {
   const profile = await getStudentProfile();
-  const [wallet, transactions, payments] = await Promise.all([
+  const [wallet, transactions, payments, withdrawals] = await Promise.all([
     getOrCreateWallet(profile.id),
     getWalletTransactions(profile.id),
     getMemberPayments(profile.id),
+    listStudentWithdrawals(profile.id),
   ]);
+  const hasPendingWithdrawal = withdrawals.some((row) => row.status === "PENDING");
 
   const balanceLabel = formatPeso(wallet.balance);
 
@@ -30,7 +36,7 @@ export default async function MemberWalletPage() {
     <div>
       <MemberPageHeader
         title="Wallet"
-        description="Top up with PayMongo QR Ph, then enroll sa courses gamit ang imong balance. Schedule refunds also land here."
+        description="Top up with PayMongo QR Ph, enroll sa courses gamit ang imong balance, or request a withdrawal for admin review."
         actions={
           <Button variant="secondary" asChild>
             <Link href="/member/payments">Payment receipts</Link>
@@ -48,10 +54,17 @@ export default async function MemberWalletPage() {
           </p>
           <p className="mt-2 text-sm text-muted">
             Enroll from Courses or Schedule — if kulang, we ask you to top up
-            first.
+            first. Withdrawals need admin approval before payout.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="accent" asChild>
+            <WalletTopupPanel balanceLabel={balanceLabel} />
+            <WalletWithdrawPanel
+              balanceLabel={balanceLabel}
+              disabled={hasPendingWithdrawal}
+              savedNumber={profile.withdrawal_number}
+              hasPin={profile.has_withdrawal_pin}
+            />
+            <Button variant="secondary" asChild>
               <Link href="/member/course">Browse courses</Link>
             </Button>
             <Button variant="secondary" asChild>
@@ -60,20 +73,28 @@ export default async function MemberWalletPage() {
           </div>
         </MemberCard>
 
-        <WalletTopupPanel balanceLabel={balanceLabel} />
+        <MemberCard className="overflow-hidden p-0">
+          <div className="border-b border-border px-5 py-4">
+            <h3 className="font-semibold text-ink">{withdrawCopy.listTitle}</h3>
+            <p className="mt-1 text-sm text-muted">
+              Admin reviews each request before sending your payout.
+            </p>
+          </div>
+          <WalletWithdrawList withdrawals={withdrawals} />
+        </MemberCard>
 
         <MemberCard className="overflow-hidden p-0">
           <div className="border-b border-border px-5 py-4">
             <h3 className="font-semibold text-ink">Wallet activity</h3>
             <p className="mt-1 text-sm text-muted">
-              Top-ups, enrollments, and schedule refund credits.
+              Top-ups, enrollments, withdrawals, and schedule refund credits.
             </p>
           </div>
           {transactions.length === 0 ? (
             <div className="px-5 py-10">
               <MemberEmptyState
                 title="No wallet activity yet"
-                body="Top up above, or enroll after you add funds."
+                body={walletCopy.emptyActivity}
               />
             </div>
           ) : (

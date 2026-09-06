@@ -92,6 +92,23 @@ export async function enrollWithWallet(input: {
     };
   }
 
+  if (enrollment) {
+    const { data: paidPayment } = await admin
+      .from("payments")
+      .select("id")
+      .eq("enrollment_id", enrollment.id)
+      .eq("status", "PAID")
+      .maybeSingle();
+    if (paidPayment) {
+      return {
+        ok: true,
+        enrollmentId: enrollment.id,
+        balance: 0,
+        alreadyActive: true,
+      };
+    }
+  }
+
   if (!enrollment) {
     const { data: created, error } = await admin
       .from("enrollments")

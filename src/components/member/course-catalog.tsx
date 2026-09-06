@@ -127,7 +127,15 @@ function CourseCard({
 
           {owned ? (
             <Button variant="secondary" className="w-full" asChild>
-              <Link href="/member/schedule">View schedule</Link>
+              <Link href="/member/schedule">
+                {enrollment &&
+                !enrollment.session &&
+                (enrollment.status === "ACTIVE" ||
+                  enrollment.status === "COMPLETED" ||
+                  enrollment.payment?.status === "PAID")
+                  ? "Choose schedule"
+                  : "View schedule"}
+              </Link>
             </Button>
           ) : (
             <Button

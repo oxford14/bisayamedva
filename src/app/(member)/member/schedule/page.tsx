@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { ScheduleAssignButton } from "@/components/member/schedule-assign-button";
 import {
   MemberCard,
   MemberEmptyState,
@@ -7,6 +8,7 @@ import {
   MemberStatusBadge,
 } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
+import { scheduleCopy } from "@/content/site";
 import {
   canShowMeetingUrl,
   formatSessionWhen,
@@ -14,43 +16,118 @@ import {
   type MemberEnrollment,
 } from "@/lib/member/data";
 import { getOpenFutureSessions } from "@/lib/member/open-sessions";
-import {
-  courseCheckoutWithSession,
-  type OpenFutureSession,
-} from "@/lib/member/open-sessions-shared";
+import type { OpenFutureSession } from "@/lib/member/open-sessions-shared";
 import { getStudentProfile } from "@/lib/supabase/auth";
 
 const SEATED = new Set(["ACTIVE", "PENDING_PAYMENT", "COMPLETED"]);
 
-function enrollmentForSession(
-  enrollments: MemberEnrollment[],
+function isPaidEnrollment(enrollment: MemberEnrollment) {
+  return (
+    enrollment.status === "ACTIVE" ||
+    enrollment.status === "COMPLETED" ||
+    enrollment.payment?.status === "PAID"
+  );
+}
+
+function matchesCourse(
+  enrollment: MemberEnrollment,
   session: OpenFutureSession,
 ) {
-  const bySession = enrollments.find(
-    (e) => e.session?.id === session.id && SEATED.has(e.status),
-  );
-  if (bySession) return bySession;
-
   return (
-    enrollments.find(
-      (e) =>
-        SEATED.has(e.status) &&
-        (e.course?.id === session.course.id ||
-          e.course?.slug === session.course.slug),
-    ) ?? null
+    enrollment.course?.id === session.course.id ||
+    Boolean(
+      enrollment.course?.slug && enrollment.course.slug === session.course.slug,
+    )
+  );
+}
+
+function sessionFromEnrollment(
+  enrollment: MemberEnrollment,
+): OpenFutureSession | null {
+  const session = enrollment.session;
+  const course = enrollment.course;
+  if (!session?.id || !session.starts_at || !course) return null;
+  return {
+    id: session.id,
+    title: session.title,
+    starts_at: session.starts_at,
+    ends_at: session.ends_at,
+    timezone: session.timezone,
+    format: session.format,
+    meeting_url: session.meeting_url,
+    status: session.status,
+    course: {
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      price: course.price,
+      currency: course.currency,
+      status: "PUBLISHED",
+    },
+  };
+}
+
+type ScheduleCard = {
+  key: string;
+  session: OpenFutureSession;
+  enrollment: MemberEnrollment;
+  mode: "seated" | "choose";
+};
+
+function buildScheduleCards(
+  enrollments: MemberEnrollment[],
+  openSessions: OpenFutureSession[],
+): ScheduleCard[] {
+  const cards: ScheduleCard[] = [];
+
+  for (const enrollment of enrollments) {
+    if (!enrollment.session || !SEATED.has(enrollment.status)) continue;
+    const fromOpen = openSessions.find((s) => s.id === enrollment.session?.id);
+    const session = fromOpen ?? sessionFromEnrollment(enrollment);
+    if (!session) continue;
+    cards.push({
+      key: `seated-${enrollment.id}`,
+      session,
+      enrollment,
+      mode: "seated",
+    });
+  }
+
+  const unscheduledPaid = enrollments.filter(
+    (enrollment) => isPaidEnrollment(enrollment) && !enrollment.session,
+  );
+
+  for (const session of openSessions) {
+    const enrollment = unscheduledPaid.find((item) =>
+      matchesCourse(item, session),
+    );
+    if (!enrollment) continue;
+    cards.push({
+      key: `choose-${session.id}`,
+      session,
+      enrollment,
+      mode: "choose",
+    });
+  }
+
+  return cards.sort(
+    (a, b) =>
+      new Date(a.session.starts_at).getTime() -
+      new Date(b.session.starts_at).getTime(),
   );
 }
 
 function ScheduleSessionCard({
   session,
   enrollment,
+  mode,
 }: {
   session: OpenFutureSession;
-  enrollment: MemberEnrollment | null;
+  enrollment: MemberEnrollment;
+  mode: "seated" | "choose";
 }) {
-  const seated = enrollment && SEATED.has(enrollment.status);
-  const showMeeting = enrollment ? canShowMeetingUrl(enrollment) : false;
-  const slug = session.course.slug;
+  const seated = mode === "seated";
+  const showMeeting = seated ? canShowMeetingUrl(enrollment) : false;
 
   return (
     <MemberCard>
@@ -63,11 +140,11 @@ function ScheduleSessionCard({
             {session.title}
           </h2>
         </div>
-        {seated && enrollment ? (
+        {seated ? (
           <MemberStatusBadge status={enrollment.status} />
         ) : (
           <span className="inline-flex rounded-md bg-sand px-2 py-0.5 text-[10px] font-semibold tracking-wide text-navy/70 uppercase">
-            Open for enrollment
+            {scheduleCopy.pickTitle}
           </span>
         )}
       </div>
@@ -111,7 +188,7 @@ function ScheduleSessionCard({
             Meeting link
           </dt>
           <dd className="mt-1 text-sm text-ink">
-            {showMeeting && enrollment?.session?.meeting_url ? (
+            {showMeeting && enrollment.session?.meeting_url ? (
               <a
                 href={enrollment.session.meeting_url}
                 target="_blank"
@@ -121,25 +198,23 @@ function ScheduleSessionCard({
                 Open meeting
                 <ExternalLink className="size-3.5" aria-hidden />
               </a>
-            ) : seated && enrollment?.status === "PENDING_PAYMENT" ? (
+            ) : seated && enrollment.status === "PENDING_PAYMENT" ? (
               <span className="text-muted">
                 Available after payment is confirmed.
               </span>
-            ) : seated && enrollment?.status === "ACTIVE" ? (
+            ) : seated && enrollment.status === "ACTIVE" ? (
               <span className="text-muted">
                 Meeting link coming soon from the team.
               </span>
             ) : (
-              <span className="text-muted">
-                Available after you enroll and your seat is active.
-              </span>
+              <span className="text-muted">{scheduleCopy.pickBody}</span>
             )}
           </dd>
         </div>
       </dl>
 
       {seated &&
-      enrollment?.status === "PENDING_PAYMENT" &&
+      enrollment.status === "PENDING_PAYMENT" &&
       enrollment.payment ? (
         <div className="mt-6 rounded-xl border border-border bg-cream/80 px-4 py-3">
           <p className="text-sm text-muted">
@@ -152,15 +227,14 @@ function ScheduleSessionCard({
         </div>
       ) : null}
 
-      {!seated && slug ? (
-        <div className="mt-6">
-          <Button variant="accent" asChild>
-            <Link href={courseCheckoutWithSession(slug, session.id)}>
-              Enroll
-            </Link>
-          </Button>
-        </div>
-      ) : null}
+      {seated ? (
+        <p className="mt-6 text-sm text-muted">{scheduleCopy.seatedBody}</p>
+      ) : (
+        <ScheduleAssignButton
+          enrollmentId={enrollment.id}
+          sessionId={session.id}
+        />
+      )}
     </MemberCard>
   );
 }
@@ -172,17 +246,31 @@ export default async function MemberSchedulePage() {
     getMemberEnrollments(profile.id),
   ]);
 
+  const cards = buildScheduleCards(enrollments, openSessions);
+  const hasPaidCourse = enrollments.some(isPaidEnrollment);
+
   return (
     <div>
       <MemberPageHeader
-        title="Schedule"
-        description="Open weekend schedules from the team — enroll sa future dates lang."
+        title={scheduleCopy.title}
+        description={scheduleCopy.description}
       />
 
-      {openSessions.length === 0 ? (
+      {cards.length > 0 ? (
+        <div className="space-y-5">
+          {cards.map((card) => (
+            <ScheduleSessionCard
+              key={card.key}
+              session={card.session}
+              enrollment={card.enrollment}
+              mode={card.mode}
+            />
+          ))}
+        </div>
+      ) : !hasPaidCourse ? (
         <MemberEmptyState
-          title="Wala pa’y open schedule"
-          body="Check back later when admin opens the next weekend training date."
+          title={scheduleCopy.emptyPaidTitle}
+          body={scheduleCopy.emptyPaidBody}
           action={
             <Button variant="accent" asChild>
               <Link href="/member/course">Browse courses</Link>
@@ -190,15 +278,15 @@ export default async function MemberSchedulePage() {
           }
         />
       ) : (
-        <div className="space-y-5">
-          {openSessions.map((session) => (
-            <ScheduleSessionCard
-              key={session.id}
-              session={session}
-              enrollment={enrollmentForSession(enrollments, session)}
-            />
-          ))}
-        </div>
+        <MemberEmptyState
+          title={scheduleCopy.emptyTitle}
+          body={scheduleCopy.emptyBody}
+          action={
+            <Button variant="accent" asChild>
+              <Link href="/member/course">Browse courses</Link>
+            </Button>
+          }
+        />
       )}
     </div>
   );

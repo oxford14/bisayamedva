@@ -16,7 +16,7 @@ export default async function RegisterPage() {
   const offer = await getFeaturedOffer();
   return (
     <AuthShell image="hero">
-      <RegisterFlow course={offer.course} session={offer.session} />
+      <RegisterFlow course={offer.course} />
     </AuthShell>
   );
 }

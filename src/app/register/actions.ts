@@ -31,7 +31,6 @@ const draftSchema = z.object({
   experienceLevel: z.enum(experienceLevels).optional(),
   messengerName: z.string().optional(),
   referralSource: z.enum(referralSources).optional(),
-  sessionId: z.string().min(1),
   promoCode: z.string().optional(),
 });
 
@@ -43,7 +42,6 @@ export type CheckoutPrepareResult =
       qrImageUrl: string;
       amountLabel: string;
       courseTitle: string;
-      sessionLabel: string;
       providerPaymentId: string;
       alreadyPaid: boolean;
       expiresAt?: string;
@@ -107,7 +105,7 @@ export type CheckoutActionResult =
   | { ok: true; redirectTo?: string; status?: string }
   | { ok: false; error: string };
 
-async function resolveOfferIds(preferredSessionId: string) {
+async function resolveFeaturedCourse() {
   const admin = createServiceClient();
 
   const { data: settings } = await admin
@@ -124,14 +122,6 @@ async function resolveOfferIds(preferredSessionId: string) {
   }
 
   let courseId = unwrap(map.featured_course_id);
-  let sessionId = unwrap(map.next_session_id);
-
-  if (
-    preferredSessionId &&
-    /^[0-9a-f-]{36}$/i.test(preferredSessionId)
-  ) {
-    sessionId = preferredSessionId;
-  }
 
   let course =
     courseId
@@ -157,66 +147,13 @@ async function resolveOfferIds(preferredSessionId: string) {
     courseId = fallbackCourse?.id ?? null;
   }
 
-  let session =
-    sessionId
-      ? (
-          await admin
-            .from("sessions")
-            .select(
-              "id, title, starts_at, ends_at, timezone, format, status, course_id",
-            )
-            .eq("id", sessionId)
-            .maybeSingle()
-        ).data
-      : null;
-
-  if (!session && courseId) {
-    const { data: fallbackSession } = await admin
-      .from("sessions")
-      .select(
-        "id, title, starts_at, ends_at, timezone, format, status, course_id",
-      )
-      .eq("course_id", courseId)
-      .eq("status", "PUBLISHED")
-      .order("starts_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    session = fallbackSession;
-  }
-
-  if (!course || !session) {
+  if (!course) {
     throw new Error(
-      "No published course/session found. Set featured course and next session in Admin Content first.",
+      "No published featured course found. Set the Featured Course in Admin Content first.",
     );
   }
 
-  return { course, session };
-}
-
-function sessionLabel(session: {
-  title: string;
-  starts_at: string;
-  ends_at: string;
-  timezone: string;
-}) {
-  const start = new Date(session.starts_at);
-  const end = new Date(session.ends_at);
-  const day = new Intl.DateTimeFormat("en-PH", {
-    weekday: "long",
-    timeZone: session.timezone,
-  }).format(start);
-  const startTime = new Intl.DateTimeFormat("en-PH", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: session.timezone,
-  }).format(start);
-  const endTime = new Intl.DateTimeFormat("en-PH", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: session.timezone,
-  }).format(end);
-  const tz = session.timezone === "Asia/Manila" ? "PHT" : session.timezone;
-  return `${day} · ${startTime}–${endTime} ${tz}`;
+  return { course };
 }
 
 async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
@@ -301,7 +238,7 @@ export async function prepareCheckoutPayment(
     }
 
     const draft = parsed.data;
-    const { course, session } = await resolveOfferIds(draft.sessionId);
+    const { course } = await resolveFeaturedCourse();
     const userId = await ensureStudentUser(draft);
     await expireStalePendingPayments();
     const admin = createServiceClient();
@@ -326,7 +263,6 @@ export async function prepareCheckoutPayment(
       .select("id, status, created_at")
       .eq("student_id", userId)
       .eq("course_id", course.id)
-      .eq("session_id", session.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -345,7 +281,6 @@ export async function prepareCheckoutPayment(
           .update({
             status: "PENDING_PAYMENT",
             created_at: nowIso,
-            session_id: session.id,
           })
           .eq("id", enrollment.id)
           .select("id, status, created_at")
@@ -363,7 +298,7 @@ export async function prepareCheckoutPayment(
           .insert({
             student_id: userId,
             course_id: course.id,
-            session_id: session.id,
+            session_id: null,
             status: "PENDING_PAYMENT",
           })
           .select("id, status, created_at")
@@ -454,7 +389,6 @@ export async function prepareCheckoutPayment(
         qrImageUrl: "",
         amountLabel: formatPeso(Number(payment.amount)),
         courseTitle: course.title,
-        sessionLabel: sessionLabel(session),
         providerPaymentId: payment.provider_payment_id ?? "",
         alreadyPaid: true,
       };
@@ -477,7 +411,6 @@ export async function prepareCheckoutPayment(
         qrImageUrl: "",
         amountLabel: formatPeso(0),
         courseTitle: course.title,
-        sessionLabel: sessionLabel(session),
         providerPaymentId: "",
         alreadyPaid: true,
       };
@@ -498,7 +431,6 @@ export async function prepareCheckoutPayment(
             qrImageUrl: "",
             amountLabel: formatPeso(Number(payment.amount)),
             courseTitle: course.title,
-            sessionLabel: sessionLabel(session),
             providerPaymentId,
             alreadyPaid: true,
           };
@@ -538,7 +470,6 @@ export async function prepareCheckoutPayment(
       qrImageUrl,
       amountLabel: formatPeso(Number(payment.amount)),
       courseTitle: course.title,
-      sessionLabel: sessionLabel(session),
       providerPaymentId,
       alreadyPaid: false,
       expiresAt: pendingHoldExpiresAt(enrollment.created_at).toISOString(),

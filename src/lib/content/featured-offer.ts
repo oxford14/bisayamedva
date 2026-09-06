@@ -110,7 +110,7 @@ export async function getFeaturedOffer(): Promise<FeaturedOffer> {
         : Promise.resolve({ data: null }),
     ]);
 
-    if (course && session && session.course_id === course.id) {
+    if (course) {
       return {
         course: {
           id: course.id,
@@ -121,7 +121,10 @@ export async function getFeaturedOffer(): Promise<FeaturedOffer> {
           currency: "PHP",
           priceLabel: site.featuredCourse.priceLabel,
         },
-        session: formatSession(session),
+        session:
+          session && session.course_id === course.id
+            ? formatSession(session)
+            : { ...site.nextSession },
         source: "database",
       };
     }

@@ -179,9 +179,9 @@ export function CheckoutPaymentPanel() {
         <p className="mt-1 font-display text-4xl font-semibold text-navy">
           {ready?.amountLabel ?? "—"}
         </p>
-        <p className="mt-2 text-sm text-muted">
-          {ready?.sessionLabel ?? (pending ? "Loading session…" : "—")}
-        </p>
+        {pending && !ready ? (
+          <p className="mt-2 text-sm text-muted">Loading course…</p>
+        ) : null}
       </div>
 
       <div className="mt-6 flex flex-col items-center rounded-2xl border border-border bg-cream/70 p-5">

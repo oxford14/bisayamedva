@@ -50,15 +50,12 @@ const emptyAccount: AccountState = {
 
 export function RegisterFlow({
   course,
-  session,
 }: {
   course: FeaturedOffer["course"];
-  session: FeaturedOffer["session"];
 }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [account, setAccount] = useState<AccountState>(emptyAccount);
-  const [sessionId, setSessionId] = useState<string>(session.id);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
@@ -90,7 +87,6 @@ export function RegisterFlow({
       messengerName: draft.messengerName ?? "",
       referralSource: draft.referralSource ?? "",
     });
-    setSessionId(session.id);
     if (draft.promoCode) {
       setPromoInput(draft.promoCode);
       startPromoTransition(async () => {
@@ -107,7 +103,7 @@ export function RegisterFlow({
       });
     }
     setStep(3);
-  }, [session.id]);
+  }, []);
 
   const price = formatPeso(course.price);
   const displayTotal = appliedPromo?.finalLabel ?? price;
@@ -191,12 +187,8 @@ export function RegisterFlow({
     setStep(2);
   }
 
-  function submitSession(e: React.FormEvent) {
+  function submitFeaturedCourse(e: React.FormEvent) {
     e.preventDefault();
-    if (!sessionId) {
-      setErrors({ session: "Please choose a weekend session." });
-      return;
-    }
     setErrors({});
     setStep(3);
     saveRegisterDraft({
@@ -209,7 +201,6 @@ export function RegisterFlow({
       experienceLevel: account.experienceLevel || undefined,
       messengerName: account.messengerName || undefined,
       referralSource: account.referralSource || undefined,
-      sessionId,
     });
   }
 
@@ -400,35 +391,26 @@ export function RegisterFlow({
       ) : null}
 
       {step === 2 ? (
-        <form onSubmit={submitSession} className="mt-8 space-y-4">
-          <fieldset>
-            <legend className="text-sm font-medium text-navy">
-              Choose your weekend session
-            </legend>
-            <label className="mt-3 flex cursor-pointer gap-3 rounded-2xl border border-teal bg-white p-4 shadow-[0_8px_20px_rgba(91,109,73,0.08)]">
-              <input
-                type="radio"
-                name="session"
-                className="mt-1 size-4 accent-teal"
-                checked={sessionId === session.id}
-                onChange={() => setSessionId(session.id)}
-              />
-              <span>
-                <span className="block font-semibold text-navy">
-                  {session.day} · {session.dateLabel}
-                </span>
-                <span className="mt-1 block text-sm text-muted">
-                  {session.startTime} – {session.endTime} {session.timezoneLabel}{" "}
-                  · {session.format}
-                </span>
-              </span>
-            </label>
-            {errors.session ? (
-              <p className="mt-2 text-sm text-destructive" role="alert">
-                {errors.session}
-              </p>
+        <form onSubmit={submitFeaturedCourse} className="mt-8 space-y-4">
+          <div className="rounded-2xl border border-teal bg-white p-5 shadow-[0_8px_20px_rgba(91,109,73,0.08)]">
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-navy/45 uppercase">
+              {authCopy.register.stepSession}
+            </p>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-navy">
+              {course.name}
+            </h2>
+            {course.subtitle ? (
+              <p className="mt-1 text-sm text-muted">{course.subtitle}</p>
             ) : null}
-          </fieldset>
+            <p className="mt-4 font-display text-3xl font-semibold text-navy">
+              {price}
+            </p>
+            <p className="mt-1 text-sm text-muted">{course.priceLabel}</p>
+            <p className="mt-4 text-sm text-navy">{authCopy.register.featuredLead}</p>
+            <p className="mt-1 text-sm text-muted">
+              {authCopy.register.featuredAfterPay}
+            </p>
+          </div>
           <div className="flex gap-3">
             <Button
               type="button"
@@ -464,13 +446,6 @@ export function RegisterFlow({
                 <dt className="text-muted">Course</dt>
                 <dd className="text-right text-navy">
                   {course.name}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted">Session</dt>
-                <dd className="text-right text-navy">
-                  {session.day}, {session.startTime}–{session.endTime}{" "}
-                  {session.timezoneLabel}
                 </dd>
               </div>
             </dl>
@@ -588,7 +563,6 @@ export function RegisterFlow({
                   experienceLevel: account.experienceLevel || undefined,
                   messengerName: account.messengerName || undefined,
                   referralSource: account.referralSource || undefined,
-                  sessionId,
                   promoCode: appliedPromo?.code,
                 };
                 saveRegisterDraft(draft);

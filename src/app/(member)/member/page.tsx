@@ -99,7 +99,7 @@ export default async function MemberHomePage() {
               href="/member/schedule"
               className="mt-4 inline-flex text-sm font-medium text-teal hover:text-navy"
             >
-              View schedule
+              {primary.session ? "View schedule" : "Choose schedule"}
             </Link>
           </MemberCard>
 

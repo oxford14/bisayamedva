@@ -10,7 +10,6 @@ export type RegisterDraft = {
   experienceLevel?: string;
   messengerName?: string;
   referralSource?: string;
-  sessionId: string;
   promoCode?: string;
 };
 
@@ -23,7 +22,7 @@ export function readRegisterDraft(): RegisterDraft | null {
     const raw = sessionStorage.getItem(REGISTER_DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as RegisterDraft;
-    if (!parsed?.email || !parsed?.password || !parsed?.sessionId) return null;
+    if (!parsed?.email || !parsed?.password) return null;
     return parsed;
   } catch {
     return null;

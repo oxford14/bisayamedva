@@ -197,6 +197,14 @@ export function enrollmentNextAction(enrollment: MemberEnrollment | null) {
   }
 
   if (enrollment.status === "ACTIVE") {
+    if (!enrollment.session) {
+      return {
+        title: "Pick your weekend session",
+        body: "Naa na ang imong paid course. Choose a date sa Schedule — wala na'y extra bayad.",
+        href: "/member/schedule",
+        cta: "Choose schedule",
+      };
+    }
     return {
       title: "Ready na imong training",
       body: "Check your schedule and join the weekend session when it starts.",

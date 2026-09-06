@@ -403,3 +403,81 @@ export async function enrollCourseWithWallet(input: {
 
   return result;
 }
+
+export type AssignSessionResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function assignEnrollmentSession(
+  enrollmentId: string,
+  sessionId: string,
+): Promise<AssignSessionResult> {
+  const profile = await requireStudent();
+  if (!z.guid().safeParse(enrollmentId).success || !z.guid().safeParse(sessionId).success) {
+    return { ok: false, error: "Invalid selection." };
+  }
+
+  const admin = createServiceClient();
+  const { data: enrollment } = await admin
+    .from("enrollments")
+    .select("id, student_id, course_id, session_id, status")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+
+  if (!enrollment || enrollment.student_id !== profile.id) {
+    return { ok: false, error: "Enrollment not found." };
+  }
+  if (enrollment.status !== "ACTIVE" && enrollment.status !== "COMPLETED") {
+    const { data: paidPayment } = await admin
+      .from("payments")
+      .select("id")
+      .eq("enrollment_id", enrollment.id)
+      .eq("status", "PAID")
+      .maybeSingle();
+    if (!paidPayment) {
+      return { ok: false, error: "Pay the course first before you pick a schedule." };
+    }
+  }
+  if (enrollment.session_id) {
+    return { ok: false, error: "Naa na kay weekend session for this course." };
+  }
+
+  const { data: session } = await admin
+    .from("sessions")
+    .select("id, course_id, status, starts_at, capacity")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (
+    !session ||
+    session.course_id !== enrollment.course_id ||
+    session.status !== "PUBLISHED"
+  ) {
+    return { ok: false, error: "That schedule is not available for this course." };
+  }
+  if (new Date(session.starts_at as string).getTime() <= Date.now()) {
+    return { ok: false, error: "That session already started." };
+  }
+
+  const { count } = await admin
+    .from("enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .in("status", ["ACTIVE", "COMPLETED", "PENDING_PAYMENT"]);
+  const capacity = Number(session.capacity ?? 0);
+  if (capacity > 0 && (count ?? 0) >= capacity) {
+    return { ok: false, error: "This session is full." };
+  }
+
+  const { error } = await admin
+    .from("enrollments")
+    .update({ session_id: sessionId })
+    .eq("id", enrollment.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/member");
+  revalidatePath("/member/schedule");
+  revalidatePath("/member/modules");
+  revalidatePath("/member/course");
+  return { ok: true };
+}

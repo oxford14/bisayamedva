@@ -212,7 +212,7 @@ export const howItWorks = {
     {
       n: "01",
       title: "Register",
-      body: "Create your Bisaya MedVA account and choose a weekend session.",
+      body: "Create your Bisaya MedVA account and enroll in the Featured Course.",
     },
     {
       n: "02",
@@ -222,7 +222,7 @@ export const howItWorks = {
     {
       n: "03",
       title: "Attend",
-      body: "Join the scheduled weekend training online.",
+      body: "After you pay, pick a weekend session sa student Schedule — wala na'y extra bayad — then join the online training.",
     },
     {
       n: "04",
@@ -282,13 +282,13 @@ export const faqs = [
   },
   {
     q: "Unsaon pagbayad?",
-    a: `Payment is ₱${site.featuredCourse.price} through PayMongo after you create your account and select a weekend session.`,
+    a: `Payment is ₱${site.featuredCourse.price} through PayMongo after you create your account. Pick your weekend session after payment sa student Schedule.`,
   },
 ] as const;
 
 export const finalCta = {
   title: "Ready na ka mo-start?",
-  body: "Reserve a weekend slot, pay once, and learn Medical Billing with Bisaya MedVA.",
+  body: "Enroll in the Featured Course, pay once, then pick your weekend session sa student app.",
   cta: { href: "/register", label: "Register" },
 } as const;
 
@@ -318,12 +318,15 @@ export const authCopy = {
   register: {
     eyebrow: "MEDICAL BILLING TRAINING",
     title: "Create your Bisaya MedVA account",
-    body: "Dili kinahanglan nga expert ka daan. Fill this in, choose a weekend session, then continue to payment.",
+    body: "Dili kinahanglan nga expert ka daan. Fill this in, review the Featured Course, then continue to payment. After you pay, pick your weekend session sa student Schedule.",
     stepAccount: "Your details",
-    stepSession: "Weekend session",
+    stepSession: "Featured Course",
     stepSummary: "Order summary",
-    submitAccount: "Continue to session",
+    submitAccount: "Continue to course",
     submitSession: "Review order",
+    featuredLead: "Kini ang course nga imong i-enroll.",
+    featuredAfterPay:
+      "After payment, you can pick a weekend session sa Schedule. Wala na'y extra bayad.",
     submitPayment: "Proceed to payment",
     checkingEmail: "Checking email…",
     emailTaken:
@@ -347,6 +350,23 @@ export const authCopy = {
     expired:
       "Napasagdan ang 10-minute hold. Retry para mag-reserve og new seat.",
   },
+} as const;
+
+export const scheduleCopy = {
+  title: "Schedule",
+  description:
+    "Pick a weekend session for a course you already paid. Wala na'y extra bayad.",
+  chooseSession: "Choose this session",
+  choosing: "Saving…",
+  pickTitle: "Pick your weekend session",
+  pickBody: "Choose a date for your paid course.",
+  seatedBody: "Naa na kay weekend session for this course.",
+  emptyTitle: "Wala pa’y open schedule",
+  emptyPaidTitle: "Wala pa kay paid course nga need og schedule",
+  emptyPaidBody:
+    "Enroll and pay a course first. After payment, open dates for that course mo-gawas diri.",
+  emptyBody:
+    "Check back later when admin opens the next weekend training date.",
 } as const;
 
 export const modulesCopy = {

@@ -22,7 +22,7 @@ export default async function AdminModuleEditPage({ params }: Props) {
     supabase
       .from("course_modules")
       .select(
-        "id, course_id, title, description, sort_order, status, course_module_files(id, file_name, mime_type, byte_size, sort_order), course_module_quiz_questions(id, prompt, sort_order, course_module_quiz_options(id, label, is_correct, sort_order))",
+        "id, course_id, title, description, sort_order, status, course_module_files(id, file_name, mime_type, byte_size, sort_order), course_module_quiz_questions(id, prompt, explanation, sort_order, course_module_quiz_options(id, label, is_correct, sort_order))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -59,6 +59,7 @@ export default async function AdminModuleEditPage({ params }: Props) {
       | {
           id: string;
           prompt: string;
+          explanation: string | null;
           sort_order: number;
           course_module_quiz_options:
             | { id: string; label: string; is_correct: boolean; sort_order: number }[]
@@ -71,6 +72,7 @@ export default async function AdminModuleEditPage({ params }: Props) {
     .map((question) => ({
       id: question.id,
       prompt: question.prompt,
+      explanation: question.explanation,
       options: (question.course_module_quiz_options ?? [])
         .slice()
         .sort((a, b) => a.sort_order - b.sort_order)

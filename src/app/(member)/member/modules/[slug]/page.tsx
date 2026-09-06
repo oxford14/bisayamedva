@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { Lock, Unlock } from "lucide-react";
+import { formatModuleCount } from "@/content/module-art";
 import { modulesCopy } from "@/content/site";
 import { Button } from "@/components/ui/button";
+import {
+  ModuleAccessBadge,
+  ModuleArt,
+} from "@/components/member/module-art";
 import {
   MemberCard,
   MemberEmptyState,
   MemberPageHeader,
 } from "@/components/member/ui";
-import { getStudentCourseModules } from "@/lib/member/modules";
+import { getCoursePlayerState } from "@/lib/member/module-player";
 import { getStudentProfile } from "@/lib/supabase/auth";
-import { cn } from "@/lib/utils";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -18,9 +21,10 @@ type Props = {
 export default async function MemberCourseModulesPage({ params }: Props) {
   const { slug } = await params;
   const profile = await getStudentProfile();
-  const { course, access, modules } = await getStudentCourseModules(
+  const { course, access, outline: modules } = await getCoursePlayerState(
     profile.id,
     slug,
+    profile.role,
   );
 
   if (!course || !access.enrolled) {
@@ -43,23 +47,53 @@ export default async function MemberCourseModulesPage({ params }: Props) {
     );
   }
 
+  const description = access.staffPreview
+    ? modulesCopy.staffPreview
+    : access.unlocked
+      ? modulesCopy.openLessons
+      : access.unlockLabel
+        ? `${modulesCopy.lockedBody} ${modulesCopy.unlocksAt} ${access.unlockLabel}.`
+        : modulesCopy.lockedBody;
+
   return (
     <div>
       <MemberPageHeader
         title={course.title}
-        description={
-          access.unlocked
-            ? "Open a module to view files and take the quiz."
-            : access.unlockLabel
-              ? `${modulesCopy.lockedBody} ${modulesCopy.unlocksAt} ${access.unlockLabel}.`
-              : modulesCopy.lockedBody
-        }
+        description={description}
         actions={
           <Button asChild variant="ghost">
-            <Link href="/member/modules">All modules</Link>
+            <Link href="/member/modules">{modulesCopy.allModules}</Link>
           </Button>
         }
       />
+
+      <article className="mb-6 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_8px_24px_rgba(47,56,38,0.04)] md:grid md:grid-cols-[minmax(0,18rem)_1fr]">
+        <ModuleArt
+          slug={course.slug}
+          size="hero"
+          priority
+          className="md:min-h-full"
+        />
+        <div className="flex flex-col justify-center p-5 sm:p-6">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-navy/45 uppercase">
+            {formatModuleCount(modules.length, modulesCopy)}
+          </p>
+          {course.subtitle ? (
+            <p className="mt-2 text-sm text-muted">{course.subtitle}</p>
+          ) : null}
+          <div className="mt-4">
+            <ModuleAccessBadge unlocked={access.unlocked} />
+          </div>
+          {access.unlockLabel ? (
+            <p className="mt-3 text-sm text-muted">
+              {access.unlocked
+                ? modulesCopy.unlockedSince
+                : modulesCopy.unlocksAt}{" "}
+              {access.unlockLabel}
+            </p>
+          ) : null}
+        </div>
+      </article>
 
       {modules.length === 0 ? (
         <MemberEmptyState
@@ -68,42 +102,66 @@ export default async function MemberCourseModulesPage({ params }: Props) {
         />
       ) : (
         <div className="space-y-3">
-          {modules.map((item, index) => (
-            <Link key={item.id} href={`/member/modules/${course.slug}/${item.id}`}>
-              <MemberCard className="transition-shadow hover:shadow-[0_12px_28px_rgba(47,56,38,0.08)]">
+          {modules.map((item, index) => {
+            const moduleOpen = access.unlocked && !item.locked;
+            const card = (
+              <MemberCard
+                className={
+                  moduleOpen
+                    ? "transition-shadow hover:shadow-[0_12px_28px_rgba(47,56,38,0.08)]"
+                    : "opacity-90"
+                }
+              >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold tracking-[0.14em] text-navy/45 uppercase">
-                      Module {index + 1}
-                    </p>
-                    <h2 className="mt-1 font-display text-lg font-semibold text-ink">
-                      {item.title}
-                    </h2>
-                    {item.description ? (
-                      <p className="mt-1 text-sm text-muted">{item.description}</p>
-                    ) : null}
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sand font-display text-sm font-semibold text-navy">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold tracking-[0.14em] text-navy/45 uppercase">
+                        Module {index + 1}
+                      </p>
+                      <h2 className="mt-1 font-display text-lg font-semibold text-ink">
+                        {item.title}
+                      </h2>
+                      {item.description ? (
+                        <p className="mt-1 text-sm text-muted">
+                          {item.description}
+                        </p>
+                      ) : null}
+                      {item.locked && access.unlocked ? (
+                        <p className="mt-2 text-sm text-muted">
+                          {modulesCopy.moduleQuizLocked}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase",
-                      access.unlocked
-                        ? "bg-teal-bright/25 text-navy"
-                        : "bg-sand text-navy/80",
-                    )}
-                  >
-                    {access.unlocked ? (
-                      <Unlock className="size-3" aria-hidden />
-                    ) : (
-                      <Lock className="size-3" aria-hidden />
-                    )}
-                    {access.unlocked
-                      ? modulesCopy.openBadge
-                      : modulesCopy.lockedBadge}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {access.staffPreview && item.status === "DRAFT" ? (
+                      <span className="inline-flex rounded-full bg-sand px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase text-navy/80">
+                        {modulesCopy.draftBadge}
+                      </span>
+                    ) : null}
+                    <ModuleAccessBadge unlocked={moduleOpen} />
+                  </div>
                 </div>
               </MemberCard>
-            </Link>
-          ))}
+            );
+
+            if (!moduleOpen) {
+              return <div key={item.id}>{card}</div>;
+            }
+
+            return (
+              <Link
+                key={item.id}
+                href={`/member/modules/${course.slug}/${item.id}`}
+                className="block"
+              >
+                {card}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

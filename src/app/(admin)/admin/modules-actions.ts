@@ -223,6 +223,7 @@ const questionSchema = z.object({
   id: uuid.optional(),
   module_id: uuid,
   prompt: z.string().trim().min(2).max(500),
+  explanation: z.string().trim().max(1000).optional().nullable(),
   options: z
     .array(z.string().trim().min(1).max(240))
     .min(2)
@@ -240,6 +241,7 @@ export async function upsertModuleQuestion(formData: FormData) {
     id: formData.get("id") || undefined,
     module_id: formData.get("module_id"),
     prompt: formData.get("prompt"),
+    explanation: String(formData.get("explanation") ?? "").trim() || null,
     options: rawOptions,
     correctIndex: formData.get("correct_index"),
   });
@@ -256,7 +258,10 @@ export async function upsertModuleQuestion(formData: FormData) {
   if (questionId) {
     const { error } = await supabase
       .from("course_module_quiz_questions")
-      .update({ prompt: parsed.data.prompt })
+      .update({
+        prompt: parsed.data.prompt,
+        explanation: parsed.data.explanation,
+      })
       .eq("id", questionId)
       .eq("module_id", parsed.data.module_id);
     if (error) return fail(error.message);
@@ -277,6 +282,7 @@ export async function upsertModuleQuestion(formData: FormData) {
       .insert({
         module_id: parsed.data.module_id,
         prompt: parsed.data.prompt,
+        explanation: parsed.data.explanation,
         sort_order: Number(last?.sort_order ?? -1) + 1,
       })
       .select("id")

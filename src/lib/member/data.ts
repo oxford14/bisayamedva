@@ -1,3 +1,4 @@
+import { isAdminRole, type UserRole } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatPeso } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ export type MemberCourse = {
   course_type: string | null;
   price: number | null;
   currency: string | null;
+  sort_order: number | null;
 };
 
 export type MemberSession = {
@@ -64,7 +66,8 @@ export async function getMemberEnrollments(studentId: string) {
         description,
         course_type,
         price,
-        currency
+        currency,
+        sort_order
       ),
       sessions (
         id,
@@ -227,8 +230,13 @@ export function canShowMeetingUrl(enrollment: MemberEnrollment) {
   );
 }
 
-/** Active/Completed enrollment or a PAID payment unlocks Student Lounge. */
-export async function canAccessStudentLounge(studentId: string) {
+/** Staff, Active/Completed enrollment, or a PAID payment unlocks Student Lounge. */
+export async function canAccessStudentLounge(
+  studentId: string,
+  role?: UserRole | string | null,
+) {
+  if (isAdminRole(role)) return true;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("enrollments")

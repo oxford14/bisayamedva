@@ -15,7 +15,7 @@ import {
   type LoungeReaction,
 } from "@/lib/member/lounge";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { getActionStudentId, getCurrentProfile } from "@/lib/supabase/auth";
+import { getCurrentProfile } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export type LoungeActionState = {
@@ -24,8 +24,8 @@ export type LoungeActionState = {
 };
 
 async function requireLoungeStudent() {
-  const studentId = await getActionStudentId();
-  if (!studentId) {
+  const profile = await getCurrentProfile();
+  if (!profile) {
     return {
       profile: null as null,
       error: {
@@ -34,7 +34,7 @@ async function requireLoungeStudent() {
       },
     };
   }
-  const allowed = await canAccessStudentLounge(studentId);
+  const allowed = await canAccessStudentLounge(profile.id, profile.role);
   if (!allowed) {
     return {
       profile: null as null,
@@ -45,7 +45,7 @@ async function requireLoungeStudent() {
       },
     };
   }
-  return { profile: { id: studentId }, error: null };
+  return { profile: { id: profile.id }, error: null };
 }
 
 function revalidateLounge(postId?: string | null) {

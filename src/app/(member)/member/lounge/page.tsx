@@ -18,7 +18,7 @@ export default async function MemberLoungePage({
   searchParams?: Promise<{ post?: string }>;
 }) {
   const profile = await getStudentProfile();
-  const allowed = await canAccessStudentLounge(profile.id);
+  const allowed = await canAccessStudentLounge(profile.id, profile.role);
   const params = searchParams ? await searchParams : {};
   const highlightPostId = params.post ?? null;
 

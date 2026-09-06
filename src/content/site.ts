@@ -354,6 +354,21 @@ export const modulesCopy = {
   title: "Modules",
   description:
     "Open the lessons and quizzes for courses you enrolled in. Locked sila until your Zoom session starts.",
+  dashboardDescription:
+    "Imong Modules dashboard — lessons and quizzes for courses you enrolled in. Locked sila until your Zoom session starts.",
+  statEnrolled: "Enrolled",
+  statOpen: "Open now",
+  statLocked: "Locked",
+  statNextUnlock: "Next unlock",
+  continueEyebrow: "Continue",
+  continueCta: "Open modules",
+  openCta: "Open",
+  unlockedSince: "Unlocked since",
+  catalogSection: "Your courses",
+  moduleCountOne: "1 module",
+  moduleCountOther: "{n} modules",
+  openLessons: "Open a module to view files and take the quiz.",
+  allModules: "All modules",
   emptyTitle: "Wala pa kay enrolled course",
   emptyBody:
     "Enroll sa course una. Modules mo-open when your Zoom session starts.",
@@ -368,6 +383,14 @@ export const modulesCopy = {
   quizTitle: "Quiz",
   quizCta: "Take the quiz",
   quizSubmit: "Submit quiz",
+  quizNext: "Next question",
+  quizQuestionOf: "Question {n} of {total}",
+  quizYourAnswer: "Imong answer",
+  quizCorrect: "Correct",
+  quizIncorrect: "Incorrect",
+  quizCorrectAnswer: "Correct answer",
+  quizExplanation: "Explanation",
+  quizNoAnswer: "Wala ka ni-pili",
   quizRetake: "Retake quiz",
   quizScore: "Your score",
   noModulesTitle: "No modules yet",
@@ -379,6 +402,28 @@ export const modulesCopy = {
   notEnrolledTitle: "Kini nga course wala sa imong Modules",
   notEnrolledBody:
     "You can only open modules for courses you already enrolled and activated.",
+  staffPreview:
+    "Admin preview — you can open all Modules without enrolling.",
+  draftBadge: "Draft",
+  nextItem: "Go to next item",
+  backToModules: "Back to modules",
+  readingLabel: "Reading",
+  videoLabel: "Video",
+  quizLabel: "Quiz",
+  quizGrade: "Graded Assignment · Grade: 70%",
+  quizNeedPass: "Kinahanglan 70% para ma-unlock ang next item.",
+  todayGoal: 3,
+  todayGoalTitle: "Today's Goal",
+  todayGoalBody: "Complete 3 items today to stay at a good pace!",
+  outlineTitle: "Course outline",
+  fullscreen: "Fullscreen",
+  itemLockedBody: "Finish the previous item una para ma-open ni.",
+  moduleQuizLocked: "Pass the previous Quiz una para ma-open ni.",
+  pdfLoading: "Gi-load ang lesson…",
+  pdfError: "Dili ma-open ang PDF. Try again.",
+  viewAsPdf:
+    "Kini nga file dili ma-view sa player. Ask the team to upload a PDF or video.",
+  pageLabel: "Page",
 } as const;
 
 export const images = {
@@ -402,4 +447,7 @@ export const images = {
   },
   texture: "/images/brand/texture-linen.webp",
   og: "/images/og/share.jpg",
+  modules: {
+    default: "/images/modules/default.png",
+  },
 } as const;

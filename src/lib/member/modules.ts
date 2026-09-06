@@ -1,14 +1,19 @@
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isAdminRole, type UserRole } from "@/lib/supabase/auth";
 import {
   getMemberEnrollments,
   type MemberEnrollment,
   type MemberSession,
 } from "@/lib/member/data";
+import { moduleFileHref } from "@/lib/member/module-player-shared";
 import {
-  MODULE_FILES_BUCKET,
-  MODULE_FILE_SIGNED_TTL_SECONDS,
-} from "@/lib/modules/storage";
+  mapQuizReviewQuestions,
+  toStudentQuizAttempt,
+  type StudentQuizReviewItem,
+} from "@/lib/member/quiz-review";
+
+export type { StudentQuizReviewItem };
 
 const QUALIFYING = new Set(["ACTIVE", "COMPLETED"]);
 
@@ -19,6 +24,7 @@ export type CourseModuleAccess = {
   unlockLabel: string | null;
   enrollmentId: string | null;
   session: MemberSession | null;
+  staffPreview: boolean;
 };
 
 export type ModuleCourseCard = {
@@ -29,7 +35,8 @@ export type ModuleCourseCard = {
   unlocked: boolean;
   unlocksAt: string | null;
   unlockLabel: string | null;
-  enrollmentId: string;
+  enrollmentId: string | null;
+  sortOrder: number;
 };
 
 export type StudentModuleListItem = {
@@ -37,6 +44,7 @@ export type StudentModuleListItem = {
   title: string;
   description: string | null;
   sortOrder: number;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
 };
 
 export type StudentModuleFile = {
@@ -57,6 +65,7 @@ export type StudentQuizAttempt = {
   score: number;
   total: number;
   submittedAt: string;
+  review: StudentQuizReviewItem[];
 };
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -105,6 +114,7 @@ export function courseModuleAccess(
       unlockLabel: null,
       enrollmentId: null,
       session: null,
+      staffPreview: false,
     };
   }
 
@@ -136,6 +146,7 @@ export function courseModuleAccess(
       ),
       enrollmentId: pick.enrollment.id,
       session: pick.enrollment.session,
+      staffPreview: false,
     };
   }
 
@@ -151,14 +162,83 @@ export function courseModuleAccess(
     ),
     enrollmentId: fallback.id,
     session: fallback.session,
+    staffPreview: false,
+  };
+}
+
+export function staffModuleAccess(): CourseModuleAccess {
+  return {
+    enrolled: true,
+    unlocked: true,
+    unlocksAt: null,
+    unlockLabel: null,
+    enrollmentId: null,
+    session: null,
+    staffPreview: true,
   };
 }
 
 export function canOpenCourseModules(access: CourseModuleAccess) {
+  if (access.staffPreview) return true;
   return access.enrolled && access.unlocked && Boolean(access.enrollmentId);
 }
 
-export async function getEnrolledModuleCourses(studentId: string) {
+async function getStaffModuleCourses() {
+  const admin = createServiceClient();
+  const { data, error } = await admin
+    .from("courses")
+    .select("id, slug, title, subtitle, sort_order")
+    .neq("status", "ARCHIVED")
+    .order("sort_order", { ascending: true })
+    .order("title", { ascending: true });
+  if (error) {
+    console.error("getStaffModuleCourses", error.message);
+    return [] as ModuleCourseCard[];
+  }
+  return (data ?? [])
+    .filter((course) => Boolean(course.slug))
+    .map((course) => ({
+      courseId: course.id as string,
+      slug: course.slug as string,
+      title: course.title as string,
+      subtitle: (course.subtitle as string | null) ?? null,
+      unlocked: true,
+      unlocksAt: null,
+      unlockLabel: null,
+      enrollmentId: null,
+      sortOrder: Number(course.sort_order ?? 0),
+    }));
+}
+
+function mapModuleRows(
+  data:
+    | {
+        id: string;
+        title: string;
+        description: string | null;
+        sort_order: number;
+        status?: string;
+      }[]
+    | null,
+): StudentModuleListItem[] {
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description ?? null,
+    sortOrder: Number(row.sort_order ?? 0),
+    status:
+      row.status === "DRAFT" || row.status === "ARCHIVED"
+        ? row.status
+        : "PUBLISHED",
+  }));
+}
+
+export async function getEnrolledModuleCourses(
+  studentId: string,
+  role?: UserRole | null,
+) {
+  if (isAdminRole(role)) return getStaffModuleCourses();
+
   const enrollments = await getMemberEnrollments(studentId);
   const byCourse = new Map<string, ModuleCourseCard>();
 
@@ -179,13 +259,57 @@ export async function getEnrolledModuleCourses(studentId: string) {
       unlocksAt: access.unlocksAt,
       unlockLabel: access.unlockLabel,
       enrollmentId: access.enrollmentId,
+      sortOrder: Number(course.sort_order ?? 0),
     });
   }
 
-  return [...byCourse.values()].sort((a, b) => a.title.localeCompare(b.title));
+  return [...byCourse.values()].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.title.localeCompare(b.title);
+  });
 }
 
-export async function getStudentCourseModules(studentId: string, slug: string) {
+export async function getStudentCourseModules(
+  studentId: string,
+  slug: string,
+  role?: UserRole | null,
+) {
+  if (isAdminRole(role)) {
+    const admin = createServiceClient();
+    const { data: course } = await admin
+      .from("courses")
+      .select("id, slug, title, subtitle")
+      .eq("slug", slug)
+      .neq("status", "ARCHIVED")
+      .maybeSingle();
+    if (!course?.id || !course.slug) {
+      return {
+        course: null as null,
+        access: staffModuleAccess(),
+        modules: [] as StudentModuleListItem[],
+      };
+    }
+    const { data, error } = await admin
+      .from("course_modules")
+      .select("id, title, description, sort_order, status")
+      .eq("course_id", course.id)
+      .in("status", ["DRAFT", "PUBLISHED"])
+      .order("sort_order", { ascending: true });
+    if (error) {
+      console.error("getStudentCourseModules", error.message);
+    }
+    return {
+      course: {
+        id: course.id as string,
+        slug: course.slug as string,
+        title: course.title as string,
+        subtitle: (course.subtitle as string | null) ?? null,
+      },
+      access: staffModuleAccess(),
+      modules: mapModuleRows(data),
+    };
+  }
+
   const enrollments = await getMemberEnrollments(studentId);
   const match = enrollments.find(
     (enrollment) =>
@@ -204,7 +328,7 @@ export async function getStudentCourseModules(studentId: string, slug: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("course_modules")
-    .select("id, title, description, sort_order")
+    .select("id, title, description, sort_order, status")
     .eq("course_id", course.id)
     .eq("status", "PUBLISHED")
     .order("sort_order", { ascending: true });
@@ -221,12 +345,7 @@ export async function getStudentCourseModules(studentId: string, slug: string) {
       subtitle: course.subtitle,
     },
     access,
-    modules: (data ?? []).map((row) => ({
-      id: row.id as string,
-      title: row.title as string,
-      description: (row.description as string | null) ?? null,
-      sortOrder: Number(row.sort_order ?? 0),
-    })),
+    modules: mapModuleRows(data),
   };
 }
 
@@ -234,10 +353,12 @@ export async function getStudentModulePlayer(
   studentId: string,
   slug: string,
   moduleId: string,
+  role?: UserRole | null,
 ) {
   const { course, access, modules } = await getStudentCourseModules(
     studentId,
     slug,
+    role,
   );
   if (!course) {
     return { course: null, module: null, access, files: [], quiz: [], latestAttempt: null };
@@ -252,6 +373,7 @@ export async function getStudentModulePlayer(
     id: listed.id,
     title: listed.title,
     description: listed.description,
+    status: listed.status,
   };
 
   if (!canOpenCourseModules(access)) {
@@ -268,12 +390,12 @@ export async function getStudentModulePlayer(
         .order("sort_order", { ascending: true }),
       admin
         .from("course_module_quiz_questions")
-        .select("id, prompt, sort_order, course_module_quiz_options(id, label, sort_order)")
+        .select("id, prompt, explanation, sort_order, course_module_quiz_options(id, label, is_correct, sort_order)")
         .eq("module_id", moduleId)
         .order("sort_order", { ascending: true }),
       (await createClient())
         .from("course_module_quiz_attempts")
-        .select("score, total, submitted_at")
+        .select("score, total, submitted_at, answers")
         .eq("student_id", studentId)
         .eq("module_id", moduleId)
         .order("submitted_at", { ascending: false })
@@ -282,16 +404,12 @@ export async function getStudentModulePlayer(
 
   const files: StudentModuleFile[] = [];
   for (const row of fileRows ?? []) {
-    const path = row.storage_path as string;
-    const { data: signed } = await admin.storage
-      .from(MODULE_FILES_BUCKET)
-      .createSignedUrl(path, MODULE_FILE_SIGNED_TTL_SECONDS);
     files.push({
       id: row.id as string,
       fileName: row.file_name as string,
       mimeType: row.mime_type as string,
       byteSize: Number(row.byte_size),
-      url: signed?.signedUrl ?? null,
+      url: moduleFileHref(row.id as string),
     });
   }
 
@@ -313,8 +431,8 @@ export async function getStudentModulePlayer(
 
   const latest = one(
     attemptRows as
-      | { score: number; total: number; submitted_at: string }
-      | { score: number; total: number; submitted_at: string }[]
+      | { score: number; total: number; submitted_at: string; answers: unknown }
+      | { score: number; total: number; submitted_at: string; answers: unknown }[]
       | null,
   );
 
@@ -325,11 +443,7 @@ export async function getStudentModulePlayer(
     files,
     quiz,
     latestAttempt: latest
-      ? {
-          score: Number(latest.score),
-          total: Number(latest.total),
-          submittedAt: latest.submitted_at,
-        }
+      ? toStudentQuizAttempt(latest, mapQuizReviewQuestions(questionRows))
       : null,
   };
 }

@@ -30,7 +30,7 @@ export default async function PaymentsPage({
   let query = supabase
     .from("payments")
     .select(
-      "id, amount, currency, status, provider, provider_payment_id, created_at, enrollments(profiles(full_name, email), courses(title))",
+      "id, amount, original_amount, currency, status, provider, provider_payment_id, created_at, promo_code_id, promo_codes(code), enrollments(profiles(full_name, email), courses(title))",
     )
     .order("created_at", { ascending: false });
   if (status) query = query.eq("status", status);
@@ -87,7 +87,12 @@ export default async function PaymentsPage({
                 ? enrollment.courses[0]
                 : enrollment.courses
               : null;
+            const promo = Array.isArray(row.promo_codes)
+              ? row.promo_codes[0]
+              : row.promo_codes;
             const amountLabel = money(Number(row.amount), row.currency);
+            const originalAmount =
+              row.original_amount != null ? Number(row.original_amount) : null;
             return (
               <tr key={row.id}>
                 <td className="px-4 py-3">
@@ -95,7 +100,22 @@ export default async function PaymentsPage({
                   <div className="text-xs text-muted">{student?.email}</div>
                 </td>
                 <td className="px-4 py-3">{course?.title ?? "—"}</td>
-                <td className="px-4 py-3">{amountLabel}</td>
+                <td className="px-4 py-3">
+                  <div>{amountLabel}</div>
+                  {promo?.code ? (
+                    <div className="mt-0.5 text-xs text-muted">
+                      Promo:{" "}
+                      <span className="font-medium text-navy">{promo.code}</span>
+                      {originalAmount != null &&
+                      originalAmount > Number(row.amount) ? (
+                        <span>
+                          {" "}
+                          · was {money(originalAmount, row.currency)}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </td>
                 <td className="px-4 py-3 text-xs">
                   <div>{row.provider}</div>
                   <div className="text-muted">{row.provider_payment_id ?? "—"}</div>

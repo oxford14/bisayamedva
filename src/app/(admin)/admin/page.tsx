@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { site } from "@/content/site";
+import { datetimeLocalToIso } from "@/lib/datetime";
 import { expireStalePendingPayments } from "@/lib/payments/expire-pending";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -20,6 +22,7 @@ function money(n: number, currency = "PHP") {
 export default async function AdminOverviewPage() {
   await expireStalePendingPayments();
   const supabase = await createClient();
+  const revenueCountStartAt = datetimeLocalToIso(site.admin.revenueCountStartLocal);
 
   const [
     { count: studentCount },
@@ -38,7 +41,11 @@ export default async function AdminOverviewPage() {
       .from("enrollments")
       .select("*", { count: "exact", head: true })
       .eq("status", "ACTIVE"),
-    supabase.from("payments").select("amount, currency").eq("status", "PAID"),
+    supabase
+      .from("payments")
+      .select("amount, currency")
+      .eq("status", "PAID")
+      .gte("created_at", revenueCountStartAt),
     supabase
       .from("sessions")
       .select("id, title, capacity, starts_at")

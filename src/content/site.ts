@@ -51,6 +51,10 @@ export const site = {
     format: "Online",
     capacity: 30,
   },
+  admin: {
+    /** Paid revenue on the admin dashboard counts from this PHT date (inclusive). */
+    revenueCountStartLocal: "2026-09-09T00:00",
+  },
 } as const;
 
 export const nav = {

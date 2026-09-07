@@ -23,8 +23,8 @@ import {
   parseItemKey,
   quizItemKey,
   quizPassed,
-  type PlayerItemKind,
-  type PlayerItemLabel,
+  type PlayerOutlineItem,
+  type PlayerOutlineModule,
 } from "@/lib/member/module-player-shared";
 
 export {
@@ -38,28 +38,12 @@ export {
   quizItemKey,
   quizPassed,
 } from "@/lib/member/module-player-shared";
-export type { PlayerItemKind, PlayerItemLabel } from "@/lib/member/module-player-shared";
-
-export type PlayerOutlineItem = {
-  key: string;
-  kind: PlayerItemKind;
-  moduleId: string;
-  itemId: string;
-  title: string;
-  label: PlayerItemLabel;
-  complete: boolean;
-  locked: boolean;
-  href: string;
-};
-
-export type PlayerOutlineModule = {
-  id: string;
-  title: string;
-  description: string | null;
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
-  locked: boolean;
-  items: PlayerOutlineItem[];
-};
+export type {
+  PlayerItemKind,
+  PlayerItemLabel,
+  PlayerOutlineItem,
+  PlayerOutlineModule,
+} from "@/lib/member/module-player-shared";
 
 export type CoursePlayerState = {
   course: {

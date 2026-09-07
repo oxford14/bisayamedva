@@ -12,6 +12,8 @@ import type { PlayerItemView } from "@/lib/member/module-player";
 export function ModulePlayer({ view }: { view: PlayerItemView }) {
   if (!view.course) return null;
   const closeHref = `/member/modules/${view.course.slug}`;
+  const isLast = !view.next;
+  const continueHref = view.next?.href ?? closeHref;
 
   return (
     <div className="-mx-4 -mt-6 flex min-h-[calc(100dvh-8.5rem)] flex-col bg-cream sm:-mx-6 lg:-mx-8 lg:-mt-8 lg:min-h-[calc(100dvh-4.5rem)] lg:flex-row">
@@ -76,7 +78,9 @@ export function ModulePlayer({ view }: { view: PlayerItemView }) {
                   moduleId={view.active.moduleId}
                   questions={view.quiz}
                   latestAttempt={view.latestAttempt}
-                  nextHref={view.next?.href ?? closeHref}
+                  nextHref={isLast ? null : continueHref}
+                  isLast={isLast}
+                  courseSlug={view.course.slug}
                 />
               ) : (
                 <p className="text-sm text-muted">{modulesCopy.noFiles}</p>
@@ -88,7 +92,9 @@ export function ModulePlayer({ view }: { view: PlayerItemView }) {
                 <ModulePlayerNext
                   moduleId={view.active.moduleId}
                   fileId={view.file.id}
-                  fallbackHref={closeHref}
+                  fallbackHref={continueHref}
+                  isLast={isLast}
+                  courseSlug={view.course.slug}
                 />
               </div>
             ) : null}

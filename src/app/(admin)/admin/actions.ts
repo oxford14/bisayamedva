@@ -2,8 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { datetimeLocalToIso } from "@/lib/datetime";
+import { isLoungeBadge } from "@/lib/member/lounge-badge";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin, requireSuperAdmin } from "@/lib/supabase/auth";
+import {
+  getCurrentProfile,
+  isAdminRole,
+  requireAdmin,
+  requireSuperAdmin,
+} from "@/lib/supabase/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
 
 function fail(message: string) {
@@ -109,8 +116,18 @@ export async function upsertSession(formData: FormData) {
   if (!parsed.success) return failValidation(parsed.error, "Invalid session");
 
   const { id, ...rest } = parsed.data;
+  let startsAt: string;
+  let endsAt: string;
+  try {
+    startsAt = datetimeLocalToIso(rest.starts_at, rest.timezone);
+    endsAt = datetimeLocalToIso(rest.ends_at, rest.timezone);
+  } catch {
+    return fail("Invalid session date.");
+  }
   const payload = {
     ...rest,
+    starts_at: startsAt,
+    ends_at: endsAt,
     meeting_url: rest.meeting_url ?? null,
   };
 
@@ -125,6 +142,8 @@ export async function upsertSession(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath("/admin/content");
+  revalidatePath("/member");
+  revalidatePath("/member/schedule");
   return ok();
 }
 
@@ -375,31 +394,66 @@ export async function saveContentSettings(formData: FormData) {
 }
 
 export async function updateUserRole(formData: FormData) {
-  await requireSuperAdmin();
-  const userId = String(formData.get("user_id") ?? "");
-  const role = String(formData.get("role") ?? "");
-  if (!userId || !["SUPER_ADMIN", "ADMIN", "STUDENT"].includes(role)) {
-    return fail("Invalid role update");
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
-  if (error) return fail(error.message);
-
-  // Keep JWT app_metadata in sync for RLS helpers
   try {
-    const service = createServiceClient();
-    await service.auth.admin.updateUserById(userId, {
-      app_metadata: { role },
-    });
-  } catch {
-    // Profile role is source for UI; app_metadata sync best-effort
-  }
+    const actor = await getCurrentProfile();
+    if (!actor || !isAdminRole(actor.role)) {
+      return fail("You need an admin account to update roles.");
+    }
 
-  revalidatePath("/admin/settings");
-  revalidatePath("/admin/users");
-  revalidatePath("/admin/students");
-  return ok();
+    const parsedId = uuid.safeParse(String(formData.get("user_id") ?? ""));
+    const role = String(formData.get("role") ?? "");
+    if (!parsedId.success || !["SUPER_ADMIN", "ADMIN", "STUDENT"].includes(role)) {
+      return fail("Invalid role update.");
+    }
+    if (role === "SUPER_ADMIN" && actor.role !== "SUPER_ADMIN") {
+      return fail("Only a Super Admin can assign Super Admin.");
+    }
+
+    let service;
+    try {
+      service = createServiceClient();
+    } catch {
+      return fail("Server is missing service role configuration. Cannot update roles.");
+    }
+
+    const { data: target, error: targetError } = await service
+      .from("profiles")
+      .select("id, role")
+      .eq("id", parsedId.data)
+      .maybeSingle();
+    if (targetError) return fail(targetError.message);
+    if (!target) return fail("User not found.");
+    if (target.role === "SUPER_ADMIN" && actor.role !== "SUPER_ADMIN") {
+      return fail("Only a Super Admin can change this role.");
+    }
+
+    const { data, error } = await service
+      .from("profiles")
+      .update({ role })
+      .eq("id", parsedId.data)
+      .select("id, role")
+      .maybeSingle();
+    if (error) return fail(error.message);
+    if (!data) {
+      return fail("Role was not updated. Check admin RLS policies.");
+    }
+
+    // Keep JWT app_metadata in sync; profile.role is the source of truth.
+    try {
+      await service.auth.admin.updateUserById(parsedId.data, {
+        app_metadata: { role },
+      });
+    } catch {
+      // Profile role is source for UI; app_metadata sync best-effort
+    }
+
+    revalidateUserPaths(parsedId.data);
+    return ok();
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not update role.";
+    return fail(message);
+  }
 }
 
 export async function updateLoungeBadge(formData: FormData) {
@@ -410,7 +464,7 @@ export async function updateLoungeBadge(formData: FormData) {
 
   const parsed = uuid.safeParse(userId);
   if (!parsed.success) return fail("Invalid user id.");
-  if (badge !== null && badge !== "COACH" && badge !== "ADMIN") {
+  if (badge !== null && !isLoungeBadge(badge)) {
     return fail("Invalid lounge badge.");
   }
 
@@ -577,77 +631,62 @@ export async function updateAdminUser(formData: FormData) {
   return ok();
 }
 
-export async function promoteUserToAdmin(formData: FormData) {
-  await requireAdmin();
-  const userId = String(formData.get("user_id") ?? "");
-  const parsed = uuid.safeParse(userId);
-  if (!parsed.success) return fail("Invalid user id.");
-
-  const service = createServiceClient();
-  const { data: target } = await service
-    .from("profiles")
-    .select("id, role")
-    .eq("id", parsed.data)
-    .maybeSingle();
-
-  if (!target) return fail("User not found.");
-  if (target.role !== "STUDENT") {
-    return fail("Only students can be promoted to Admin from here.");
-  }
-
-  const { error } = await service
-    .from("profiles")
-    .update({ role: "ADMIN" })
-    .eq("id", parsed.data);
-  if (error) return fail(error.message);
-
-  try {
-    await service.auth.admin.updateUserById(parsed.data, {
-      app_metadata: { role: "ADMIN" },
-    });
-  } catch {
-    // best-effort JWT sync
-  }
-
-  revalidateUserPaths(parsed.data);
-  return ok();
-}
-
 export async function deleteAdminUser(formData: FormData) {
-  const actor = await requireAdmin();
-  const userId = String(formData.get("user_id") ?? "");
-  const parsed = uuid.safeParse(userId);
-  if (!parsed.success) return fail("Invalid user id.");
+  try {
+    const actor = await getCurrentProfile();
+    if (!actor || !isAdminRole(actor.role)) {
+      return fail("You need an admin account to delete users.");
+    }
 
-  if (parsed.data === actor.id) {
-    return fail("You cannot delete your own account.");
+    const userId = String(formData.get("user_id") ?? "");
+    const parsed = uuid.safeParse(userId);
+    if (!parsed.success) return fail("Invalid user id.");
+
+    if (parsed.data === actor.id) {
+      return fail("You cannot delete your own account.");
+    }
+
+    let service;
+    try {
+      service = createServiceClient();
+    } catch {
+      return fail(
+        "Server is missing service role configuration. Cannot delete users.",
+      );
+    }
+
+    const { data: target, error: targetError } = await service
+      .from("profiles")
+      .select("id, role")
+      .eq("id", parsed.data)
+      .maybeSingle();
+
+    if (targetError) return fail(targetError.message);
+    if (!target) return fail("User not found.");
+
+    if (
+      (target.role === "ADMIN" || target.role === "SUPER_ADMIN") &&
+      actor.role !== "SUPER_ADMIN"
+    ) {
+      return fail("Only a Super Admin can delete admin accounts.");
+    }
+
+    const { error } = await service.auth.admin.deleteUser(parsed.data);
+    if (error) return fail(error.message);
+
+    revalidateUserPaths();
+    return ok();
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not delete user.";
+    return fail(message);
   }
-
-  const service = createServiceClient();
-  const { data: target } = await service
-    .from("profiles")
-    .select("id, role")
-    .eq("id", parsed.data)
-    .maybeSingle();
-
-  if (!target) return fail("User not found.");
-
-  if (
-    (target.role === "ADMIN" || target.role === "SUPER_ADMIN") &&
-    actor.role !== "SUPER_ADMIN"
-  ) {
-    return fail("Only a Super Admin can delete admin accounts.");
-  }
-
-  const { error } = await service.auth.admin.deleteUser(parsed.data);
-  if (error) return fail(error.message);
-
-  revalidateUserPaths();
-  return ok();
 }
+
+const pgUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const promoSchema = z.object({
-  id: optionalUuid,
+  id: z.string().regex(pgUuid).optional(),
   code: z
     .string()
     .min(2)
@@ -655,86 +694,140 @@ const promoSchema = z.object({
     .transform((v) => v.trim().toUpperCase().replace(/\s+/g, "")),
   discount_type: z.enum(["FIXED", "PERCENT"]),
   discount_value: z.coerce.number().positive(),
-  unlimited: z.preprocess((v) => v === "1" || v === "on" || v === true, z.boolean()),
+  unlimited: z.boolean(),
   max_redemptions: z.coerce.number().int().positive().optional(),
-  active: z.preprocess((v) => v === "1" || v === "on" || v === true, z.boolean()),
+  active: z.boolean(),
   ends_at: z.string().optional(),
   note: z.string().optional(),
 });
 
-export async function upsertPromoCode(formData: FormData) {
-  await requireAdmin();
-  const parsed = promoSchema.safeParse({
-    id: formData.get("id") || undefined,
-    code: formData.get("code"),
-    discount_type: formData.get("discount_type"),
-    discount_value: formData.get("discount_value"),
-    unlimited: formData.get("unlimited"),
-    max_redemptions: formData.get("max_redemptions") || undefined,
-    active: formData.get("active"),
-    ends_at: formData.get("ends_at") || undefined,
-    note: formData.get("note") || undefined,
-  });
-  if (!parsed.success) return failValidation(parsed.error, "Invalid promo");
+const promoSelect =
+  "id, code, discount_type, discount_value, max_redemptions, redeemed_count, active, ends_at, note";
 
-  if (
-    parsed.data.discount_type === "PERCENT" &&
-    parsed.data.discount_value > 100
-  ) {
-    return fail("Percent discount must be 100 or less.");
+export async function upsertPromoCode(input: {
+  id?: string;
+  code: string;
+  discount_type: "FIXED" | "PERCENT";
+  discount_value: string;
+  unlimited: boolean;
+  max_redemptions?: string;
+  active: boolean;
+  ends_at?: string;
+  note?: string;
+}) {
+  try {
+    const profile = await getCurrentProfile();
+    if (!profile || !isAdminRole(profile.role)) {
+      return fail("Please log in as admin again.");
+    }
+
+    const parsed = promoSchema.safeParse({
+      id: input.id?.trim() || undefined,
+      code: input.code,
+      discount_type: input.discount_type,
+      discount_value: input.discount_value,
+      unlimited: input.unlimited,
+      max_redemptions: input.unlimited ? undefined : input.max_redemptions,
+      active: input.active,
+      ends_at: input.ends_at || undefined,
+      note: input.note || undefined,
+    });
+    if (!parsed.success) return failValidation(parsed.error, "Invalid promo");
+
+    if (
+      parsed.data.discount_type === "PERCENT" &&
+      parsed.data.discount_value > 100
+    ) {
+      return fail("Percent discount must be 100 or less.");
+    }
+
+    const maxRedemptions = parsed.data.unlimited
+      ? null
+      : parsed.data.max_redemptions ?? null;
+    if (!parsed.data.unlimited && !maxRedemptions) {
+      return fail("Enter max slots, or mark as unlimited.");
+    }
+
+    let endsAt: string | null = null;
+    if (parsed.data.ends_at?.trim()) {
+      const d = new Date(parsed.data.ends_at);
+      if (Number.isNaN(d.getTime())) return fail("Invalid end date.");
+      endsAt = d.toISOString();
+    }
+
+    const payload = {
+      code: parsed.data.code,
+      discount_type: parsed.data.discount_type,
+      discount_value: parsed.data.discount_value,
+      max_redemptions: maxRedemptions,
+      active: parsed.data.active,
+      ends_at: endsAt,
+      note: parsed.data.note?.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const admin = createServiceClient();
+    const query = parsed.data.id
+      ? admin.from("promo_codes").update(payload).eq("id", parsed.data.id)
+      : admin.from("promo_codes").insert(payload);
+
+    const { data, error } = await query.select(promoSelect).maybeSingle();
+    if (error) {
+      if (error.message.toLowerCase().includes("promo_codes_code_upper")) {
+        return fail("That promo code already exists.");
+      }
+      return fail(error.message);
+    }
+    if (!data) return fail("Promo could not be saved.");
+
+    revalidatePath("/admin/promos");
+    return {
+      ok: true as const,
+      promo: {
+        id: data.id,
+        code: data.code,
+        discount_type: data.discount_type as "FIXED" | "PERCENT",
+        discount_value: Number(data.discount_value),
+        max_redemptions: data.max_redemptions,
+        redeemed_count: data.redeemed_count,
+        active: data.active,
+        ends_at: data.ends_at,
+        note: data.note,
+      },
+    };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not save promo.";
+    return fail(message);
   }
-
-  const maxRedemptions = parsed.data.unlimited
-    ? null
-    : parsed.data.max_redemptions ?? null;
-  if (!parsed.data.unlimited && !maxRedemptions) {
-    return fail("Enter max slots, or mark as unlimited.");
-  }
-
-  let endsAt: string | null = null;
-  if (parsed.data.ends_at?.trim()) {
-    const d = new Date(parsed.data.ends_at);
-    if (Number.isNaN(d.getTime())) return fail("Invalid end date.");
-    endsAt = d.toISOString();
-  }
-
-  const payload = {
-    code: parsed.data.code,
-    discount_type: parsed.data.discount_type,
-    discount_value: parsed.data.discount_value,
-    max_redemptions: maxRedemptions,
-    active: parsed.data.active,
-    ends_at: endsAt,
-    note: parsed.data.note?.trim() || null,
-    updated_at: new Date().toISOString(),
-  };
-
-  const supabase = await createClient();
-  const { error } = parsed.data.id
-    ? await supabase.from("promo_codes").update(payload).eq("id", parsed.data.id)
-    : await supabase.from("promo_codes").insert(payload);
-
-  if (error) return fail(error.message);
-  revalidatePath("/admin/promos");
-  return ok();
 }
 
-export async function togglePromoActive(formData: FormData) {
-  await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  const active = String(formData.get("active") ?? "") === "1";
-  const parsed = uuid.safeParse(id);
-  if (!parsed.success) return fail("Invalid promo id.");
+export async function togglePromoActive(id: string, active: boolean) {
+  try {
+    const profile = await getCurrentProfile();
+    if (!profile || !isAdminRole(profile.role)) {
+      return fail("Please log in as admin again.");
+    }
+    if (!pgUuid.test(id)) return fail("Invalid promo id.");
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("promo_codes")
-    .update({ active, updated_at: new Date().toISOString() })
-    .eq("id", parsed.data);
+    const admin = createServiceClient();
+    const { data, error } = await admin
+      .from("promo_codes")
+      .update({ active, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("id, active")
+      .maybeSingle();
 
-  if (error) return fail(error.message);
-  revalidatePath("/admin/promos");
-  return ok();
+    if (error) return fail(error.message);
+    if (!data) return fail("Promo not found.");
+
+    revalidatePath("/admin/promos");
+    return ok();
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not update promo.";
+    return fail(message);
+  }
 }
 
 export async function saveReferralCommissions(formData: FormData) {

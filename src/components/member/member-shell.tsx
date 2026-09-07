@@ -57,7 +57,7 @@ export function MemberShell({
   return (
     <div className="min-h-dvh bg-cream text-ink">
       <div className="flex min-h-dvh w-full">
-        <aside className="sticky top-0 z-30 hidden h-dvh w-[17.5rem] shrink-0 flex-col border-r border-border/80 bg-[linear-gradient(180deg,#fbfcf7_0%,#f3f5eb_48%,#eef1e4_100%)] lg:flex">
+        <aside className="sticky top-0 z-30 hidden h-dvh w-[17.5rem] shrink-0 flex-col border-r border-border/80 bg-[linear-gradient(180deg,#fbfcf7_0%,#f3f5eb_48%,#eef1e4_100%)] print:hidden lg:flex">
           <div className="relative overflow-hidden border-b border-border/70 px-5 pt-5 pb-4">
             <div
               aria-hidden
@@ -128,7 +128,7 @@ export function MemberShell({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/80 bg-cream/90 px-4 backdrop-blur-md lg:px-8">
+          <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/80 bg-cream/90 px-4 backdrop-blur-md print:hidden lg:px-8">
             <div className="flex min-w-0 items-center gap-2.5 lg:hidden">
               <span className="flex size-9 items-center justify-center overflow-hidden rounded-full border border-navy/10 bg-navy text-[11px] font-semibold text-cream">
                 {profile.avatar_url ? (
@@ -162,14 +162,14 @@ export function MemberShell({
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:py-8 lg:pb-8">
+          <main className="flex-1 px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:py-8 lg:pb-8 print:p-0">
             {children}
           </main>
         </div>
       </div>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-cream/95 backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-cream/95 backdrop-blur-md print:hidden lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Member mobile navigation"
       >

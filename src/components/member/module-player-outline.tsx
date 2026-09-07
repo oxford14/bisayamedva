@@ -6,7 +6,10 @@ import { Check, Flag, Lock, X } from "lucide-react";
 import { modulesCopy } from "@/content/site";
 import { ModuleArt } from "@/components/member/module-art";
 import { cn } from "@/lib/utils";
-import type { PlayerOutlineItem, PlayerOutlineModule } from "@/lib/member/module-player";
+import type {
+  PlayerOutlineItem,
+  PlayerOutlineModule,
+} from "@/lib/member/module-player-shared";
 
 export function ModulePlayerOutline({
   courseSlug,

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/auth";
 import { CreateUserForm } from "@/components/admin/user-forms";
+import { UserListActions } from "@/components/admin/user-list-actions";
 import { UserDetailOverlay } from "@/components/admin/user-detail-overlay";
 import {
   UserDetailPanel,
@@ -52,7 +52,13 @@ export default async function UsersPage({
 
   const viewedUserId = view?.trim() || null;
   const viewedUserPromise = viewedUserId
-    ? supabase.from("profiles").select("*").eq("id", viewedUserId).maybeSingle()
+    ? supabase
+        .from("profiles")
+        .select(
+          "id, full_name, email, role, lounge_badge, mobile, occupation, experience_level, messenger_handle, created_at",
+        )
+        .eq("id", viewedUserId)
+        .maybeSingle()
     : Promise.resolve({ data: null });
   const viewedEnrollmentsPromise = viewedUserId
     ? supabase
@@ -123,13 +129,13 @@ export default async function UsersPage({
                 {new Date(user.created_at).toLocaleDateString()}
               </td>
               <td className="px-4 py-3">
-                <Link
-                  href={userViewHref(user.id, q)}
-                  scroll={false}
-                  className="text-sm font-medium text-teal hover:text-navy"
-                >
-                  View
-                </Link>
+                <UserListActions
+                  userId={user.id}
+                  userRole={user.role}
+                  actorId={profile?.id ?? null}
+                  actorRole={profile?.role ?? null}
+                  viewHref={userViewHref(user.id, q)}
+                />
               </td>
             </tr>
           ))}
@@ -143,8 +149,25 @@ export default async function UsersPage({
           closeHref={usersHref(q)}
         >
           <UserDetailPanel
-            user={viewedUser}
-            enrollments={(viewedEnrollments ?? []) as UserEnrollmentRecord[]}
+            user={{
+              id: viewedUser.id,
+              full_name: viewedUser.full_name,
+              email: viewedUser.email,
+              role: viewedUser.role,
+              lounge_badge: viewedUser.lounge_badge,
+              mobile: viewedUser.mobile,
+              occupation: viewedUser.occupation,
+              experience_level: viewedUser.experience_level,
+              messenger_handle: viewedUser.messenger_handle,
+              created_at: viewedUser.created_at,
+            }}
+            enrollments={(viewedEnrollments ?? []).map((row) => ({
+              id: row.id,
+              status: row.status,
+              created_at: row.created_at,
+              courses: row.courses,
+              sessions: row.sessions,
+            })) as UserEnrollmentRecord[]}
             actorId={profile?.id ?? null}
             isSuperAdmin={profile?.role === "SUPER_ADMIN"}
           />

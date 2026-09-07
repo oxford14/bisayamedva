@@ -15,6 +15,13 @@ import {
   quizItemKey,
   quizPassed,
 } from "@/lib/member/module-player";
+import {
+  courseItemsComplete,
+  ensureCourseEnrollment,
+  maybeCompleteEnrollment,
+  recordItemCompletions,
+  revalidateCertificatePaths,
+} from "@/lib/member/certificates";
 import { getMemberEnrollments } from "@/lib/member/data";
 import {
   buildQuizReview,
@@ -38,6 +45,53 @@ export type QuizSubmitResult =
 export type CompleteItemResult =
   | { ok: true; nextHref: string | null }
   | { ok: false; error: string };
+
+function afterItemHref(nextHref: string | undefined) {
+  return nextHref ?? null;
+}
+
+async function finishItemAndMaybeCertify(input: {
+  studentId: string;
+  courseId: string;
+  slug: string;
+  role: UserRole;
+  staff: boolean;
+  current: { kind: "FILE" | "QUIZ"; moduleId: string; itemId: string };
+}) {
+  const enrollment = await ensureCourseEnrollment(input.studentId, input.courseId);
+  await recordItemCompletions(input.studentId, [input.current]);
+
+  const outlineState = await getCoursePlayerState(
+    input.studentId,
+    input.slug,
+    input.staff ? "STUDENT" : input.role,
+  );
+  const currentIndex = outlineState.flat.findIndex(
+    (entry) =>
+      entry.moduleId === input.current.moduleId &&
+      entry.kind === input.current.kind &&
+      entry.itemId === input.current.itemId,
+  );
+  const isLast = currentIndex >= 0 && currentIndex === outlineState.flat.length - 1;
+  if (input.staff && isLast) {
+    await recordItemCompletions(input.studentId, outlineState.flat);
+  }
+
+  const nextState = await getCoursePlayerState(
+    input.studentId,
+    input.slug,
+    input.staff ? "STUDENT" : input.role,
+  );
+  if (enrollment && (isLast || courseItemsComplete(nextState))) {
+    await maybeCompleteEnrollment(input.studentId, input.courseId, nextState);
+  }
+
+  return {
+    nextHref: afterItemHref(
+      currentIndex >= 0 ? nextState.flat[currentIndex + 1]?.href : undefined,
+    ),
+  };
+}
 
 function revalidatePlayer(slug: string | null | undefined, moduleId: string) {
   revalidatePath("/member/modules");
@@ -105,28 +159,22 @@ export async function completeModuleFile(
       fileItemKey(fileId),
     );
     if (!opened.ok) return opened;
-
-    const supabase = await createClient();
-    const { error } = await supabase.from("course_module_item_completions").upsert(
-      {
-        student_id: profile.id,
-        module_id: moduleId,
-        item_kind: "FILE",
-        item_id: fileId,
-      },
-      { onConflict: "student_id,item_kind,item_id", ignoreDuplicates: true },
-    );
-    if (error) return { ok: false, error: error.message };
   }
 
+  const finished = await finishItemAndMaybeCertify({
+    studentId: profile.id,
+    courseId: lesson.course_id as string,
+    slug,
+    role: profile.role,
+    staff,
+    current: { kind: "FILE", moduleId, itemId: fileId },
+  });
+
   revalidatePlayer(slug, moduleId);
-  const nextState = await getCoursePlayerState(profile.id, slug, profile.role);
-  const currentIndex = nextState.flat.findIndex(
-    (entry) => entry.moduleId === moduleId && entry.key === fileItemKey(fileId),
-  );
+  revalidateCertificatePaths(slug);
   return {
     ok: true,
-    nextHref: currentIndex >= 0 ? (nextState.flat[currentIndex + 1]?.href ?? `/member/modules/${slug}`) : `/member/modules/${slug}`,
+    nextHref: finished.nextHref,
   };
 }
 
@@ -201,64 +249,46 @@ export async function submitModuleQuiz(
   const score = review.filter((item) => item.correct).length;
   const passed = quizPassed(score, reviewQuestions.length);
 
-  if (staff) {
-    const nextState = await getCoursePlayerState(profile.id, slug, profile.role);
-    const currentIndex = nextState.flat.findIndex(
-      (entry) => entry.moduleId === moduleId && entry.key === quizItemKey(),
-    );
-    return {
-      ok: true,
-      score,
-      total: reviewQuestions.length,
-      passed,
-      nextHref:
-        currentIndex >= 0
-          ? (nextState.flat[currentIndex + 1]?.href ?? `/member/modules/${slug}`)
-          : `/member/modules/${slug}`,
-      review,
-    };
+  const enrollment = await ensureCourseEnrollment(
+    profile.id,
+    lesson.course_id as string,
+  );
+  if (!enrollment) {
+    return { ok: false, error: "Could not save your quiz result." };
   }
 
-  const enrollments = await getMemberEnrollments(profile.id);
-  const access = courseModuleAccess(enrollments, lesson.course_id as string);
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("course_module_quiz_attempts").insert({
+  const writer = staff ? createServiceClient() : await createClient();
+  const { error } = await writer.from("course_module_quiz_attempts").insert({
     student_id: profile.id,
     module_id: moduleId,
-    enrollment_id: access.enrollmentId,
+    enrollment_id: enrollment.id,
     score,
     total: reviewQuestions.length,
     answers: stored,
   });
   if (error) return { ok: false, error: error.message };
 
+  let nextHref: string | null = null;
   if (passed) {
-    await supabase.from("course_module_item_completions").upsert(
-      {
-        student_id: profile.id,
-        module_id: moduleId,
-        item_kind: "QUIZ",
-        item_id: moduleId,
-      },
-      { onConflict: "student_id,item_kind,item_id", ignoreDuplicates: true },
-    );
+    const finished = await finishItemAndMaybeCertify({
+      studentId: profile.id,
+      courseId: lesson.course_id as string,
+      slug,
+      role: profile.role,
+      staff,
+      current: { kind: "QUIZ", moduleId, itemId: moduleId },
+    });
+    nextHref = finished.nextHref;
   }
 
   revalidatePlayer(slug, moduleId);
-  const nextState = await getCoursePlayerState(profile.id, slug, profile.role);
-  const currentIndex = nextState.flat.findIndex(
-    (entry) => entry.moduleId === moduleId && entry.key === quizItemKey(),
-  );
+  revalidateCertificatePaths(slug);
   return {
     ok: true,
     score,
     total: reviewQuestions.length,
     passed,
-    nextHref:
-      passed && currentIndex >= 0
-        ? (nextState.flat[currentIndex + 1]?.href ?? `/member/modules/${slug}`)
-        : null,
+    nextHref,
     review,
   };
 }

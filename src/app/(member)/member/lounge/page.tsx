@@ -4,6 +4,7 @@ import { MemberPageHeader } from "@/components/member/ui";
 import { canAccessStudentLounge } from "@/lib/member/data";
 import {
   canModerateLounge,
+  canSuperModerateLounge,
   getLoungeCommentsForPosts,
   getLoungeFeed,
   getLoungeNotifications,
@@ -56,6 +57,7 @@ export default async function MemberLoungePage({
         unreadCount={unreadCount}
         viewerId={profile.id}
         viewerCanModerate={canModerateLounge(profile)}
+        viewerIsSuperAdmin={canSuperModerateLounge(profile)}
         candidates={candidates.filter((c) => c.id !== profile.id)}
         highlightPostId={highlightPostId}
       />

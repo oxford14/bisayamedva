@@ -3,6 +3,27 @@ export const QUIZ_PASS_RATIO = 0.7;
 export type PlayerItemKind = "FILE" | "QUIZ";
 export type PlayerItemLabel = "Reading" | "Video" | "Quiz";
 
+export type PlayerOutlineItem = {
+  key: string;
+  kind: PlayerItemKind;
+  moduleId: string;
+  itemId: string;
+  title: string;
+  label: PlayerItemLabel;
+  complete: boolean;
+  locked: boolean;
+  href: string;
+};
+
+export type PlayerOutlineModule = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  locked: boolean;
+  items: PlayerOutlineItem[];
+};
+
 export function fileItemKey(fileId: string) {
   return `file-${fileId}`;
 }

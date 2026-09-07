@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  EyeOff,
   Heart,
   Lightbulb,
   MessageCircle,
+  MessageSquareOff,
   MoreHorizontal,
   PartyPopper,
   Pencil,
@@ -16,6 +18,8 @@ import {
   deleteLoungeComment,
   deleteLoungePost,
   setLoungeReaction,
+  toggleHideLoungePost,
+  toggleLoungePostComments,
   togglePinLoungeComment,
   togglePinLoungePost,
   updateLoungePost,
@@ -31,6 +35,7 @@ import type {
   LoungePost,
   LoungeReaction,
 } from "@/lib/member/lounge";
+import { LOUNGE_BADGE_LABELS } from "@/lib/member/lounge-badge";
 import { cn } from "@/lib/utils";
 
 const initial: LoungeActionState = { ok: false, message: "" };
@@ -39,7 +44,7 @@ function LoungeBadgeChip({ badge }: { badge: LoungeBadge | null }) {
   if (!badge) return null;
   return (
     <span className="inline-flex items-center rounded-full bg-teal/15 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-teal uppercase">
-      {badge === "COACH" ? "Coach" : "Admin"}
+      {LOUNGE_BADGE_LABELS[badge]}
     </span>
   );
 }
@@ -103,6 +108,7 @@ function CommentBranch({
   postId,
   viewerId,
   viewerCanModerate,
+  commentsLocked,
   candidates,
   depth,
 }: {
@@ -110,6 +116,7 @@ function CommentBranch({
   postId: string;
   viewerId: string;
   viewerCanModerate: boolean;
+  commentsLocked: boolean;
   candidates: LoungeMentionCandidate[];
   depth: number;
 }) {
@@ -148,7 +155,7 @@ function CommentBranch({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-3 px-1 text-[11px] text-muted">
             <span>{formatWhen(comment.created_at)}</span>
-            {depth === 0 ? (
+            {depth === 0 && !commentsLocked ? (
               <button
                 type="button"
                 className="cursor-pointer font-semibold text-navy/70 hover:text-navy"
@@ -192,7 +199,7 @@ function CommentBranch({
               </button>
             ) : null}
           </div>
-          {replyOpen ? (
+          {replyOpen && !commentsLocked ? (
             <form action={action} className="mt-2 space-y-2">
               <input type="hidden" name="post_id" value={postId} />
               <input type="hidden" name="parent_id" value={comment.id} />
@@ -232,6 +239,7 @@ function CommentBranch({
               postId={postId}
               viewerId={viewerId}
               viewerCanModerate={viewerCanModerate}
+              commentsLocked={commentsLocked}
               candidates={candidates}
               depth={1}
             />
@@ -247,6 +255,7 @@ export function LoungePostCard({
   comments,
   viewerId,
   viewerCanModerate,
+  viewerIsSuperAdmin,
   candidates,
   highlight,
 }: {
@@ -254,6 +263,7 @@ export function LoungePostCard({
   comments: LoungeComment[];
   viewerId: string;
   viewerCanModerate: boolean;
+  viewerIsSuperAdmin: boolean;
   candidates: LoungeMentionCandidate[];
   highlight?: boolean;
 }) {
@@ -273,6 +283,8 @@ export function LoungePostCard({
   const [reactPending, startReact] = useTransition();
   const [deletePending, startDelete] = useTransition();
   const [pinPending, startPin] = useTransition();
+  const [hidePending, startHide] = useTransition();
+  const [lockPending, startLock] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -291,11 +303,19 @@ export function LoungePostCard({
 
   const isMine = post.author.id === viewerId;
   const isPinned = Boolean(post.pinned_at);
-  const showMenu = isMine || viewerCanModerate;
+  const isHidden = Boolean(post.hidden_at);
+  const commentsLocked = Boolean(post.comments_locked_at);
+  const showMenu = isMine || viewerCanModerate || viewerIsSuperAdmin;
+  const showDelete = isMine || (viewerIsSuperAdmin && !isMine);
 
   return (
     <div id={`post-${post.id}`} ref={rootRef}>
-      <MemberCard className={cn(highlight && "ring-2 ring-teal-bright/50")}>
+      <MemberCard
+        className={cn(
+          highlight && "ring-2 ring-teal-bright/50",
+          isHidden && "border-dashed border-navy/25 bg-sand/50",
+        )}
+      >
         <div className="flex items-start gap-3">
           <Avatar name={post.author.full_name} url={post.author.avatar_url} />
           <div className="min-w-0 flex-1">
@@ -310,6 +330,18 @@ export function LoungePostCard({
                     <span className="mr-1.5 inline-flex items-center gap-1 font-semibold text-navy/70">
                       <Pin className="size-3" aria-hidden />
                       Pinned
+                    </span>
+                  ) : null}
+                  {isHidden ? (
+                    <span className="mr-1.5 inline-flex items-center gap-1 font-semibold text-navy/70">
+                      <EyeOff className="size-3" aria-hidden />
+                      Hidden
+                    </span>
+                  ) : null}
+                  {commentsLocked ? (
+                    <span className="mr-1.5 inline-flex items-center gap-1 font-semibold text-navy/70">
+                      <MessageSquareOff className="size-3" aria-hidden />
+                      Comments off
                     </span>
                   ) : null}
                   {formatWhen(post.created_at)}
@@ -327,7 +359,7 @@ export function LoungePostCard({
                     <MoreHorizontal className="size-4" />
                   </button>
                   {menuOpen ? (
-                    <div className="absolute top-10 right-0 z-10 w-40 rounded-xl border border-border bg-white py-1 shadow-lg">
+                    <div className="absolute top-10 right-0 z-10 w-56 rounded-xl border border-border bg-white py-1 shadow-lg">
                       {viewerCanModerate ? (
                         <button
                           type="button"
@@ -346,36 +378,83 @@ export function LoungePostCard({
                           {isPinned ? "Unpin" : "Pin"}
                         </button>
                       ) : null}
-                      {isMine ? (
+                      {viewerIsSuperAdmin ? (
                         <>
                           <button
                             type="button"
                             className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sand"
-                            onClick={() => {
-                              setEditing(true);
-                              setMenuOpen(false);
-                            }}
-                          >
-                            <Pencil className="size-3.5" />
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-sand"
-                            disabled={deletePending}
+                            disabled={hidePending}
                             onClick={() => {
                               setMenuOpen(false);
                               const fd = new FormData();
                               fd.set("post_id", post.id);
-                              startDelete(async () => {
-                                await deleteLoungePost(fd);
+                              startHide(async () => {
+                                await toggleHideLoungePost(fd);
                               });
                             }}
                           >
-                            <Trash2 className="size-3.5" />
-                            Delete
+                            <EyeOff className="size-3.5" />
+                            {isHidden ? "Unhide" : "Hide"}
+                          </button>
+                          <button
+                            type="button"
+                            className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sand"
+                            disabled={lockPending}
+                            onClick={() => {
+                              setMenuOpen(false);
+                              const fd = new FormData();
+                              fd.set("post_id", post.id);
+                              startLock(async () => {
+                                await toggleLoungePostComments(fd);
+                              });
+                            }}
+                          >
+                            <MessageSquareOff className="size-3.5" />
+                            {commentsLocked
+                              ? "Turn on comments"
+                              : "Turn off comments"}
                           </button>
                         </>
+                      ) : null}
+                      {isMine ? (
+                        <button
+                          type="button"
+                          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sand"
+                          onClick={() => {
+                            setEditing(true);
+                            setMenuOpen(false);
+                          }}
+                        >
+                          <Pencil className="size-3.5" />
+                          Edit
+                        </button>
+                      ) : null}
+                      {showDelete ? (
+                        <button
+                          type="button"
+                          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-sand"
+                          disabled={deletePending}
+                          onClick={() => {
+                            setMenuOpen(false);
+                            if (
+                              viewerIsSuperAdmin &&
+                              !isMine &&
+                              !window.confirm(
+                                "Delete this post? Dili na ni makita sa Lounge.",
+                              )
+                            ) {
+                              return;
+                            }
+                            const fd = new FormData();
+                            fd.set("post_id", post.id);
+                            startDelete(async () => {
+                              await deleteLoungePost(fd);
+                            });
+                          }}
+                        >
+                          <Trash2 className="size-3.5" />
+                          Delete
+                        </button>
                       ) : null}
                     </div>
                   ) : null}
@@ -485,31 +564,38 @@ export function LoungePostCard({
                     postId={post.id}
                     viewerId={viewerId}
                     viewerCanModerate={viewerCanModerate}
+                    commentsLocked={commentsLocked}
                     candidates={candidates}
                     depth={0}
                   />
                 ))}
-                <form action={commentAction} className="space-y-2">
-                  <input type="hidden" name="post_id" value={post.id} />
-                  <MentionTextarea
-                    id={`comment-${post.id}`}
-                    name="body"
-                    rows={2}
-                    candidates={candidates}
-                    placeholder="Write a comment… Use @Name to mention."
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    variant="accent"
-                    disabled={commentPending}
-                  >
-                    {commentPending ? "Posting…" : "Comment"}
-                  </Button>
-                  {commentState.message && !commentState.ok ? (
-                    <p className="text-xs text-destructive">{commentState.message}</p>
-                  ) : null}
-                </form>
+                {commentsLocked ? (
+                  <p className="rounded-xl bg-sand/70 px-3 py-2 text-xs text-muted">
+                    Comments are off for this post.
+                  </p>
+                ) : (
+                  <form action={commentAction} className="space-y-2">
+                    <input type="hidden" name="post_id" value={post.id} />
+                    <MentionTextarea
+                      id={`comment-${post.id}`}
+                      name="body"
+                      rows={2}
+                      candidates={candidates}
+                      placeholder="Write a comment… Use @Name to mention."
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="accent"
+                      disabled={commentPending}
+                    >
+                      {commentPending ? "Posting…" : "Comment"}
+                    </Button>
+                    {commentState.message && !commentState.ok ? (
+                      <p className="text-xs text-destructive">{commentState.message}</p>
+                    ) : null}
+                  </form>
+                )}
               </div>
             ) : null}
           </div>

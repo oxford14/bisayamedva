@@ -12,6 +12,10 @@ import { StatusBadge } from "@/components/admin/ui";
 import { Field } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  addMinutesToDatetimeLocal,
+  isoToDatetimeLocal,
+} from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
 export type SessionManagerCourse = {
@@ -66,36 +70,11 @@ const emptyForm = (courseId: string): FormState => ({
   status: "DRAFT",
 });
 
-function toDatetimeLocal(iso: string, timeZone: string) {
-  const date = new Date(iso);
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
-  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
-}
-
 function durationMinutesBetween(startsAt: string, endsAt: string) {
   const minutes = Math.round(
     (new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60_000,
   );
   return String(Math.max(minutes, 15));
-}
-
-function addMinutesToDatetimeLocal(value: string, minutes: number) {
-  const [datePart, timePart = "00:00"] = value.split("T");
-  const [year, month, day] = datePart.split("-").map(Number);
-  const [hour, minute] = timePart.split(":").map(Number);
-  const date = new Date(year, month - 1, day, hour, minute);
-  date.setMinutes(date.getMinutes() + minutes);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function formatDurationLabel(minutes: number) {
@@ -116,7 +95,7 @@ function sessionToForm(session: SessionManagerRow): FormState {
     id: session.id,
     course_id: session.course_id,
     title: session.title,
-    starts_at: toDatetimeLocal(session.starts_at, session.timezone),
+    starts_at: isoToDatetimeLocal(session.starts_at, session.timezone),
     duration_minutes: durationMinutesBetween(session.starts_at, session.ends_at),
     capacity: String(session.capacity),
     meeting_url: session.meeting_url ?? "",

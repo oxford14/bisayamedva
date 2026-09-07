@@ -1,3 +1,5 @@
+"use client";
+
 import { LoungeBadgeForm } from "@/components/admin/lounge-badge-form";
 import {
   EditUserForm,

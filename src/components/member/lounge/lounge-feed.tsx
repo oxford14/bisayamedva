@@ -16,6 +16,7 @@ export function LoungeFeed({
   unreadCount,
   viewerId,
   viewerCanModerate,
+  viewerIsSuperAdmin,
   candidates,
   highlightPostId,
 }: {
@@ -25,6 +26,7 @@ export function LoungeFeed({
   unreadCount: number;
   viewerId: string;
   viewerCanModerate: boolean;
+  viewerIsSuperAdmin: boolean;
   candidates: LoungeMentionCandidate[];
   highlightPostId?: string | null;
 }) {
@@ -45,6 +47,7 @@ export function LoungeFeed({
               comments={commentsByPost[post.id] ?? []}
               viewerId={viewerId}
               viewerCanModerate={viewerCanModerate}
+              viewerIsSuperAdmin={viewerIsSuperAdmin}
               candidates={candidates}
               highlight={highlightPostId === post.id}
             />

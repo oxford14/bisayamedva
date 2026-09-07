@@ -1,4 +1,5 @@
 import {
+  Award,
   BookOpen,
   CalendarDays,
   Gift,
@@ -36,6 +37,11 @@ export const memberNav: MemberNavItem[] = [
     href: "/member/modules",
     label: "Modules",
     icon: Layers,
+  },
+  {
+    href: "/member/certificates",
+    label: "Certificates",
+    icon: Award,
   },
   {
     href: "/member/schedule",

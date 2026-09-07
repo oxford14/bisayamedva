@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { submitModuleQuiz } from "@/app/(member)/member/modules-actions";
 import { modulesCopy } from "@/content/site";
 import { Button } from "@/components/ui/button";
+import { courseCertificateHref } from "@/lib/member/certificate-shared";
 import { quizPassed } from "@/lib/member/module-player-shared";
 import type { StudentQuizAttempt, StudentQuizQuestion } from "@/lib/member/modules";
 
@@ -13,11 +14,15 @@ export function ModuleQuiz({
   questions,
   latestAttempt,
   nextHref,
+  isLast = false,
+  courseSlug,
 }: {
   moduleId: string;
   questions: StudentQuizQuestion[];
   latestAttempt: StudentQuizAttempt | null;
   nextHref?: string | null;
+  isLast?: boolean;
+  courseSlug?: string;
 }) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -46,6 +51,11 @@ export function ModuleQuiz({
         <p className="rounded-xl bg-teal-bright/20 px-4 py-3 text-sm font-medium text-navy">
           {modulesCopy.quizScore}: {result.score}/{result.total}
           {passed ? "" : ` · ${modulesCopy.quizNeedPass}`}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
         </p>
       ) : null}
 
@@ -109,11 +119,6 @@ export function ModuleQuiz({
               ))}
             </div>
           </fieldset>
-          {error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          ) : null}
           <Button type="submit" variant="accent" disabled={pending || !answered}>
             {pending
               ? "Checking…"
@@ -173,13 +178,22 @@ export function ModuleQuiz({
             >
               {modulesCopy.quizRetake}
             </Button>
-            {passed && continueHref ? (
+            {passed && (isLast ? courseSlug : continueHref) ? (
               <Button
                 type="button"
                 variant="accent"
-                onClick={() => router.push(continueHref)}
+                disabled={pending}
+                onClick={() => {
+                  if (isLast && courseSlug) {
+                    router.push(courseCertificateHref(courseSlug));
+                    return;
+                  }
+                  if (continueHref) router.push(continueHref);
+                }}
               >
-                {modulesCopy.nextItem} →
+                {isLast
+                  ? modulesCopy.viewCertificate
+                  : `${modulesCopy.nextItem} →`}
               </Button>
             ) : null}
           </div>

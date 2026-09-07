@@ -1,10 +1,18 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createAvatarSignedUrl } from "@/lib/member/avatar";
+import { isLoungeBadge, type LoungeBadge } from "@/lib/member/lounge-badge";
 import { createClient } from "@/lib/supabase/server";
+import {
+  canAccessMemberApp,
+  isAdminRole,
+  isStudentRole,
+  type UserRole,
+} from "@/lib/supabase/roles";
 
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "STUDENT";
-export type LoungeBadge = "COACH" | "ADMIN";
+export type { UserRole };
+export type { LoungeBadge };
+export { canAccessMemberApp, isAdminRole, isStudentRole };
 
 export type AdminProfile = {
   id: string;
@@ -24,18 +32,6 @@ export type AdminProfile = {
 };
 
 export type MemberProfile = AdminProfile;
-
-export function isAdminRole(role: string | null | undefined) {
-  return role === "SUPER_ADMIN" || role === "ADMIN";
-}
-
-export function isStudentRole(role: string | null | undefined) {
-  return role === "STUDENT";
-}
-
-export function canAccessMemberApp(role: string | null | undefined) {
-  return isStudentRole(role) || isAdminRole(role);
-}
 
 /** Profile row only — avatar_url deferred to keep nav fast. */
 export const getCurrentProfile = cache(async (): Promise<AdminProfile | null> => {
@@ -59,10 +55,7 @@ export const getCurrentProfile = cache(async (): Promise<AdminProfile | null> =>
 
   return {
     ...row,
-    lounge_badge:
-      row.lounge_badge === "COACH" || row.lounge_badge === "ADMIN"
-        ? row.lounge_badge
-        : null,
+    lounge_badge: isLoungeBadge(row.lounge_badge) ? row.lounge_badge : null,
     avatar_url: null,
     withdrawal_number: (row.withdrawal_number as string | null) ?? null,
     has_withdrawal_pin: Boolean(pinSetAt),

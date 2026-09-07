@@ -30,8 +30,15 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
+  const isServerAction =
+    request.method === "POST" &&
+    (request.headers.has("Next-Action") || request.headers.has("next-action"));
 
-  if ((path.startsWith("/admin") || path.startsWith("/member")) && !user) {
+  if (
+    (path.startsWith("/admin") || path.startsWith("/member")) &&
+    !user &&
+    !isServerAction
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     url.searchParams.set("next", path);

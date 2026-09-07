@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useState, useTransition } from "react";
+import { List } from "lucide-react";
 import {
   togglePromoActive,
   upsertPromoCode,
@@ -22,6 +23,15 @@ export type PromoManagerRow = {
   active: boolean;
   ends_at: string | null;
   note: string | null;
+};
+
+export type PromoRedemptionRow = {
+  id: string;
+  fullName: string;
+  email: string;
+  courseTitle: string;
+  status: string;
+  createdAt: string;
 };
 
 type FormState = {
@@ -77,18 +87,31 @@ function discountLabel(row: PromoManagerRow) {
   return `${formatPeso(row.discount_value)} off`;
 }
 
-export function PromoManager({ promos }: { promos: PromoManagerRow[] }) {
+export function PromoManager({
+  promos,
+  redemptions,
+}: {
+  promos: PromoManagerRow[];
+  redemptions: Record<string, PromoRedemptionRow[]>;
+}) {
   const router = useRouter();
+  const [rows, setRows] = useState(promos);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [pending, startTransition] = useTransition();
+  const [redemptionPromo, setRedemptionPromo] = useState<PromoManagerRow | null>(
+    null,
+  );
   const editing = Boolean(form.id);
 
+  useEffect(() => {
+    setRows(promos);
+  }, [promos]);
+
   const sorted = useMemo(
-    () =>
-      [...promos].sort((a, b) => a.code.localeCompare(b.code)),
-    [promos],
+    () => [...rows].sort((a, b) => a.code.localeCompare(b.code)),
+    [rows],
   );
 
   function reset() {
@@ -101,41 +124,69 @@ export function PromoManager({ promos }: { promos: PromoManagerRow[] }) {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const formData = new FormData();
-    if (form.id) formData.set("id", form.id);
-    formData.set("code", form.code);
-    formData.set("discount_type", form.discount_type);
-    formData.set("discount_value", form.discount_value);
-    if (form.unlimited) formData.set("unlimited", "1");
-    else formData.set("max_redemptions", form.max_redemptions);
-    formData.set("active", form.active ? "1" : "0");
-    if (form.ends_at) formData.set("ends_at", form.ends_at);
-    if (form.note) formData.set("note", form.note);
 
     startTransition(async () => {
-      const result = await upsertPromoCode(formData);
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = await upsertPromoCode({
+          id: form.id || undefined,
+          code: form.code,
+          discount_type: form.discount_type,
+          discount_value: form.discount_value,
+          unlimited: form.unlimited,
+          max_redemptions: form.unlimited ? undefined : form.max_redemptions,
+          active: form.active,
+          ends_at: form.ends_at || undefined,
+          note: form.note || undefined,
+        });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setRows((current) => {
+          const next = result.promo;
+          const exists = current.some((item) => item.id === next.id);
+          return exists
+            ? current.map((item) => (item.id === next.id ? next : item))
+            : [next, ...current];
+        });
+        if (!editing) {
+          setForm(emptyForm());
+        }
+        setSuccess(editing ? "Promo updated." : "Promo created.");
+        router.refresh();
+      } catch {
+        setError("Could not save promo. Try again.");
       }
-      setSuccess(editing ? "Promo updated." : "Promo created.");
-      if (!editing) reset();
-      router.refresh();
     });
   }
 
   function setActive(row: PromoManagerRow, active: boolean) {
-    const formData = new FormData();
-    formData.set("id", row.id);
-    formData.set("active", active ? "1" : "0");
+    setError("");
+    setSuccess("");
     startTransition(async () => {
-      const result = await togglePromoActive(formData);
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = await togglePromoActive(row.id, active);
+        if (!result?.ok) {
+          setError(result?.error ?? "Could not update promo. Try again.");
+          return;
+        }
+        setRows((current) =>
+          current.map((item) =>
+            item.id === row.id ? { ...item, active } : item,
+          ),
+        );
+        if (form.id === row.id) {
+          setForm((prev) => ({ ...prev, active }));
+        }
+        setSuccess(
+          active
+            ? "Promo activated. New checkouts can use this code again."
+            : "Promo deactivated. Existing redemptions stay. New checkouts cannot use this code.",
+        );
+        router.refresh();
+      } catch {
+        setError("Could not update promo. Try again.");
       }
-      setSuccess(active ? "Promo activated." : "Promo deactivated.");
-      router.refresh();
     });
   }
 
@@ -292,6 +343,15 @@ export function PromoManager({ promos }: { promos: PromoManagerRow[] }) {
         </form>
       </div>
 
+      {error || success ? (
+        <p
+          className={`text-sm ${error ? "text-destructive" : "text-navy"}`}
+          role={error ? "alert" : "status"}
+        >
+          {error || success}
+        </p>
+      ) : null}
+
       {sorted.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-cream/60 px-6 py-12 text-center">
           <p className="font-semibold text-ink">No promo codes yet</p>
@@ -326,8 +386,25 @@ export function PromoManager({ promos }: { promos: PromoManagerRow[] }) {
                     <td className="px-4 py-3 font-medium">{row.code}</td>
                     <td className="px-4 py-3">{discountLabel(row)}</td>
                     <td className="px-4 py-3">
-                      {row.redeemed_count}/
-                      {row.max_redemptions == null ? "∞" : row.max_redemptions}
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {row.redeemed_count}/
+                          {row.max_redemptions == null
+                            ? "∞"
+                            : row.max_redemptions}
+                        </span>
+                        {row.redeemed_count > 0 ||
+                        (redemptions[row.id]?.length ?? 0) > 0 ? (
+                          <button
+                            type="button"
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-navy/70 transition hover:bg-cream hover:text-navy"
+                            aria-label={`View who used ${row.code}`}
+                            onClick={() => setRedemptionPromo(row)}
+                          >
+                            <List className="size-4" aria-hidden />
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={row.active ? "ACTIVE" : "ARCHIVED"} />
@@ -369,6 +446,102 @@ export function PromoManager({ promos }: { promos: PromoManagerRow[] }) {
           </div>
         </div>
       )}
+
+      {redemptionPromo ? (
+        <PromoRedemptionsSheet
+          promo={redemptionPromo}
+          users={redemptions[redemptionPromo.id] ?? []}
+          onClose={() => setRedemptionPromo(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PromoRedemptionsSheet({
+  promo,
+  users,
+  onClose,
+}: {
+  promo: PromoManagerRow;
+  users: PromoRedemptionRow[];
+  onClose: () => void;
+}) {
+  const titleId = useId();
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-navy/45 p-0 sm:items-center sm:p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-t-2xl border border-border bg-white shadow-[0_24px_60px_rgba(47,56,38,0.18)] sm:rounded-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="border-b border-border px-5 py-4">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-navy/50 uppercase">
+            Who used this code
+          </p>
+          <h2
+            id={titleId}
+            className="mt-1 font-display text-xl font-semibold text-ink"
+          >
+            {promo.code}
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            {users.length} {users.length === 1 ? "person" : "people"}
+          </p>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
+          {users.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted">
+              No one has used this code yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/70">
+              {users.map((user) => (
+                <li
+                  key={user.id}
+                  className="flex flex-wrap items-start justify-between gap-2 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">
+                      {user.fullName}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-muted">
+                      {user.email}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {user.courseTitle} ·{" "}
+                      {new Date(user.createdAt).toLocaleString("en-PH")}
+                    </p>
+                  </div>
+                  <StatusBadge status={user.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="border-t border-border px-5 py-4">
+          <Button type="button" variant="secondary" className="w-full" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

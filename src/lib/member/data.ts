@@ -1,3 +1,5 @@
+import { certificatesCopy } from "@/content/site";
+import { formatSessionWhenLabel } from "@/lib/datetime";
 import { isAdminRole, type UserRole } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatPeso } from "@/lib/utils";
@@ -151,25 +153,11 @@ export function pickPrimaryEnrollment(enrollments: MemberEnrollment[]) {
 
 export function formatSessionWhen(session: MemberSession | null) {
   if (!session?.starts_at) return "Schedule coming soon";
-  const start = new Date(session.starts_at);
-  const end = session.ends_at ? new Date(session.ends_at) : null;
-  const date = start.toLocaleDateString("en-PH", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const startTime = start.toLocaleTimeString("en-PH", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  const endTime = end
-    ? end.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })
-    : null;
-  const tz = session.timezone ? ` · ${session.timezone}` : "";
-  return endTime
-    ? `${date} · ${startTime} – ${endTime}${tz}`
-    : `${date} · ${startTime}${tz}`;
+  return formatSessionWhenLabel(
+    session.starts_at,
+    session.ends_at,
+    session.timezone,
+  );
 }
 
 export function enrollmentNextAction(enrollment: MemberEnrollment | null) {
@@ -216,9 +204,9 @@ export function enrollmentNextAction(enrollment: MemberEnrollment | null) {
   if (enrollment.status === "COMPLETED") {
     return {
       title: "Completed na ang course",
-      body: "Nice work. Review your course details anytime, or ask about next steps for Upskill Topics.",
-      href: "/member/course",
-      cta: "View course",
+      body: "Nice work. Open your certificate, or continue to the next Upskill Topic when ready.",
+      href: "/member/certificates",
+      cta: certificatesCopy.view,
     };
   }
 

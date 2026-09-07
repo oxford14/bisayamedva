@@ -98,7 +98,7 @@ export default async function CoursesPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Price" htmlFor="price">
-                <Input id="price" name="price" type="number" min="0" step="1" required defaultValue="299" />
+                <Input id="price" name="price" type="number" min="0" step="1" required defaultValue="499" />
               </Field>
               <Field label="Sort order" htmlFor="sort_order">
                 <Input id="sort_order" name="sort_order" type="number" defaultValue="0" />

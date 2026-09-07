@@ -4,8 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateLoungeBadge } from "@/app/(admin)/admin/actions";
 import { Button } from "@/components/ui/button";
+import {
+  LOUNGE_BADGE_LABELS,
+  LOUNGE_BADGES,
+  isLoungeBadge,
+  type LoungeBadge,
+} from "@/lib/member/lounge-badge";
 
-type LoungeBadgeValue = "" | "COACH" | "ADMIN";
+type LoungeBadgeValue = "" | LoungeBadge;
 
 export function LoungeBadgeForm({
   userId,
@@ -16,7 +22,7 @@ export function LoungeBadgeForm({
 }) {
   const router = useRouter();
   const [badge, setBadge] = useState<LoungeBadgeValue>(
-    (initialBadge as LoungeBadgeValue) || "",
+    isLoungeBadge(initialBadge) ? initialBadge : "",
   );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -48,8 +54,8 @@ export function LoungeBadgeForm({
     >
       <h2 className="font-semibold text-ink">Student Lounge badge</h2>
       <p className="mt-1 text-sm text-muted">
-        Coach and Admin badges show beside their name in the Lounge. Coaches and
-        Admins can also pin posts and comments.
+        Coach, Admin, Facilitator, and IT Head badges show beside their name in
+        the Lounge. Badge holders can also pin posts and comments.
       </p>
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="block min-w-[12rem] flex-1 text-sm">
@@ -60,8 +66,11 @@ export function LoungeBadgeForm({
             onChange={(e) => setBadge(e.target.value as LoungeBadgeValue)}
           >
             <option value="">None</option>
-            <option value="COACH">Coach</option>
-            <option value="ADMIN">Admin</option>
+            {LOUNGE_BADGES.map((value) => (
+              <option key={value} value={value}>
+                {LOUNGE_BADGE_LABELS[value]}
+              </option>
+            ))}
           </select>
         </label>
         <Button type="submit" variant="accent" disabled={pending}>

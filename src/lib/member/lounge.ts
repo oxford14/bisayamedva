@@ -1,7 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVATAR_BUCKET } from "@/lib/member/avatar";
+import {
+  isLoungeBadge,
+  type LoungeBadge,
+} from "@/lib/member/lounge-badge";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+export type { LoungeBadge } from "@/lib/member/lounge-badge";
 
 export const LOUNGE_IMAGE_BUCKET = "lounge-images";
 export const LOUNGE_IMAGE_MAX_BYTES = 2_097_152;
@@ -18,7 +24,6 @@ export type LoungeNotificationType =
   | "REPLY"
   | "REACTION"
   | "MENTION";
-export type LoungeBadge = "COACH" | "ADMIN";
 
 export type LoungeAuthor = {
   id: string;
@@ -35,6 +40,8 @@ export type LoungePost = {
   created_at: string;
   updated_at: string;
   pinned_at: string | null;
+  hidden_at: string | null;
+  comments_locked_at: string | null;
   author: LoungeAuthor;
   comment_count: number;
   reaction_counts: Record<LoungeReaction, number>;
@@ -97,7 +104,7 @@ function displayName(fullName: string | null | undefined) {
 function normalizeLoungeBadge(
   value: string | null | undefined,
 ): LoungeBadge | null {
-  return value === "COACH" || value === "ADMIN" ? value : null;
+  return isLoungeBadge(value) ? value : null;
 }
 
 function missingAuthor(id: string): LoungeAuthor {
@@ -109,9 +116,13 @@ export function canModerateLounge(profile: {
   lounge_badge?: string | null;
 }) {
   if (profile.role === "ADMIN" || profile.role === "SUPER_ADMIN") return true;
-  return (
-    profile.lounge_badge === "COACH" || profile.lounge_badge === "ADMIN"
-  );
+  return isLoungeBadge(profile.lounge_badge);
+}
+
+export function canSuperModerateLounge(profile: {
+  role?: string | null;
+}) {
+  return profile.role === "SUPER_ADMIN";
 }
 
 function sortPinnedFirst<T extends { pinned_at: string | null; created_at: string }>(
@@ -165,7 +176,9 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
 
   const { data: posts, error } = await supabase
     .from("lounge_posts")
-    .select("id, author_id, body, image_path, created_at, updated_at, pinned_at")
+    .select(
+      "id, author_id, body, image_path, created_at, updated_at, pinned_at, hidden_at, comments_locked_at",
+    )
     .is("deleted_at", null)
     .order("pinned_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -243,6 +256,8 @@ export async function getLoungeFeed(viewerId: string, limit = 40) {
         created_at: post.created_at,
         updated_at: post.updated_at,
         pinned_at: post.pinned_at ?? null,
+        hidden_at: post.hidden_at ?? null,
+        comments_locked_at: post.comments_locked_at ?? null,
         author,
         comment_count: commentCount.get(post.id) ?? 0,
         reaction_counts: reactionCounts.get(post.id) ?? emptyReactions(),

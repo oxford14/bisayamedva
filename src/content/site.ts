@@ -28,14 +28,14 @@ export const site = {
   seo: {
     title: "Bisaya MedVA | Medical VA Training",
     description:
-      "Learn practical Medical Billing skills with Bisaya MedVA and start building your foundation for a Medical Virtual Assistant career.",
+      "Learn practical Medical VA skills with Bisaya MedVA and start building your foundation for a Medical Virtual Assistant career.",
   },
   featuredCourse: {
-    id: "medical-billing-masterclass",
-    name: "Medical Billing Masterclass",
-    subtitle: "Medical Billing Fundamentals for Aspiring Medical VAs",
+    id: "medical-va-masterclass",
+    name: "Medical VA Masterclass",
+    subtitle: "Front desk, workflow, and Medical VA fundamentals",
     type: "BASIC" as const,
-    price: 299,
+    price: 499,
     currency: "PHP" as const,
     priceLabel: "One-time training",
   },
@@ -66,9 +66,9 @@ export const nav = {
 
 export const hero = {
   eyebrow: "BISAYA MEDVA",
-  headline: "Start Your Medical VA Journey with Medical Billing",
+  headline: "Start Your Medical VA Journey",
   support:
-    "Ganahan ka makasugod sa Medical VA field pero wala pa kay solid foundation? Start with Medical Billing and learn the basics through a practical online training designed for aspiring Medical VAs.",
+    "Ganahan ka makasugod sa Medical VA field pero wala pa kay solid foundation? Start with the Medical VA Masterclass — front desk, workflow, and the basics through a practical online training designed for aspiring Medical VAs.",
   primaryCta: { href: "/register", label: "Register" },
   secondaryCta: { href: "/#what-youll-learn", label: "See What You'll Learn" },
   image: {
@@ -83,56 +83,56 @@ export const hero = {
 
 export const trustItems = [
   { title: "Every weekend", body: "Recurring online training. Day and time set by the coach." },
-  { title: "Practical foundation", body: "Medical Billing basics from a Medical VA perspective." },
+  { title: "Practical foundation", body: "Front desk and workflow basics from a Medical VA perspective." },
   { title: "Bisaya-English", body: "Natural Cebuano and English. Dili Tagalog. Dili jargon dump." },
-  { title: "One-time fee", body: "Pay once for the introductory Medical Billing course." },
+  { title: "One-time fee", body: "Pay once for the introductory Medical VA Masterclass." },
 ] as const;
 
 export const whyBilling = {
-  eyebrow: "WHY MEDICAL BILLING?",
-  title: "Before the specialties, masabtan nimo ang billing workflow.",
-  body: "Before ka mag-deep dive sa different Medical VA specialties, importante nga masabtan nimo ang basic Medical Billing workflow. Billing is how healthcare work becomes payable work. If you understand that foundation, the rest of the Medical VA path becomes clearer.",
+  eyebrow: "WHAT COMES AFTER",
+  title: "Medical Billing and Upskill Topics open later.",
+  body: "The course you enroll in now is the Medical VA Masterclass. Medical Billing Masterclass and the Upskill Topics (Insurance Verification, Claims, Denials) stay as later enrollments — dili apil sa first payment.",
   points: [
     {
-      title: "How billing fits healthcare operations",
-      body: "Patient information, provider details, and documentation all feed the billing process.",
+      title: "Start with Medical VA work",
+      body: "Front desk, intake, and daily workflow first so you have a usable foundation.",
     },
     {
-      title: "Why Medical VAs need this foundation",
-      body: "Daghang Medical VA roles touch billing even if the job title sounds different.",
+      title: "Medical Billing comes next",
+      body: "Billing is how healthcare work becomes payable work. We will open that Masterclass separately.",
     },
     {
       title: "A practical starting point",
-      body: "This course introduces the workflow. It does not claim to make you fully job-ready overnight.",
+      body: "This first course introduces the workflow. It does not claim to make you fully job-ready overnight.",
     },
   ],
 } as const;
 
 export const curriculum = {
   eyebrow: "WHAT YOU'LL LEARN",
-  title: "Medical Billing fundamentals, step by step.",
+  title: "Medical VA fundamentals, step by step.",
   intro:
-    `The ₱${site.featuredCourse.price} Medical Billing Masterclass focuses only on Medical Billing. Exact lessons stay with the coach. These are the core ideas you will meet.`,
+    `The ₱${site.featuredCourse.price} ${site.featuredCourse.name} focuses on front desk, workflow, and day-to-day Medical VA work. Exact lessons stay with the coach. These are the core ideas you will meet.`,
   items: [
     {
-      title: "Medical Billing Fundamentals",
-      body: "Learn the basic concepts and terminology used in Medical Billing.",
+      title: "Medical VA Fundamentals",
+      body: "Learn how a Medical VA supports a clinic — intake, scheduling, and daily coordination.",
     },
     {
-      title: "Billing Workflow",
-      body: "Understand how a basic billing workflow operates from start to follow-through.",
+      title: "Front Desk Workflow",
+      body: "Understand the flow from patient contact to the next handoff, step by step.",
     },
     {
-      title: "Patient & Provider Information",
-      body: "Understand the information involved in a billing process.",
+      title: "Patient & Clinic Information",
+      body: "Practice handling the details a Medical VA checks every day.",
     },
     {
-      title: "Medical Billing Terminology",
-      body: "Become familiar with common Medical Billing terms used in real work.",
+      title: "Medical Terminology",
+      body: "Become familiar with common terms used in real clinic and billing work.",
     },
     {
-      title: "Revenue Cycle Basics",
-      body: "Understand where Medical Billing fits within the healthcare revenue cycle.",
+      title: "Where Billing Fits Later",
+      body: "See how Medical Billing and Upskill Topics connect after this foundation. Separate enrollments, coming next.",
     },
   ],
 } as const;
@@ -140,7 +140,7 @@ export const curriculum = {
 export const notIncluded = {
   eyebrow: "UPSKILL TOPICS",
   title: "Want to go deeper?",
-  body: "After Foundation training, continue into specialized Upskill Topics. Each topic is a separate offer with its own price, schedule, and enrollment.",
+  body: "After the Medical VA Masterclass, you can continue into Medical Billing and specialized Upskill Topics when they open. Each later course is a separate enrollment.",
   note: "Upskill courses are available inside your student account after you register.",
 } as const;
 
@@ -156,8 +156,8 @@ export const audiences = [
     id: "career-shifter",
     title: "Career Shifters",
     body: "Nag-plan ka ug career shift? Start by building a healthcare-related skill foundation.",
-    image: "/images/people/career-shifter.webp",
-    alt: "Filipina career shifter studying Medical Billing at the dining table.",
+    image: "/images/people/career-shifter-2.webp",
+    alt: "Young Filipina career shifter studying at the dining table with a laptop.",
   },
   {
     id: "current-va",
@@ -217,7 +217,7 @@ export const howItWorks = {
     {
       n: "02",
       title: "Pay",
-      body: "Complete the one-time Medical Billing payment through PayMongo.",
+      body: `Complete the one-time ₱${site.featuredCourse.price} ${site.featuredCourse.name} payment through PayMongo.`,
     },
     {
       n: "03",
@@ -242,7 +242,7 @@ export const whyBisaya = {
     },
     {
       title: "Practical skills",
-      body: "The first product is Medical Billing, not a giant LMS. You start with a real, usable foundation.",
+      body: "The first product is the Medical VA Masterclass, not a giant LMS. You start with a real, usable foundation. Medical Billing and Upskill Topics come after.",
     },
     {
       title: "Accessible entry",
@@ -258,15 +258,15 @@ export const whyBisaya = {
 export const faqs = [
   {
     q: `Unsa gyud ang ₱${site.featuredCourse.price} course?`,
-    a: `${site.featuredCourse.name}. An introductory, one-time course on Medical Billing fundamentals for aspiring Medical VAs. It is not a full Medical VA program and it does not automatically include Upskill Topics.`,
+    a: `${site.featuredCourse.name}. An introductory, one-time course on front desk, workflow, and Medical VA fundamentals. It does not automatically include Medical Billing or Upskill Topics — those are separate, later enrollments.`,
   },
   {
     q: "Kanus-a ang training?",
     a: "Every weekend. The exact day and time can change, so the next open session is shown on this page. Timezone is Asia/Manila.",
   },
   {
-    q: `Naa ba Insurance Verification, Claims, or Denials sa ₱${site.featuredCourse.price} Medical Billing Masterclass?`,
-    a: "Wala. Insurance Verification, Claims, and Denials are separate Upskill Topics — each ₱1,000 with its own enrollment inside your student account.",
+    q: `Naa ba Insurance Verification, Claims, or Denials sa ₱${site.featuredCourse.price} ${site.featuredCourse.name}?`,
+    a: "Wala. Insurance Verification, Claims, and Denials — and Medical Billing Masterclass — are separate later courses, each with its own enrollment inside your student account.",
   },
   {
     q: "Unsa nga language ang gamiton?",
@@ -278,7 +278,7 @@ export const faqs = [
   },
   {
     q: `Maka-job ready ba ko after ₱${site.featuredCourse.price}?`,
-    a: "This course builds a foundation. It does not claim to make you fully job-ready by itself. After Medical Billing, you can continue into specialized Upskill Topics.",
+    a: "This course builds a foundation. It does not claim to make you fully job-ready by itself. After the Medical VA Masterclass, you can continue into Medical Billing and specialized Upskill Topics when they open.",
   },
   {
     q: "Unsaon pagbayad?",
@@ -454,6 +454,39 @@ export const scheduleCopy = {
     "Check back later when admin opens the next weekend training date.",
 } as const;
 
+export const certificatesCopy = {
+  nav: "Certificates",
+  title: "Certificates",
+  description:
+    "Diri nimo makita ang certificates for courses you already finished — all modules complete.",
+  view: "View certificate",
+  print: "Download PDF",
+  savingPdf: "Saving PDF…",
+  pdfError: "Dili ma-download ang PDF. Try again.",
+  back: "All certificates",
+  emptyTitle: "Wala pa kay certificate",
+  emptyBody:
+    "Finish every lesson and pass the quizzes in a course. Your certificate mo-gawas diri after the last item.",
+  emptyCta: "Open modules",
+  issued: "Issued by Bisaya MedVA",
+  certifies: "This certifies that",
+  completed: "has completed",
+  dateLabel: "Date completed",
+  idLabel: "Certificate ID",
+  signatoryName: trainer.name,
+  signatoryTitle: "Medical VA Coach",
+  scanPrompt: "Scan this code to verify this certificate is authentic.",
+  scanNote:
+    "This check confirms Bisaya MedVA issued it, not an edited copy.",
+  authenticating: "Authenticating Certificate",
+  authenticTitle: "Certificate is authentic",
+  authenticBody:
+    "This page is for clients to confirm Bisaya MedVA issued this certificate.",
+  unverifiedTitle: "This certificate could not be verified",
+  unverifiedBody:
+    "We could not confirm this certificate was issued by Bisaya MedVA.",
+} as const;
+
 export const modulesCopy = {
   nav: "Modules",
   title: "Modules",
@@ -511,6 +544,10 @@ export const modulesCopy = {
     "Admin preview — you can open all Modules without enrolling.",
   draftBadge: "Draft",
   nextItem: "Go to next item",
+  viewCertificate: "View certificate of completion",
+  certificateNotReadyTitle: "Certificate dili pa ready",
+  certificateNotReadyBody:
+    "Finish every lesson and pass the quizzes. Imong certificate mo-gawas diri after the last item.",
   backToModules: "Back to modules",
   readingLabel: "Reading",
   videoLabel: "Video",

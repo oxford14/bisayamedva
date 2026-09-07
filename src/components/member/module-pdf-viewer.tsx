@@ -24,7 +24,10 @@ export function ModulePdfViewer({ src }: { src: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    const task = getDocument({ url: src, withCredentials: true });
+    const task = getDocument({
+      url: src,
+      withCredentials: !src.startsWith("blob:"),
+    });
     setLoading(true);
     setError(false);
     setPdf(null);

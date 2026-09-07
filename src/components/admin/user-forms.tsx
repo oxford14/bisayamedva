@@ -5,7 +5,6 @@ import { useState, useTransition } from "react";
 import {
   createAdminUser,
   deleteAdminUser,
-  promoteUserToAdmin,
   updateAdminUser,
   updateUserRole,
 } from "@/app/(admin)/admin/actions";
@@ -276,36 +275,17 @@ export function UserRoleActions({
       <div>
         <h2 className="font-semibold text-ink">Role & access</h2>
         <p className="mt-1 text-sm text-muted">
-          Promote students to Admin, or fully manage roles as Super Admin.
+          {isSuperAdmin
+            ? "Choose Student, Admin, or Super Admin for this account."
+            : "Choose Student or Admin for this account."}
         </p>
       </div>
 
-      {role === "STUDENT" ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            setError("");
-            setSuccess("");
-            startTransition(async () => {
-              const result = await promoteUserToAdmin(formData);
-              if (!result.ok) {
-                setError(result.error);
-                return;
-              }
-              setSuccess("Promoted to Admin.");
-              router.refresh();
-            });
-          }}
-        >
-          <input type="hidden" name="user_id" value={userId} />
-          <Button type="submit" variant="accent" disabled={pending}>
-            {pending ? "Promoting…" : "Promote to Admin"}
-          </Button>
-        </form>
-      ) : null}
-
-      {isSuperAdmin ? (
+      {role === "SUPER_ADMIN" && !isSuperAdmin ? (
+        <p className="text-sm text-muted">
+          Only a Super Admin can change this role.
+        </p>
+      ) : (
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
@@ -314,40 +294,46 @@ export function UserRoleActions({
             setError("");
             setSuccess("");
             startTransition(async () => {
-              const result = await updateUserRole(formData);
-              if (!result.ok) {
-                setError(result.error);
-                return;
+              try {
+                const result = await updateUserRole(formData);
+                if (!result?.ok) {
+                  setError(result?.error ?? "Could not update role.");
+                  return;
+                }
+                setSuccess("Role updated.");
+                router.refresh();
+              } catch {
+                setError("Could not update role. Try again.");
               }
-              setSuccess("Role updated.");
-              router.refresh();
             });
           }}
         >
-          <input type="hidden" name="user_id" value={userId} />
-          <div>
-            <label
-              htmlFor="role_select"
-              className="mb-1.5 block text-xs font-semibold tracking-wide text-muted uppercase"
-            >
-              Set role
-            </label>
-            <select
-              id="role_select"
-              name="role"
-              defaultValue={role}
-              className="h-10 rounded-[10px] border border-border bg-white px-2 text-sm"
-            >
-              <option value="STUDENT">STUDENT</option>
-              <option value="ADMIN">ADMIN</option>
+        <input type="hidden" name="user_id" value={userId} />
+        <div>
+          <label
+            htmlFor="role_select"
+            className="mb-1.5 block text-xs font-semibold tracking-wide text-muted uppercase"
+          >
+            Set role
+          </label>
+          <select
+            id="role_select"
+            name="role"
+            defaultValue={role}
+            className="h-10 rounded-[10px] border border-border bg-white px-2 text-sm"
+          >
+            <option value="STUDENT">STUDENT</option>
+            <option value="ADMIN">ADMIN</option>
+            {isSuperAdmin ? (
               <option value="SUPER_ADMIN">SUPER ADMIN</option>
-            </select>
-          </div>
-          <Button type="submit" variant="secondary" disabled={pending}>
-            {pending ? "Saving…" : "Update role"}
-          </Button>
-        </form>
-      ) : null}
+            ) : null}
+          </select>
+        </div>
+        <Button type="submit" variant="accent" disabled={pending}>
+          {pending ? "Saving…" : "Update role"}
+        </Button>
+      </form>
+      )}
 
       {!isSelf ? (
         <form
@@ -361,13 +347,17 @@ export function UserRoleActions({
             setError("");
             setSuccess("");
             startTransition(async () => {
-              const result = await deleteAdminUser(formData);
-              if (!result.ok) {
-                setError(result.error);
-                return;
+              try {
+                const result = await deleteAdminUser(formData);
+                if (!result?.ok) {
+                  setError(result?.error ?? "Could not delete user.");
+                  return;
+                }
+                router.push("/admin/users");
+                router.refresh();
+              } catch {
+                setError("Could not delete user. Try again.");
               }
-              router.push("/admin/users");
-              router.refresh();
             });
           }}
         >

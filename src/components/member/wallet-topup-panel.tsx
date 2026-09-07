@@ -12,7 +12,7 @@ import { authCopy, walletCopy } from "@/content/site";
 import { normalizeQrSrc } from "@/lib/paymongo/qr";
 import { formatPeso } from "@/lib/utils";
 
-const PRESETS = [299, 499, 1000, 2000];
+const PRESETS = [499, 1000, 2000];
 
 export function WalletTopupPanel({
   balanceLabel,

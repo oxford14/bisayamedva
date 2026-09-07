@@ -8,7 +8,7 @@ import {
   upskillCourses,
   type CatalogCourse,
 } from "@/content/courses";
-import { site } from "@/content/site";
+import { certificatesCopy, site } from "@/content/site";
 import { Button } from "@/components/ui/button";
 import { EnrollScheduleModal } from "@/components/member/enroll-schedule-modal";
 import { MemberStatusBadge } from "@/components/member/ui";
@@ -121,31 +121,48 @@ function CourseCard({
         </p>
 
         <div className="mt-auto border-t border-border pt-4">
-          <p className="mb-3 font-display text-3xl font-semibold text-navy">
-            {formatPeso(course.price)}
-          </p>
-
-          {owned ? (
-            <Button variant="secondary" className="w-full" asChild>
-              <Link href="/member/schedule">
-                {enrollment &&
-                !enrollment.session &&
-                (enrollment.status === "ACTIVE" ||
-                  enrollment.status === "COMPLETED" ||
-                  enrollment.payment?.status === "PAID")
-                  ? "Choose schedule"
-                  : "View schedule"}
-              </Link>
-            </Button>
+          {course.comingSoon ? (
+            <>
+              <p className="mb-3 font-display text-xl font-semibold text-navy">
+                Coming soon
+              </p>
+              <Button variant="secondary" className="w-full" disabled>
+                Opens after Medical VA Masterclass
+              </Button>
+            </>
           ) : (
-            <Button
-              variant="accent"
-              className="w-full"
-              type="button"
-              onClick={() => onEnroll(course, sessions)}
-            >
-              {`Enroll · ${formatPeso(course.price)}`}
-            </Button>
+            <>
+              <p className="mb-3 font-display text-3xl font-semibold text-navy">
+                {formatPeso(course.price)}
+              </p>
+              {owned ? (
+                <Button variant="secondary" className="w-full" asChild>
+                  {enrollment?.status === "COMPLETED" ? (
+                    <Link href={`/member/certificates/${course.slug}`}>
+                      {certificatesCopy.view}
+                    </Link>
+                  ) : (
+                    <Link href="/member/schedule">
+                      {enrollment &&
+                      !enrollment.session &&
+                      (enrollment.status === "ACTIVE" ||
+                        enrollment.payment?.status === "PAID")
+                        ? "Choose schedule"
+                        : "View schedule"}
+                    </Link>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  variant="accent"
+                  className="w-full"
+                  type="button"
+                  onClick={() => onEnroll(course, sessions)}
+                >
+                  {`Enroll · ${formatPeso(course.price)}`}
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -233,9 +250,9 @@ export function MemberCourseCatalog({
             Foundation
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Duha ka Masterclasses —{" "}
-            {formatPeso(foundationCourses[0]?.price ?? 499)} each. Enroll and
-            pick an open weekend schedule inside your account.
+            Start with the {formatPeso(site.featuredCourse.price)}{" "}
+            {site.featuredCourse.name}. Medical Billing Masterclass opens later
+            as a separate enrollment.
           </p>
         </div>
         <div className="grid gap-5 lg:grid-cols-2">

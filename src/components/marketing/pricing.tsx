@@ -8,11 +8,11 @@ import type { FeaturedOffer } from "@/lib/content/featured-offer";
 import { formatPeso } from "@/lib/utils";
 
 const included = [
-  "Medical Billing fundamentals",
+  "Medical VA fundamentals",
+  "Front desk and daily workflow",
   "Weekend online training session",
   "Student account access",
-  "Attendance recorded by the coach",
-  "Pathway to future Upskill Topics",
+  "Pathway to Medical Billing and Upskill Topics",
 ];
 
 export function Pricing({

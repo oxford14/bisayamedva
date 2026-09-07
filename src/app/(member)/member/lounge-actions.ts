@@ -8,6 +8,7 @@ import {
   LOUNGE_IMAGE_MAX_BYTES,
   LOUNGE_IMAGE_MIME,
   canModerateLounge,
+  canSuperModerateLounge,
   listLoungeStudentsForMentions,
   loungeImageObjectPath,
   resolveMentionsFromBody,
@@ -45,7 +46,7 @@ async function requireLoungeStudent() {
       },
     };
   }
-  return { profile: { id: profile.id }, error: null };
+  return { profile: { id: profile.id, role: profile.role }, error: null };
 }
 
 function revalidateLounge(postId?: string | null) {
@@ -258,10 +259,34 @@ export async function deleteLoungePost(formData: FormData): Promise<LoungeAction
   const postId = String(formData.get("post_id") ?? "");
   if (!postId) return { ok: false, message: "Missing post." };
 
+  const deletedAt = new Date().toISOString();
+
+  if (canSuperModerateLounge(gate.profile)) {
+    const service = createServiceClient();
+    const { data: post, error: fetchError } = await service
+      .from("lounge_posts")
+      .select("id")
+      .eq("id", postId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (fetchError) return { ok: false, message: fetchError.message };
+    if (!post) return { ok: false, message: "Post not found." };
+
+    const { error } = await service
+      .from("lounge_posts")
+      .update({ deleted_at: deletedAt })
+      .eq("id", postId);
+
+    if (error) return { ok: false, message: error.message };
+    revalidateLounge();
+    return { ok: true, message: "Removed na ang post." };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("lounge_posts")
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: deletedAt })
     .eq("id", postId)
     .eq("author_id", gate.profile.id);
 
@@ -352,6 +377,20 @@ export async function createLoungeComment(
   if (!postId) return { ok: false, message: "Missing post." };
 
   const supabase = await createClient();
+  const { data: post } = await supabase
+    .from("lounge_posts")
+    .select("id, author_id, hidden_at, comments_locked_at")
+    .eq("id", postId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!post) return { ok: false, message: "Post not found." };
+  if (post.comments_locked_at) {
+    return { ok: false, message: "Comments are off for this post." };
+  }
+  if (post.hidden_at && !canSuperModerateLounge(gate.profile)) {
+    return { ok: false, message: "Post not found." };
+  }
 
   if (parentId) {
     const { data: parent } = await supabase
@@ -384,12 +423,6 @@ export async function createLoungeComment(
   if (error || !comment) {
     return { ok: false, message: error?.message ?? "Could not comment." };
   }
-
-  const { data: post } = await supabase
-    .from("lounge_posts")
-    .select("author_id")
-    .eq("id", postId)
-    .maybeSingle();
 
   if (parentId) {
     const { data: parent } = await supabase
@@ -465,6 +498,95 @@ async function requireLoungeModerator() {
   }
 
   return { profile: gate.profile, error: null };
+}
+
+async function requireLoungeSuperAdmin() {
+  const gate = await requireLoungeStudent();
+  if (gate.error || !gate.profile) return gate;
+
+  if (!canSuperModerateLounge(gate.profile)) {
+    return {
+      profile: null as null,
+      error: {
+        ok: false as const,
+        message: "Only Super Admin can moderate this post.",
+      },
+    };
+  }
+
+  return { profile: gate.profile, error: null };
+}
+
+export async function toggleHideLoungePost(
+  formData: FormData,
+): Promise<LoungeActionState> {
+  const gate = await requireLoungeSuperAdmin();
+  if (gate.error || !gate.profile) return gate.error!;
+
+  const postId = String(formData.get("post_id") ?? "");
+  if (!postId) return { ok: false, message: "Missing post." };
+
+  const service = createServiceClient();
+  const { data: post, error: fetchError } = await service
+    .from("lounge_posts")
+    .select("id, hidden_at")
+    .eq("id", postId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (fetchError) return { ok: false, message: fetchError.message };
+  if (!post) return { ok: false, message: "Post not found." };
+
+  const nextHiddenAt = post.hidden_at ? null : new Date().toISOString();
+  const { error } = await service
+    .from("lounge_posts")
+    .update({ hidden_at: nextHiddenAt })
+    .eq("id", postId);
+
+  if (error) return { ok: false, message: error.message };
+  revalidateLounge(postId);
+  return {
+    ok: true,
+    message: nextHiddenAt
+      ? "Hidden na ang post sa Lounge."
+      : "Visible na liwat ang post.",
+  };
+}
+
+export async function toggleLoungePostComments(
+  formData: FormData,
+): Promise<LoungeActionState> {
+  const gate = await requireLoungeSuperAdmin();
+  if (gate.error || !gate.profile) return gate.error!;
+
+  const postId = String(formData.get("post_id") ?? "");
+  if (!postId) return { ok: false, message: "Missing post." };
+
+  const service = createServiceClient();
+  const { data: post, error: fetchError } = await service
+    .from("lounge_posts")
+    .select("id, comments_locked_at")
+    .eq("id", postId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (fetchError) return { ok: false, message: fetchError.message };
+  if (!post) return { ok: false, message: "Post not found." };
+
+  const nextLockedAt = post.comments_locked_at ? null : new Date().toISOString();
+  const { error } = await service
+    .from("lounge_posts")
+    .update({ comments_locked_at: nextLockedAt })
+    .eq("id", postId);
+
+  if (error) return { ok: false, message: error.message };
+  revalidateLounge(postId);
+  return {
+    ok: true,
+    message: nextLockedAt
+      ? "Comments are off for this post."
+      : "Comments are on liwat.",
+  };
 }
 
 export async function togglePinLoungePost(

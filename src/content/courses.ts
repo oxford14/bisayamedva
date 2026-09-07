@@ -10,6 +10,8 @@ export type CatalogCourse = {
   courseType: CatalogCourseType;
   /** Public register path — only for featured Foundation course */
   registerPath?: string;
+  /** Hide peso amount and enroll CTA; endorse as a later course. */
+  comingSoon?: boolean;
 };
 
 export const foundationCourses: CatalogCourse[] = [
@@ -22,6 +24,7 @@ export const foundationCourses: CatalogCourse[] = [
       "Build your first Medical VA foundation — patient intake, scheduling basics, and day-to-day workflow from a Bisaya-English coach.",
     price: 499,
     courseType: "FOUNDATION",
+    registerPath: "/register",
   },
   {
     id: "medical-billing-masterclass",
@@ -29,10 +32,10 @@ export const foundationCourses: CatalogCourse[] = [
     title: "Medical Billing Masterclass",
     subtitle: "Medical Billing fundamentals for aspiring Medical VAs",
     description:
-      "Core Medical Billing concepts, terminology, and where billing sits in the revenue cycle. Dili full job-ready claim — usa ka solid starting point.",
-    price: 299,
+      "Coming next after the Medical VA Masterclass. Core Medical Billing concepts and where billing sits in the revenue cycle.",
+    price: 499,
     courseType: "FOUNDATION",
-    registerPath: "/register",
+    comingSoon: true,
   },
 ];
 

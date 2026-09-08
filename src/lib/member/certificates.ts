@@ -194,6 +194,16 @@ async function activateEnrollment(enrollmentId: string) {
   return !error;
 }
 
+async function markEnrollmentCompleted(enrollmentId: string) {
+  const admin = createServiceClient();
+  const { error } = await admin
+    .from("enrollments")
+    .update({ status: "COMPLETED" })
+    .eq("id", enrollmentId)
+    .eq("status", "ACTIVE");
+  return !error;
+}
+
 export async function ensureMemberCertificate(
   studentId: string,
   slug: string,
@@ -221,6 +231,7 @@ export async function ensureMemberCertificate(
     }
     enrollmentId = enrollment.id;
     await recordItemCompletions(studentId, previewState.flat);
+    await markEnrollmentCompleted(enrollment.id);
     state = {
       ...previewState,
       access: {

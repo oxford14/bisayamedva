@@ -1,17 +1,28 @@
 import { normalizeAnnouncementBody } from "@/lib/member/announcement-body";
+import {
+  countAnnouncementRecipients,
+  listAnnouncementSessionIds,
+  type AnnouncementAudienceType,
+} from "@/lib/member/announcement-audience";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export { normalizeAnnouncementBody } from "@/lib/member/announcement-body";
+export type { AnnouncementAudienceType };
 
 export type MemberAnnouncement = {
   id: string;
   title: string;
   body: string;
   published: boolean;
+  audience_type: AnnouncementAudienceType;
+  send_email: boolean;
+  email_sent_at: string | null;
   created_at: string;
   updated_at: string;
   created_by: string;
+  recipient_count?: number;
+  session_count?: number;
 };
 
 export type MemberAnnouncementListItem = Pick<
@@ -19,39 +30,18 @@ export type MemberAnnouncementListItem = Pick<
   "id" | "title" | "body" | "created_at"
 > & { read: boolean };
 
-export async function listPublishedAnnouncements(limit = 30) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("member_announcements")
-    .select("id, title, body, created_at")
-    .eq("published", true)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error("listPublishedAnnouncements", error.message);
-    return [] as MemberAnnouncementListItem[];
-  }
-
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    title: row.title,
-    body: row.body,
-    created_at: row.created_at,
-    read: false,
-  }));
-}
-
 export async function listPublishedAnnouncementsForUser(
   userId: string,
   limit = 30,
 ) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("member_announcements")
-    .select("id, title, body, created_at")
-    .eq("published", true)
-    .order("created_at", { ascending: false })
+    .from("member_announcement_recipients")
+    .select(
+      "announcement_id, member_announcements!inner(id, title, body, created_at, published)",
+    )
+    .eq("user_id", userId)
+    .eq("member_announcements.published", true)
     .limit(limit);
 
   if (error) {
@@ -60,7 +50,40 @@ export async function listPublishedAnnouncementsForUser(
   }
   if (!data?.length) return [];
 
-  const ids = data.map((row) => row.id);
+  type Row = {
+    announcement_id: string;
+    member_announcements:
+      | {
+          id: string;
+          title: string;
+          body: string;
+          created_at: string;
+          published: boolean;
+        }
+      | {
+          id: string;
+          title: string;
+          body: string;
+          created_at: string;
+          published: boolean;
+        }[];
+  };
+
+  const announcements = data
+    .map((row) => {
+      const r = row as Row;
+      const ann = Array.isArray(r.member_announcements)
+        ? r.member_announcements[0]
+        : r.member_announcements;
+      return ann;
+    })
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+
+  const ids = announcements.map((a) => a.id);
   const { data: reads } = await supabase
     .from("member_announcement_reads")
     .select("announcement_id")
@@ -69,7 +92,7 @@ export async function listPublishedAnnouncementsForUser(
 
   const readSet = new Set((reads ?? []).map((r) => r.announcement_id));
 
-  return data.map((row) => ({
+  return announcements.map((row) => ({
     id: row.id,
     title: row.title,
     body: row.body,
@@ -88,17 +111,32 @@ export async function markAnnouncementRead(
   announcementId: string,
 ) {
   const supabase = await createClient();
-  const { error } = await supabase.from("member_announcement_reads").upsert(
-    {
-      user_id: userId,
-      announcement_id: announcementId,
-      read_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,announcement_id" },
-  );
+  const readAt = new Date().toISOString();
+  const row = {
+    user_id: userId,
+    announcement_id: announcementId,
+    read_at: readAt,
+  };
 
-  if (error) {
-    console.error("markAnnouncementRead", error.message);
+  const { error: insertError } = await supabase
+    .from("member_announcement_reads")
+    .insert(row);
+
+  if (!insertError) return true;
+
+  if (insertError.code !== "23505") {
+    console.error("markAnnouncementRead", insertError.message);
+    return false;
+  }
+
+  const { error: updateError } = await supabase
+    .from("member_announcement_reads")
+    .update({ read_at: readAt })
+    .eq("user_id", userId)
+    .eq("announcement_id", announcementId);
+
+  if (updateError) {
+    console.error("markAnnouncementRead", updateError.message);
     return false;
   }
   return true;
@@ -109,7 +147,7 @@ export async function listAllAnnouncementsAdmin() {
   const { data, error } = await admin
     .from("member_announcements")
     .select(
-      "id, title, body, published, created_at, updated_at, created_by",
+      "id, title, body, published, audience_type, send_email, email_sent_at, created_at, updated_at, created_by",
     )
     .order("created_at", { ascending: false });
 
@@ -117,5 +155,22 @@ export async function listAllAnnouncementsAdmin() {
     console.error("listAllAnnouncementsAdmin", error.message);
     return [] as MemberAnnouncement[];
   }
-  return (data ?? []) as MemberAnnouncement[];
+
+  const rows = (data ?? []) as MemberAnnouncement[];
+  const enriched = await Promise.all(
+    rows.map(async (row) => {
+      const [recipient_count, sessionIds] = await Promise.all([
+        countAnnouncementRecipients(row.id),
+        row.audience_type === "SESSION"
+          ? listAnnouncementSessionIds(row.id)
+          : Promise.resolve([]),
+      ]);
+      return {
+        ...row,
+        recipient_count,
+        session_count: sessionIds.length,
+      };
+    }),
+  );
+  return enriched;
 }

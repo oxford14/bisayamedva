@@ -906,21 +906,85 @@ export async function reviewWalletWithdrawal(formData: FormData) {
   return ok();
 }
 
-const announcementSchema = z.object({
-  id: uuid.optional(),
-  title: z.string().trim().min(1).max(200),
-  body: z.string().min(1),
-  published: z.boolean(),
-});
+const announcementAudience = z.enum(["ALL", "SESSION", "INDIVIDUAL"]);
+
+const announcementSchema = z
+  .object({
+    id: uuid.optional(),
+    title: z.string().trim().min(1).max(200),
+    body: z.string().min(1),
+    published: z.boolean(),
+    audienceType: announcementAudience,
+    sessionIds: z.array(uuid).optional(),
+    userIds: z.array(uuid).optional(),
+    sendEmail: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.published && data.audienceType === "SESSION") {
+      if (!data.sessionIds?.length) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Select at least one session.",
+          path: ["sessionIds"],
+        });
+      }
+    }
+    if (data.published && data.audienceType === "INDIVIDUAL") {
+      if (!data.userIds?.length) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Select at least one student.",
+          path: ["userIds"],
+        });
+      }
+    }
+  });
 
 const announcementSelect =
-  "id, title, body, published, created_at, updated_at, created_by";
+  "id, title, body, published, audience_type, send_email, email_sent_at, created_at, updated_at, created_by";
+
+export async function searchStudentsForAnnouncement(q: string) {
+  try {
+    await requireAdmin();
+    const term = q.trim();
+    if (term.length < 2) {
+      return { ok: true as const, students: [] as { id: string; full_name: string; email: string }[] };
+    }
+
+    const admin = createServiceClient();
+    const { data, error } = await admin
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("role", "STUDENT")
+      .or(`full_name.ilike.%${term}%,email.ilike.%${term}%`)
+      .order("full_name")
+      .limit(20);
+
+    if (error) return fail(error.message);
+    return {
+      ok: true as const,
+      students: (data ?? []).map((row) => ({
+        id: row.id,
+        full_name: row.full_name ?? "",
+        email: row.email ?? "",
+      })),
+    };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not search students.";
+    return fail(message);
+  }
+}
 
 export async function upsertMemberAnnouncement(input: {
   id?: string;
   title: string;
   body: string;
   published: boolean;
+  audienceType: "ALL" | "SESSION" | "INDIVIDUAL";
+  sessionIds?: string[];
+  userIds?: string[];
+  sendEmail: boolean;
 }) {
   try {
     const profile = await requireAdmin();
@@ -929,6 +993,10 @@ export async function upsertMemberAnnouncement(input: {
       title: input.title,
       body: input.body,
       published: input.published,
+      audienceType: input.audienceType,
+      sessionIds: input.sessionIds,
+      userIds: input.userIds,
+      sendEmail: input.sendEmail,
     });
     if (!parsed.success) {
       return failValidation(parsed.error, "Invalid announcement");
@@ -937,17 +1005,55 @@ export async function upsertMemberAnnouncement(input: {
     const { normalizeAnnouncementBody } = await import(
       "@/lib/member/announcement-body"
     );
+    const {
+      resolveAnnouncementRecipients,
+      syncAnnouncementRecipients,
+      syncAnnouncementSessions,
+      countAnnouncementRecipients,
+    } = await import("@/lib/member/announcement-audience");
+    const { sendAnnouncementEmailsToRecipients } = await import(
+      "@/lib/email/send-announcement-email"
+    );
+
     const body = normalizeAnnouncementBody(parsed.data.body);
     if (!body.trim()) return fail("Announcement body is required.");
+
+    const admin = createServiceClient();
+    let existingEmailSentAt: string | null = null;
+    let wasPublished = false;
+    let existingAudience: "ALL" | "SESSION" | "INDIVIDUAL" = parsed.data
+      .audienceType;
+
+    if (parsed.data.id) {
+      const { data: existing } = await admin
+        .from("member_announcements")
+        .select("email_sent_at, audience_type, published")
+        .eq("id", parsed.data.id)
+        .maybeSingle();
+      existingEmailSentAt = existing?.email_sent_at ?? null;
+      wasPublished = existing?.published ?? false;
+      if (existing?.audience_type) {
+        existingAudience = existing.audience_type as
+          | "ALL"
+          | "SESSION"
+          | "INDIVIDUAL";
+      }
+    }
+
+    const audienceLocked = wasPublished;
+    const audienceType = audienceLocked
+      ? existingAudience
+      : parsed.data.audienceType;
 
     const payload = {
       title: parsed.data.title.trim(),
       body,
       published: parsed.data.published,
+      audience_type: audienceType,
+      send_email: parsed.data.sendEmail,
       updated_at: new Date().toISOString(),
     };
 
-    const admin = createServiceClient();
     const query = parsed.data.id
       ? admin
           .from("member_announcements")
@@ -962,11 +1068,83 @@ export async function upsertMemberAnnouncement(input: {
     if (error) return fail(error.message);
     if (!data) return fail("Announcement could not be saved.");
 
+    let emailFailed = 0;
+    let emailErrors: string[] = [];
+
+    if (parsed.data.published && !audienceLocked) {
+      if (audienceType === "SESSION") {
+        await syncAnnouncementSessions(data.id, parsed.data.sessionIds ?? []);
+      } else {
+        await syncAnnouncementSessions(data.id, []);
+      }
+
+      const recipients = await resolveAnnouncementRecipients({
+        audienceType,
+        sessionIds: parsed.data.sessionIds,
+        userIds: parsed.data.userIds,
+      });
+      if (!recipients.length) {
+        return fail("No recipients match this audience.");
+      }
+      await syncAnnouncementRecipients(
+        data.id,
+        recipients.map((r) => r.userId),
+      );
+    }
+
+    const shouldSendEmail =
+      parsed.data.published &&
+      parsed.data.sendEmail &&
+      !existingEmailSentAt;
+
+    if (shouldSendEmail) {
+      const { data: recipientRows } = await admin
+        .from("member_announcement_recipients")
+        .select("user_id")
+        .eq("announcement_id", data.id);
+      const recipientIds = (recipientRows ?? []).map((r) => r.user_id);
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", recipientIds);
+
+      const emailRecipients = (profiles ?? [])
+        .filter((p) => p.email?.trim())
+        .map((p) => ({
+          userId: p.id,
+          email: p.email!.trim(),
+          fullName: p.full_name,
+        }));
+
+      const emailResult = await sendAnnouncementEmailsToRecipients({
+        announcementId: data.id,
+        title: data.title,
+        bodyPlain: data.body,
+        recipients: emailRecipients,
+      });
+      emailFailed = emailResult.failed;
+      emailErrors = emailResult.errors;
+
+      if (emailResult.failed === 0 && emailRecipients.length > 0) {
+        await admin
+          .from("member_announcements")
+          .update({ email_sent_at: new Date().toISOString() })
+          .eq("id", data.id);
+      }
+    }
+
+    const recipient_count = await countAnnouncementRecipients(data.id);
+
     revalidatePath("/admin/announcements");
     revalidatePath("/member");
     return {
       ok: true as const,
-      announcement: data,
+      announcement: { ...data, recipient_count },
+      emailFailed,
+      emailWarning:
+        emailFailed > 0
+          ? `Published in app, but ${emailFailed} email(s) failed.${emailErrors[0] ? ` ${emailErrors[0]}` : ""}`
+          : undefined,
     };
   } catch (err) {
     const message =

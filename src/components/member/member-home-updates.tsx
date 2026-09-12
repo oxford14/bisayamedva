@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Megaphone } from "lucide-react";
 import { markAnnouncementReadInbox } from "@/app/(member)/member/inbox-actions";
+import { dispatchMemberInboxRefresh } from "@/lib/member/inbox-events";
 import {
   AnnouncementDetailDialog,
   type AnnouncementDetail,
@@ -26,13 +27,13 @@ function formatWhen(iso: string) {
 }
 
 export function MemberHomeUpdates({
-  announcements,
+  announcements: initialAnnouncements,
 }: {
   announcements: MemberAnnouncementListItem[];
 }) {
+  const [announcements, setAnnouncements] = useState(initialAnnouncements);
   const [detail, setDetail] = useState<AnnouncementDetail | null>(null);
   const [open, setOpen] = useState(false);
-  const [, start] = useTransition();
 
   function openItem(item: MemberAnnouncementListItem) {
     setDetail({
@@ -41,9 +42,13 @@ export function MemberHomeUpdates({
       created_at: item.created_at,
     });
     setOpen(true);
-    start(async () => {
+    setAnnouncements((prev) =>
+      prev.map((a) => (a.id === item.id ? { ...a, read: true } : a)),
+    );
+    void (async () => {
       await markAnnouncementReadInbox(item.id);
-    });
+      dispatchMemberInboxRefresh();
+    })();
   }
 
   return (

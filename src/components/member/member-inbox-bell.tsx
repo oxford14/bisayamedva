@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import {
   fetchMemberInbox,
   markAnnouncementReadInbox,
+  markLoungeNotificationReadInbox,
   markLoungeNotificationsReadInbox,
 } from "@/app/(member)/member/inbox-actions";
 import {
@@ -14,6 +15,7 @@ import {
 } from "@/components/member/announcement-detail-dialog";
 import { Button } from "@/components/ui/button";
 import { inboxCopy } from "@/content/site";
+import { MEMBER_INBOX_REFRESH } from "@/lib/member/inbox-events";
 import type { MemberInboxSnapshot } from "@/lib/member/inbox";
 import type { LoungeNotification } from "@/lib/member/lounge";
 import { cn } from "@/lib/utils";
@@ -46,6 +48,42 @@ function formatWhen(iso: string) {
   }
 }
 
+function withBadgeTotals(snapshot: MemberInboxSnapshot): MemberInboxSnapshot {
+  const announcementUnread = snapshot.announcements.filter((a) => !a.read).length;
+  const loungeUnread = snapshot.notifications.filter((n) => !n.read_at).length;
+  return {
+    ...snapshot,
+    loungeUnread,
+    announcementUnread,
+    badgeTotal: loungeUnread + announcementUnread,
+  };
+}
+
+function markAnnouncementReadLocal(
+  snapshot: MemberInboxSnapshot,
+  announcementId: string,
+): MemberInboxSnapshot {
+  return withBadgeTotals({
+    ...snapshot,
+    announcements: snapshot.announcements.map((a) =>
+      a.id === announcementId ? { ...a, read: true } : a,
+    ),
+  });
+}
+
+function markLoungeReadLocal(
+  snapshot: MemberInboxSnapshot,
+  notificationId?: string,
+): MemberInboxSnapshot {
+  const readAt = new Date().toISOString();
+  const notifications = snapshot.notifications.map((n) => {
+    if (notificationId && n.id !== notificationId) return n;
+    if (!notificationId && n.read_at) return n;
+    return { ...n, read_at: n.read_at ?? readAt };
+  });
+  return withBadgeTotals({ ...snapshot, notifications });
+}
+
 type Tab = "notifications" | "announcements";
 
 export function MemberInboxBell({
@@ -60,29 +98,38 @@ export function MemberInboxBell({
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("announcements");
   const [snapshot, setSnapshot] = useState<MemberInboxSnapshot | null>(null);
+  const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<AnnouncementDetail | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [pending, start] = useTransition();
 
   const badge = snapshot?.badgeTotal ?? 0;
 
-  function loadInbox() {
-    start(async () => {
+  const refreshInbox = useCallback(async () => {
+    setLoading(true);
+    try {
       const result = await fetchMemberInbox();
-      if (result.ok) setSnapshot(result.snapshot);
-    });
-  }
+      if (result.ok) setSnapshot(withBadgeTotals(result.snapshot));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadInbox();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, role]);
+    void refreshInbox();
+  }, [userId, role, refreshInbox]);
 
   useEffect(() => {
     if (!open) return;
-    loadInbox();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    void refreshInbox();
+  }, [open, refreshInbox]);
+
+  useEffect(() => {
+    function onRefresh() {
+      void refreshInbox();
+    }
+    window.addEventListener(MEMBER_INBOX_REFRESH, onRefresh);
+    return () => window.removeEventListener(MEMBER_INBOX_REFRESH, onRefresh);
+  }, [refreshInbox]);
 
   useEffect(() => {
     if (!open) return;
@@ -115,17 +162,32 @@ export function MemberInboxBell({
     });
     setDetailOpen(true);
     setOpen(false);
-    start(async () => {
+    setSnapshot((prev) =>
+      prev ? markAnnouncementReadLocal(prev, item.id) : prev,
+    );
+    void (async () => {
       await markAnnouncementReadInbox(item.id);
-      loadInbox();
-    });
+      await refreshInbox();
+    })();
   }
 
   function markLoungeRead() {
-    start(async () => {
+    setSnapshot((prev) => (prev ? markLoungeReadLocal(prev) : prev));
+    void (async () => {
       await markLoungeNotificationsReadInbox();
-      loadInbox();
-    });
+      await refreshInbox();
+    })();
+  }
+
+  function openLoungeNotification(notificationId: string) {
+    setSnapshot((prev) =>
+      prev ? markLoungeReadLocal(prev, notificationId) : prev,
+    );
+    setOpen(false);
+    void (async () => {
+      await markLoungeNotificationReadInbox(notificationId);
+      await refreshInbox();
+    })();
   }
 
   return (
@@ -193,7 +255,7 @@ export function MemberInboxBell({
             </div>
 
             <div className="max-h-80 overflow-y-auto p-2">
-              {pending && !snapshot ? (
+              {loading && !snapshot ? (
                 <p className="px-2 py-6 text-center text-sm text-muted">
                   Loading…
                 </p>
@@ -205,7 +267,7 @@ export function MemberInboxBell({
                         type="button"
                         size="sm"
                         variant="ghost"
-                        disabled={pending}
+                        disabled={loading}
                         onClick={markLoungeRead}
                       >
                         {inboxCopy.markRead}
@@ -226,7 +288,7 @@ export function MemberInboxBell({
                                 ? `/member/lounge?post=${item.post_id}`
                                 : "/member/lounge"
                             }
-                            onClick={() => setOpen(false)}
+                            onClick={() => openLoungeNotification(item.id)}
                             className={cn(
                               "block rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-sand",
                               !item.read_at && "bg-cream",
@@ -292,6 +354,7 @@ export function MemberInboxBell({
         onClose={() => {
           setDetailOpen(false);
           setDetail(null);
+          void refreshInbox();
         }}
         announcement={detail}
       />

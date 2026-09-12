@@ -673,3 +673,22 @@ export async function markLoungeNotificationsRead(): Promise<LoungeActionState> 
   revalidateLounge();
   return { ok: true, message: "Marked as read." };
 }
+
+export async function markLoungeNotificationRead(
+  notificationId: string,
+): Promise<LoungeActionState> {
+  const gate = await requireLoungeStudent();
+  if (gate.error || !gate.profile) return gate.error!;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("lounge_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", gate.profile.id)
+    .eq("id", notificationId)
+    .is("read_at", null);
+
+  if (error) return { ok: false, message: error.message };
+  revalidateLounge();
+  return { ok: true, message: "Marked as read." };
+}

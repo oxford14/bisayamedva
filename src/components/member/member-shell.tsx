@@ -7,6 +7,7 @@ import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
 import { memberNav, type MemberNavItem } from "@/components/member/nav-config";
 import { UserMenu } from "@/components/auth/user-menu";
+import { MemberInboxBell } from "@/components/member/member-inbox-bell";
 import { ShellNavLink } from "@/components/navigation/shell-nav-link";
 import { cn } from "@/lib/utils";
 import type { MemberProfile } from "@/lib/supabase/auth";
@@ -157,7 +158,8 @@ export function MemberShell({
                 </p>
               </div>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              <MemberInboxBell userId={profile.id} role={profile.role} />
               <UserMenu profile={profile} />
             </div>
           </header>

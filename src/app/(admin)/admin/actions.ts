@@ -905,3 +905,72 @@ export async function reviewWalletWithdrawal(formData: FormData) {
   revalidatePath("/member/wallet");
   return ok();
 }
+
+const announcementSchema = z.object({
+  id: uuid.optional(),
+  title: z.string().trim().min(1).max(200),
+  body: z.string().min(1),
+  published: z.boolean(),
+});
+
+const announcementSelect =
+  "id, title, body, published, created_at, updated_at, created_by";
+
+export async function upsertMemberAnnouncement(input: {
+  id?: string;
+  title: string;
+  body: string;
+  published: boolean;
+}) {
+  try {
+    const profile = await requireAdmin();
+    const parsed = announcementSchema.safeParse({
+      id: input.id?.trim() || undefined,
+      title: input.title,
+      body: input.body,
+      published: input.published,
+    });
+    if (!parsed.success) {
+      return failValidation(parsed.error, "Invalid announcement");
+    }
+
+    const { normalizeAnnouncementBody } = await import(
+      "@/lib/member/announcement-body"
+    );
+    const body = normalizeAnnouncementBody(parsed.data.body);
+    if (!body.trim()) return fail("Announcement body is required.");
+
+    const payload = {
+      title: parsed.data.title.trim(),
+      body,
+      published: parsed.data.published,
+      updated_at: new Date().toISOString(),
+    };
+
+    const admin = createServiceClient();
+    const query = parsed.data.id
+      ? admin
+          .from("member_announcements")
+          .update(payload)
+          .eq("id", parsed.data.id)
+      : admin.from("member_announcements").insert({
+          ...payload,
+          created_by: profile.id,
+        });
+
+    const { data, error } = await query.select(announcementSelect).maybeSingle();
+    if (error) return fail(error.message);
+    if (!data) return fail("Announcement could not be saved.");
+
+    revalidatePath("/admin/announcements");
+    revalidatePath("/member");
+    return {
+      ok: true as const,
+      announcement: data,
+    };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not save announcement.";
+    return fail(message);
+  }
+}

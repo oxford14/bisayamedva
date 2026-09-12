@@ -10,6 +10,7 @@ import {
   FileText,
   ClipboardList,
   TicketPercent,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -88,6 +89,12 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/content",
     label: "Content",
     icon: FileText,
+    section: "site",
+  },
+  {
+    href: "/admin/announcements",
+    label: "Announcements",
+    icon: Megaphone,
     section: "site",
   },
   {

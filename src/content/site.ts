@@ -456,6 +456,30 @@ export const scheduleCopy = {
     "Enroll and pay a course first. After payment, open dates for that course mo-gawas diri.",
   emptyBody:
     "Check back later when admin opens the next weekend training date.",
+  meetingOpenLink: "Open meeting",
+  meetingOpenDialogTitle: "Before you join",
+  meetingOpenDialogBody:
+    "Sa Zoom, gamita ang registered name nimo aron ma-confirm sa admin nga naka-enroll ka.",
+  meetingOpenConfirm: "Okay",
+  meetingOpenCancel: "Cancel",
+} as const;
+
+export const inboxCopy = {
+  bellLabel: "Notifications and announcements",
+  tabNotifications: "Notifications",
+  tabAnnouncements: "Announcements",
+  markRead: "Mark read",
+  notificationsEmpty:
+    "Wala pa kay notifications. Check the bell later for updates from the team or Lounge activity.",
+  announcementsEmpty:
+    "Wala pa’y announcements. Mo-gawas diri kung naay update gikan sa admin.",
+  announcementLabel: "Announcement",
+  dialogClose: "Close",
+  homeUpdatesTitle: "Updates",
+  homeUpdatesHint:
+    "Para sa full list, open ang bell sa taas — Notifications ug Announcements.",
+  homeUpdatesEmpty: "Wala pa’y bag-ong announcement.",
+  newBadge: "New",
 } as const;
 
 export const certificatesCopy = {

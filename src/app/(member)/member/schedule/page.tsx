@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { MeetingOpenLink } from "@/components/member/meeting-open-link";
 import { ScheduleAssignButton } from "@/components/member/schedule-assign-button";
 import {
   MemberCard,
@@ -189,15 +189,7 @@ function ScheduleSessionCard({
           </dt>
           <dd className="mt-1 text-sm text-ink">
             {showMeeting && enrollment.session?.meeting_url ? (
-              <a
-                href={enrollment.session.meeting_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 font-medium text-teal hover:text-navy"
-              >
-                Open meeting
-                <ExternalLink className="size-3.5" aria-hidden />
-              </a>
+              <MeetingOpenLink href={enrollment.session.meeting_url} />
             ) : seated && enrollment.status === "PENDING_PAYMENT" ? (
               <span className="text-muted">
                 Available after payment is confirmed.

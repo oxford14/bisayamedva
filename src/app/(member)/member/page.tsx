@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, CreditCard, BookOpen } from "lucide-react";
+import { MemberHomeUpdates } from "@/components/member/member-home-updates";
+import { listPublishedAnnouncementsForUser } from "@/lib/member/announcements";
 import {
   MemberCard,
   MemberEmptyState,
@@ -18,7 +20,10 @@ import { formatPeso } from "@/lib/utils";
 
 export default async function MemberHomePage() {
   const profile = await getStudentProfile();
-  const enrollments = await getMemberEnrollments(profile.id);
+  const [enrollments, homeAnnouncements] = await Promise.all([
+    getMemberEnrollments(profile.id),
+    listPublishedAnnouncementsForUser(profile.id, 2),
+  ]);
   const primary = pickPrimaryEnrollment(enrollments);
   const next = enrollmentNextAction(primary);
   const firstName =
@@ -31,7 +36,9 @@ export default async function MemberHomePage() {
         description="Here is your Medical Billing training overview — klaro kung unsa ang next step."
       />
 
-      <MemberCard className="bg-[linear-gradient(135deg,#ffffff_0%,#f3f5eb_100%)]">
+      <MemberHomeUpdates announcements={homeAnnouncements} />
+
+      <MemberCard className="mt-6 bg-[linear-gradient(135deg,#ffffff_0%,#f3f5eb_100%)]">
         <p className="text-[11px] font-semibold tracking-[0.16em] text-navy/50 uppercase">
           Next step
         </p>

@@ -4,7 +4,7 @@ import { ModuleArt } from "@/components/member/module-art";
 import { ModulePlayerOutline } from "@/components/member/module-player-outline";
 import { MemberEmptyState, MemberPageHeader } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
-import { certificatesCopy, modulesCopy } from "@/content/site";
+import { certificatesCopy, certificatesEnabled, modulesCopy } from "@/content/site";
 import { ensureMemberCertificate } from "@/lib/member/certificates";
 import { getCoursePlayerState } from "@/lib/member/module-player";
 import { getStudentProfile } from "@/lib/supabase/auth";
@@ -59,7 +59,7 @@ export default async function MemberModuleCertificatePage({ params }: Props) {
       </div>
 
       <section className="flex min-w-0 flex-1 flex-col px-4 py-4 sm:px-6">
-        {certificate ? (
+        {certificate && certificatesEnabled ? (
           <>
             <div className="mb-4 print:hidden">
               <p className="text-[11px] font-semibold tracking-[0.14em] text-navy/45 uppercase">
@@ -82,10 +82,14 @@ export default async function MemberModuleCertificatePage({ params }: Props) {
               className="rounded-2xl"
             />
             <h1 className="mt-4 font-display text-xl font-semibold text-ink">
-              {modulesCopy.certificateNotReadyTitle}
+              {certificate && !certificatesEnabled
+                ? certificatesCopy.unavailableTitle
+                : modulesCopy.certificateNotReadyTitle}
             </h1>
             <p className="mt-1 max-w-md text-sm text-muted">
-              {modulesCopy.certificateNotReadyBody}
+              {certificate && !certificatesEnabled
+                ? certificatesCopy.unavailableBody
+                : modulesCopy.certificateNotReadyBody}
             </p>
             <Button asChild variant="secondary" className="mt-5">
               <Link href={closeHref}>{modulesCopy.backToModules}</Link>

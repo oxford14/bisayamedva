@@ -8,7 +8,7 @@ import {
   upskillCourses,
   type CatalogCourse,
 } from "@/content/courses";
-import { certificatesCopy, site } from "@/content/site";
+import { certificatesCopy, certificatesEnabled, site } from "@/content/site";
 import { Button } from "@/components/ui/button";
 import { EnrollScheduleModal } from "@/components/member/enroll-schedule-modal";
 import { MemberStatusBadge } from "@/components/member/ui";
@@ -138,8 +138,16 @@ function CourseCard({
               {owned ? (
                 <Button variant="secondary" className="w-full" asChild>
                   {enrollment?.status === "COMPLETED" ? (
-                    <Link href={`/member/certificates/${course.slug}`}>
-                      {certificatesCopy.view}
+                    <Link
+                      href={
+                        certificatesEnabled
+                          ? `/member/certificates/${course.slug}`
+                          : "/member/modules"
+                      }
+                    >
+                      {certificatesEnabled
+                        ? certificatesCopy.view
+                        : certificatesCopy.emptyCta}
                     </Link>
                   ) : (
                     <Link href="/member/schedule">

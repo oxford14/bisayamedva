@@ -6,7 +6,7 @@ import {
   MemberPageHeader,
 } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
-import { certificatesCopy } from "@/content/site";
+import { certificatesCopy, certificatesEnabled } from "@/content/site";
 import {
   formatCertificateDate,
   getMemberCertificates,
@@ -24,10 +24,18 @@ export default async function MemberCertificatesPage() {
         description={certificatesCopy.description}
       />
 
-      {certificates.length === 0 ? (
+      {!certificatesEnabled || certificates.length === 0 ? (
         <MemberEmptyState
-          title={certificatesCopy.emptyTitle}
-          body={certificatesCopy.emptyBody}
+          title={
+            certificatesEnabled
+              ? certificatesCopy.emptyTitle
+              : certificatesCopy.unavailableTitle
+          }
+          body={
+            certificatesEnabled
+              ? certificatesCopy.emptyBody
+              : certificatesCopy.unavailableBody
+          }
           action={
             <Button variant="accent" asChild>
               <Link href="/member/modules">{certificatesCopy.emptyCta}</Link>

@@ -6,7 +6,7 @@ import { CertificatePrintButton } from "@/components/member/certificate-print-bu
 import { ModulePdfViewer } from "@/components/member/module-pdf-viewer";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Button } from "@/components/ui/button";
-import { certificatesCopy, modulesCopy } from "@/content/site";
+import { certificatesCopy, certificatesEnabled, modulesCopy } from "@/content/site";
 import { buildCertificatePdfBlob } from "@/lib/member/certificate-pdf";
 import type { MemberCertificate } from "@/lib/member/certificate-shared";
 
@@ -22,6 +22,7 @@ export function CertificateViewer({
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!certificatesEnabled) return;
     let url: string | null = null;
     let cancelled = false;
     setSrc(null);
@@ -40,6 +41,22 @@ export function CertificateViewer({
       if (url) URL.revokeObjectURL(url);
     };
   }, [certificate, studentName]);
+
+  if (!certificatesEnabled) {
+    return (
+      <div
+        className="flex flex-1 flex-col justify-center rounded-2xl border border-border bg-white p-6"
+        role="status"
+      >
+        <p className="text-sm font-semibold text-ink">
+          {certificatesCopy.unavailableTitle}
+        </p>
+        <p className="mt-2 max-w-md text-sm text-muted">
+          {certificatesCopy.unavailableBody}
+        </p>
+      </div>
+    );
+  }
 
   async function goFullscreen() {
     const node = frameRef.current;

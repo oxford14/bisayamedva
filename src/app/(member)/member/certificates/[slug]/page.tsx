@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CertificateViewer } from "@/components/member/certificate-viewer";
-import { MemberPageHeader } from "@/components/member/ui";
+import { MemberEmptyState, MemberPageHeader } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
-import { certificatesCopy } from "@/content/site";
+import { certificatesCopy, certificatesEnabled } from "@/content/site";
 import { getMemberCertificate } from "@/lib/member/certificates";
 import { getStudentProfile } from "@/lib/supabase/auth";
 
@@ -18,6 +18,26 @@ export default async function MemberCertificatePage({
 
   if (!certificate) {
     notFound();
+  }
+
+  if (!certificatesEnabled) {
+    return (
+      <div>
+        <MemberPageHeader
+          title={certificatesCopy.title}
+          description={certificatesCopy.description}
+        />
+        <MemberEmptyState
+          title={certificatesCopy.unavailableTitle}
+          body={certificatesCopy.unavailableBody}
+          action={
+            <Button variant="secondary" asChild>
+              <Link href="/member/modules">{certificatesCopy.emptyCta}</Link>
+            </Button>
+          }
+        />
+      </div>
+    );
   }
 
   return (

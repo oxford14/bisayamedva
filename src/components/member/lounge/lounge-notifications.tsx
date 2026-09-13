@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { Bell } from "lucide-react";
 import { markLoungeNotificationsRead } from "@/app/(member)/member/lounge-actions";
 import { MemberCard } from "@/components/member/ui";
+import { dispatchMemberInboxRefresh } from "@/lib/member/inbox-events";
 import { Button } from "@/components/ui/button";
 import type { LoungeNotification } from "@/lib/member/lounge";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,7 @@ export function LoungeNotifications({
             onClick={() => {
               start(async () => {
                 await markLoungeNotificationsRead();
+                dispatchMemberInboxRefresh();
               });
             }}
           >

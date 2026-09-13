@@ -8,6 +8,7 @@ import {
   markAnnouncementReadInbox,
   markLoungeNotificationReadInbox,
   markLoungeNotificationsReadInbox,
+  markMemberInboxSeenInbox,
 } from "@/app/(member)/member/inbox-actions";
 import {
   AnnouncementDetailDialog,
@@ -84,6 +85,14 @@ function markLoungeReadLocal(
   return withBadgeTotals({ ...snapshot, notifications });
 }
 
+function markAllInboxReadLocal(snapshot: MemberInboxSnapshot): MemberInboxSnapshot {
+  const withLounge = markLoungeReadLocal(snapshot);
+  return withBadgeTotals({
+    ...withLounge,
+    announcements: withLounge.announcements.map((a) => ({ ...a, read: true })),
+  });
+}
+
 type Tab = "notifications" | "announcements";
 
 export function MemberInboxBell({
@@ -117,11 +126,6 @@ export function MemberInboxBell({
   useEffect(() => {
     void refreshInbox();
   }, [userId, role, refreshInbox]);
-
-  useEffect(() => {
-    if (!open) return;
-    void refreshInbox();
-  }, [open, refreshInbox]);
 
   useEffect(() => {
     function onRefresh() {
@@ -190,12 +194,25 @@ export function MemberInboxBell({
     })();
   }
 
+  function toggleInboxOpen() {
+    setOpen((wasOpen) => {
+      if (wasOpen) return false;
+
+      setSnapshot((prev) => (prev ? markAllInboxReadLocal(prev) : prev));
+      void (async () => {
+        await markMemberInboxSeenInbox();
+        await refreshInbox();
+      })();
+      return true;
+    });
+  }
+
   return (
     <>
       <div ref={rootRef} className="relative">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={toggleInboxOpen}
           className="relative inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-navy/10 bg-white text-navy outline-none transition-colors hover:bg-sand focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
           aria-label={inboxCopy.bellLabel}
           aria-expanded={open}

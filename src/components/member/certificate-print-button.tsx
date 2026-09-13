@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { certificatesCopy } from "@/content/site";
+import { certificatesCopy, certificatesEnabled } from "@/content/site";
 import { Button } from "@/components/ui/button";
 import { captureCertificatePdf } from "@/lib/member/certificate-pdf";
 import type { MemberCertificate } from "@/lib/member/certificate-shared";
@@ -19,7 +19,7 @@ export function CertificatePrintButton({
   const [error, setError] = useState("");
 
   async function savePdf() {
-    if (busy) return;
+    if (!certificatesEnabled || busy) return;
     setBusy(true);
     setError("");
     try {

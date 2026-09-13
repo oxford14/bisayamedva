@@ -1,7 +1,12 @@
 "use server";
 
 import { z } from "zod";
-import { authCopy, experienceLevels, referralSources } from "@/content/site";
+import {
+  authCopy,
+  experienceLevels,
+  referralSources,
+  site,
+} from "@/content/site";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { activatePaidEnrollment } from "@/lib/paymongo/activate";
@@ -142,12 +147,23 @@ async function resolveFeaturedCourse() {
       .from("courses")
       .select("id, title, price, currency, status")
       .eq("status", "PUBLISHED")
+      .eq("slug", site.featuredCourse.id)
+      .maybeSingle();
+    course = fallbackCourse;
+    courseId = fallbackCourse?.id ?? null;
+  }
+
+  if (!course) {
+    const { data: basicFallback } = await admin
+      .from("courses")
+      .select("id, title, price, currency, status")
+      .eq("status", "PUBLISHED")
       .eq("course_type", "BASIC")
       .order("sort_order", { ascending: true })
       .limit(1)
       .maybeSingle();
-    course = fallbackCourse;
-    courseId = fallbackCourse?.id ?? null;
+    course = basicFallback;
+    courseId = basicFallback?.id ?? null;
   }
 
   if (!course) {

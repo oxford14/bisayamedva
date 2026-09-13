@@ -241,10 +241,21 @@ export async function getEnrolledModuleCourses(
 
   const enrollments = await getMemberEnrollments(studentId);
   const byCourse = new Map<string, ModuleCourseCard>();
+  const hasVaEnrollment = enrollments.some(
+    (row) =>
+      row.course?.slug === "medical-va-masterclass" &&
+      QUALIFYING.has(row.status),
+  );
 
   for (const enrollment of enrollments) {
     const course = enrollment.course;
     if (!course?.id || !course.slug || !QUALIFYING.has(enrollment.status)) {
+      continue;
+    }
+    if (
+      course.slug === "medical-billing-masterclass" &&
+      hasVaEnrollment
+    ) {
       continue;
     }
     if (byCourse.has(course.id)) continue;

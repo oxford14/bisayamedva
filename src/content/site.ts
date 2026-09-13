@@ -482,6 +482,9 @@ export const inboxCopy = {
   newBadge: "New",
 } as const;
 
+/** Set true when client PDF certificate generation is ready for students. */
+export const certificatesEnabled = false;
+
 export const certificatesCopy = {
   nav: "Certificates",
   title: "Certificates",
@@ -513,6 +516,9 @@ export const certificatesCopy = {
   unverifiedTitle: "This certificate could not be verified",
   unverifiedBody:
     "We could not confirm this certificate was issued by Bisaya MedVA.",
+  unavailableTitle: "Certificate generation is currently unavailable",
+  unavailableBody:
+    "Naka-pass na ka sa last quiz. Imong certificate dili pa ma-generate for now — i-release namo ni later.",
 } as const;
 
 export const modulesCopy = {
@@ -573,6 +579,7 @@ export const modulesCopy = {
   draftBadge: "Draft",
   nextItem: "Go to next item",
   viewCertificate: "View certificate of completion",
+  finishCourseCta: "Finish na ang last item",
   certificateNotReadyTitle: "Certificate dili pa ready",
   certificateNotReadyBody:
     "Finish every lesson and pass the quizzes. Imong certificate mo-gawas diri after the last item.",

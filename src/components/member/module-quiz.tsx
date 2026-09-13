@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { submitModuleQuiz } from "@/app/(member)/member/modules-actions";
-import { modulesCopy } from "@/content/site";
+import { certificatesCopy, certificatesEnabled, modulesCopy } from "@/content/site";
 import { Button } from "@/components/ui/button";
 import { courseCertificateHref } from "@/lib/member/certificate-shared";
 import { quizPassed } from "@/lib/member/module-player-shared";
@@ -166,6 +166,19 @@ export function ModuleQuiz({
               ))}
             </ol>
           ) : null}
+          {passed && isLast && !certificatesEnabled ? (
+            <div
+              className="rounded-xl border border-border bg-cream/50 px-4 py-3"
+              role="status"
+            >
+              <p className="text-sm font-semibold text-ink">
+                {certificatesCopy.unavailableTitle}
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                {certificatesCopy.unavailableBody}
+              </p>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -178,7 +191,10 @@ export function ModuleQuiz({
             >
               {modulesCopy.quizRetake}
             </Button>
-            {passed && (isLast ? courseSlug : continueHref) ? (
+            {passed &&
+            (isLast
+              ? certificatesEnabled && courseSlug
+              : continueHref) ? (
               <Button
                 type="button"
                 variant="accent"

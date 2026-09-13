@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { completeModuleFile } from "@/app/(member)/member/modules-actions";
-import { modulesCopy } from "@/content/site";
+import { certificatesCopy, certificatesEnabled, modulesCopy } from "@/content/site";
 import { Button } from "@/components/ui/button";
 import { courseCertificateHref } from "@/lib/member/certificate-shared";
 
@@ -23,6 +23,7 @@ export function ModulePlayerNext({
   const router = useRouter();
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  const [lastItemComplete, setLastItemComplete] = useState(false);
 
   return (
     <div className="flex flex-col items-end gap-2">
@@ -31,10 +32,32 @@ export function ModulePlayerNext({
           {error}
         </p>
       ) : null}
+      {isLast && !certificatesEnabled && lastItemComplete ? (
+        <div
+          className="w-full rounded-xl border border-border bg-cream/50 px-4 py-3 text-left"
+          role="status"
+        >
+          <p className="text-sm font-semibold text-ink">
+            {certificatesCopy.unavailableTitle}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            {certificatesCopy.unavailableBody}
+          </p>
+        </div>
+      ) : null}
+      {lastItemComplete && courseSlug ? (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => router.push(`/member/modules/${courseSlug}`)}
+        >
+          {modulesCopy.backToModules}
+        </Button>
+      ) : (
       <Button
         type="button"
         variant="accent"
-        disabled={pending}
+        disabled={pending || lastItemComplete}
         onClick={() => {
           setError("");
           startTransition(async () => {
@@ -43,8 +66,12 @@ export function ModulePlayerNext({
               setError(result.error);
               return;
             }
-            if (isLast && courseSlug) {
+            if (isLast && courseSlug && certificatesEnabled) {
               router.push(courseCertificateHref(courseSlug));
+              return;
+            }
+            if (isLast && !certificatesEnabled) {
+              setLastItemComplete(true);
               return;
             }
             router.push(result.nextHref ?? fallbackHref);
@@ -53,10 +80,13 @@ export function ModulePlayerNext({
       >
         {pending
           ? "Saving…"
-          : isLast
-            ? modulesCopy.viewCertificate
-            : `${modulesCopy.nextItem} →`}
+          : isLast && !certificatesEnabled
+            ? modulesCopy.finishCourseCta
+            : isLast
+              ? modulesCopy.viewCertificate
+              : `${modulesCopy.nextItem} →`}
       </Button>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { certificatesCopy } from "@/content/site";
+import { certificatesCopy, certificatesEnabled } from "@/content/site";
 import { formatSessionWhenLabel } from "@/lib/datetime";
 import { isAdminRole, type UserRole } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -204,9 +204,11 @@ export function enrollmentNextAction(enrollment: MemberEnrollment | null) {
   if (enrollment.status === "COMPLETED") {
     return {
       title: "Completed na ang course",
-      body: "Nice work. Open your certificate, or continue to the next Upskill Topic when ready.",
-      href: "/member/certificates",
-      cta: certificatesCopy.view,
+      body: certificatesEnabled
+        ? "Nice work. Open your certificate, or continue to the next Upskill Topic when ready."
+        : certificatesCopy.unavailableBody,
+      href: certificatesEnabled ? "/member/certificates" : "/member/modules",
+      cta: certificatesEnabled ? certificatesCopy.view : "Open modules",
     };
   }
 

@@ -56,6 +56,12 @@ export default async function MemberLoungePage({
         notifications={notifications}
         unreadCount={unreadCount}
         viewerId={profile.id}
+        viewerAuthor={{
+          id: profile.id,
+          full_name: profile.full_name,
+          avatar_url: profile.avatar_url ?? null,
+          lounge_badge: profile.lounge_badge ?? null,
+        }}
         viewerCanModerate={canModerateLounge(profile)}
         viewerIsSuperAdmin={canSuperModerateLounge(profile)}
         candidates={candidates.filter((c) => c.id !== profile.id)}

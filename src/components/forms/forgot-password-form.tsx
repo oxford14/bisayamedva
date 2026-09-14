@@ -1,31 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
+import {
+  requestPasswordResetAction,
+  type ForgotPasswordActionState,
+} from "@/app/auth/forgot-password/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authCopy } from "@/content/site";
-import { forgotPasswordSchema } from "@/lib/validations/auth";
 import { Field } from "./field";
 
-export function ForgotPasswordForm() {
-  const [error, setError] = useState("");
-  const [sent, setSent] = useState(false);
+const initialState: ForgotPasswordActionState | null = null;
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const parsed = forgotPasswordSchema.safeParse({
-      email: String(form.get("email") ?? ""),
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Please enter a valid email.");
-      setSent(false);
-      return;
+export function ForgotPasswordForm() {
+  const searchParams = useSearchParams();
+  const [state, formAction, pending] = useActionState(
+    requestPasswordResetAction,
+    initialState,
+  );
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const linkError = searchParams.get("error") === "invalid_link";
+
+  useEffect(() => {
+    if (state?.fieldErrors) {
+      setErrors(state.fieldErrors);
+    } else if (state?.ok === false && !state.fieldErrors) {
+      setErrors({});
     }
-    setError("");
-    setSent(true);
-  }
+  }, [state]);
+
+  const sent = state?.sent === true;
 
   return (
     <div>
@@ -39,17 +45,26 @@ export function ForgotPasswordForm() {
         {authCopy.forgot.body}
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
-        <Field label="Email" htmlFor="email" error={error}>
+      {linkError ? (
+        <p
+          className="mt-4 rounded-xl bg-sand px-3.5 py-2.5 text-sm text-destructive"
+          role="alert"
+        >
+          {authCopy.forgot.invalidLink}
+        </p>
+      ) : null}
+
+      <form action={formAction} className="mt-8 space-y-5" noValidate>
+        <Field label="Email" htmlFor="email" error={errors.email}>
           <Input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
             placeholder="you@email.com"
-            aria-invalid={Boolean(error)}
+            aria-invalid={Boolean(errors.email)}
             className={
-              error
+              errors.email
                 ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
                 : undefined
             }
@@ -57,19 +72,32 @@ export function ForgotPasswordForm() {
           />
         </Field>
 
-        {sent ? (
-          <p className="rounded-xl bg-sand px-3.5 py-2.5 text-sm text-navy">
-            {authCopy.forgot.sent}
+        {sent && state?.message ? (
+          <p
+            className="rounded-xl bg-sand px-3.5 py-2.5 text-sm text-navy"
+            role="status"
+          >
+            {state.message}
+          </p>
+        ) : null}
+
+        {state?.ok === false && state.message && !sent ? (
+          <p
+            className="rounded-xl bg-sand px-3.5 py-2.5 text-sm text-destructive"
+            role="alert"
+          >
+            {state.message}
           </p>
         ) : null}
 
         <Button
           type="submit"
           variant="accent"
+          disabled={pending}
           className="w-full rounded-full text-sm font-semibold tracking-wide shadow-[0_10px_24px_rgba(91,109,73,0.22)]"
           size="lg"
         >
-          {authCopy.forgot.submit}
+          {pending ? "Sending..." : authCopy.forgot.submit}
         </Button>
       </form>
 

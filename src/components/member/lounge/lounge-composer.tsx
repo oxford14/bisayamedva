@@ -15,18 +15,23 @@ const initial: LoungeActionState = { ok: false, message: "" };
 
 export function LoungeComposer({
   candidates,
+  onPosted,
 }: {
   candidates: LoungeMentionCandidate[];
+  onPosted?: () => void;
 }) {
   const [state, action, pending] = useActionState(createLoungePost, initial);
   const [preview, setPreview] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const onPostedRef = useRef(onPosted);
+  onPostedRef.current = onPosted;
 
   useEffect(() => {
     if (state.ok) {
       formRef.current?.reset();
       setPreview(null);
+      onPostedRef.current?.();
     }
   }, [state]);
 

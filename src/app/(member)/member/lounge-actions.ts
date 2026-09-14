@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { canAccessStudentLounge } from "@/lib/member/data";
 import {
@@ -9,19 +10,33 @@ import {
   LOUNGE_IMAGE_MIME,
   canModerateLounge,
   canSuperModerateLounge,
-  listLoungeStudentsForMentions,
   loungeImageObjectPath,
+  resolveMentionCandidatesFromBody,
   resolveMentionsFromBody,
   type LoungeNotificationType,
   type LoungeReaction,
 } from "@/lib/member/lounge";
+import { applyReactionToggle } from "@/lib/member/lounge-reactions";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/supabase/auth";
+import { isAdminRole } from "@/lib/supabase/roles";
 import { createClient } from "@/lib/supabase/server";
+
+export type LoungeCommentMeta = {
+  id: string;
+  post_id: string;
+  parent_id: string | null;
+  body: string;
+  created_at: string;
+};
 
 export type LoungeActionState = {
   ok: boolean;
   message: string;
+  commentMeta?: LoungeCommentMeta;
+  postId?: string;
+  reaction_counts?: Record<LoungeReaction, number>;
+  my_reaction?: LoungeReaction | null;
 };
 
 async function requireLoungeStudent() {
@@ -34,6 +49,9 @@ async function requireLoungeStudent() {
         message: "Please log in to continue.",
       },
     };
+  }
+  if (isAdminRole(profile.role)) {
+    return { profile: { id: profile.id, role: profile.role }, error: null };
   }
   const allowed = await canAccessStudentLounge(profile.id, profile.role);
   if (!allowed) {
@@ -78,7 +96,7 @@ async function syncMentions(opts: {
   postId?: string | null;
   commentId?: string | null;
 }) {
-  const candidates = await listLoungeStudentsForMentions();
+  const candidates = await resolveMentionCandidatesFromBody(opts.body);
   const mentioned = resolveMentionsFromBody(opts.body, candidates).filter(
     (p) => p.id !== opts.actorId,
   );
@@ -195,15 +213,22 @@ export async function createLoungePost(
       .eq("id", post.id);
   }
 
+  const postId = post.id;
   if (body) {
-    await syncMentions({
-      actorId: gate.profile.id,
-      body,
-      postId: post.id,
+    after(async () => {
+      await syncMentions({
+        actorId: gate.profile.id,
+        body,
+        postId,
+      });
+      revalidateLounge(postId);
+    });
+  } else {
+    after(() => {
+      revalidateLounge(postId);
     });
   }
 
-  revalidateLounge(post.id);
   return { ok: true, message: "Posted na sa Student Lounge." };
 }
 
@@ -242,13 +267,15 @@ export async function updateLoungePost(
 
   if (error) return { ok: false, message: error.message };
 
-  await syncMentions({
-    actorId: gate.profile.id,
-    body,
-    postId,
+  after(async () => {
+    await syncMentions({
+      actorId: gate.profile.id,
+      body,
+      postId,
+    });
+    revalidateLounge(postId);
   });
 
-  revalidateLounge(postId);
   return { ok: true, message: "Updated na ang post." };
 }
 
@@ -301,6 +328,10 @@ export async function setLoungeReaction(formData: FormData): Promise<LoungeActio
 
   const postId = String(formData.get("post_id") ?? "");
   const reaction = String(formData.get("reaction") ?? "") as LoungeReaction;
+  const prevReaction = String(formData.get("prev_reaction") ?? "").trim() as
+    | LoungeReaction
+    | "";
+  const countsRaw = String(formData.get("reaction_counts") ?? "");
   if (!postId || !["LIKE", "CELEBRATE", "HELPFUL"].includes(reaction)) {
     return { ok: false, message: "Invalid reaction." };
   }
@@ -312,6 +343,8 @@ export async function setLoungeReaction(formData: FormData): Promise<LoungeActio
     .eq("post_id", postId)
     .eq("user_id", gate.profile.id)
     .maybeSingle();
+
+  const wasNewReaction = !existing;
 
   if (existing?.reaction === reaction) {
     await supabase
@@ -333,23 +366,66 @@ export async function setLoungeReaction(formData: FormData): Promise<LoungeActio
     });
   }
 
+  let reaction_counts: Record<LoungeReaction, number> | undefined;
+  let my_reaction: LoungeReaction | null | undefined;
+  if (countsRaw && prevReaction !== undefined) {
+    try {
+      const parsed = JSON.parse(countsRaw) as Record<LoungeReaction, number>;
+      const stub = {
+        id: postId,
+        body: "",
+        image_path: null,
+        image_url: null,
+        created_at: "",
+        updated_at: "",
+        pinned_at: null,
+        hidden_at: null,
+        comments_locked_at: null,
+        author: {
+          id: gate.profile.id,
+          full_name: "",
+          avatar_url: null,
+          lounge_badge: null,
+        },
+        comment_count: 0,
+        reaction_counts: parsed,
+        my_reaction:
+          prevReaction && ["LIKE", "CELEBRATE", "HELPFUL"].includes(prevReaction)
+            ? (prevReaction as LoungeReaction)
+            : null,
+      };
+      const next = applyReactionToggle(stub, reaction);
+      reaction_counts = next.reaction_counts;
+      my_reaction = next.my_reaction;
+    } catch {
+      /* client counts optional */
+    }
+  }
+
   const { data: post } = await supabase
     .from("lounge_posts")
     .select("author_id")
     .eq("id", postId)
     .maybeSingle();
 
-  if (post && !existing) {
-    await notify({
-      userId: post.author_id,
-      actorId: gate.profile.id,
-      type: "REACTION",
-      postId,
+  if (post && wasNewReaction) {
+    after(async () => {
+      await notify({
+        userId: post.author_id,
+        actorId: gate.profile!.id,
+        type: "REACTION",
+        postId,
+      });
     });
   }
 
-  revalidateLounge(postId);
-  return { ok: true, message: "Reaction saved." };
+  return {
+    ok: true,
+    message: "",
+    postId,
+    reaction_counts,
+    my_reaction,
+  };
 }
 
 export async function createLoungeComment(
@@ -392,6 +468,7 @@ export async function createLoungeComment(
     return { ok: false, message: "Post not found." };
   }
 
+  let parentAuthorId: string | null = null;
   if (parentId) {
     const { data: parent } = await supabase
       .from("lounge_comments")
@@ -407,6 +484,7 @@ export async function createLoungeComment(
         message: "Replies only go one level deep.",
       };
     }
+    parentAuthorId = parent.author_id;
   }
 
   const { data: comment, error } = await supabase
@@ -424,40 +502,46 @@ export async function createLoungeComment(
     return { ok: false, message: error?.message ?? "Could not comment." };
   }
 
-  if (parentId) {
-    const { data: parent } = await supabase
-      .from("lounge_comments")
-      .select("author_id")
-      .eq("id", parentId)
-      .maybeSingle();
-    if (parent) {
+  const commentMeta: LoungeCommentMeta = {
+    id: comment.id,
+    post_id: postId,
+    parent_id: parentId,
+    body,
+    created_at: new Date().toISOString(),
+  };
+
+  after(async () => {
+    if (parentId && parentAuthorId) {
       await notify({
-        userId: parent.author_id,
-        actorId: gate.profile.id,
+        userId: parentAuthorId,
+        actorId: gate.profile!.id,
         type: "REPLY",
         postId,
         commentId: comment.id,
       });
+    } else if (post) {
+      await notify({
+        userId: post.author_id,
+        actorId: gate.profile!.id,
+        type: "COMMENT",
+        postId,
+        commentId: comment.id,
+      });
     }
-  } else if (post) {
-    await notify({
-      userId: post.author_id,
-      actorId: gate.profile.id,
-      type: "COMMENT",
+    await syncMentions({
+      actorId: gate.profile!.id,
+      body,
       postId,
       commentId: comment.id,
     });
-  }
-
-  await syncMentions({
-    actorId: gate.profile.id,
-    body,
-    postId,
-    commentId: comment.id,
+    revalidateLounge(postId);
   });
 
-  revalidateLounge(postId);
-  return { ok: true, message: "Comment posted." };
+  return {
+    ok: true,
+    message: "Comment posted.",
+    commentMeta,
+  };
 }
 
 export async function deleteLoungeComment(

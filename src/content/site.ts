@@ -310,14 +310,24 @@ export const authCopy = {
     submit: "Log In",
     noAccount: "Wala pa kay account?",
     register: "Register",
-    forgot: "Forgot password?",
+    forgot: "Nakalimot sa password?",
+    resetSuccess:
+      "Password updated na. Log in gamit ang imong bag-ong password.",
   },
   forgot: {
     eyebrow: "PASSWORD",
     title: "Reset your password",
-    body: "Enter the email you used to register. We will send reset instructions when email is connected.",
+    body: "Ibutang ang email nga gigamit nimo sa register. Padala mi og reset link sa imong inbox.",
     submit: "Send reset link",
-    sent: "Check your inbox. If that email is on file, a reset link will arrive when email delivery is live.",
+    sent: "Check your inbox. Kung naa ni nga email sa among records, makadawat ka og reset link within a few minutes.",
+    invalidLink:
+      "Expired na or invalid ang link. Request og bag-ong reset link below.",
+  },
+  resetPassword: {
+    eyebrow: "NEW PASSWORD",
+    title: "Set your new password",
+    body: "Pick a strong password (at least 8 characters). After this, log in with your new password.",
+    submit: "Save new password",
   },
   register: {
     eyebrow: "MEDICAL BILLING TRAINING",
@@ -341,7 +351,7 @@ export const authCopy = {
   checkout: {
     eyebrow: "PAYMONGO",
     title: "Scan to pay with QR Ph",
-    body: "I-scan ang live QR gamit ang imong bank or e-wallet app. After a successful pay, we confirm automatically and open your training dashboard.",
+    body: "I-scan ang live QR gamit ang imong bank or e-wallet app. Wala pa mi mag-create sa imong account hangtod successful ang payment — after that, we confirm automatically and open your training dashboard.",
     back: "Back to registration",
     home: "Back to home",
     refresh: "Check payment status",

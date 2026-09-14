@@ -511,6 +511,51 @@ export async function listLoungeStudentsForMentions() {
   }));
 }
 
+export { applyReactionToggle } from "@/lib/member/lounge-reactions";
+
+/** Rough @-labels from body for targeted profile lookup (MentionTextarea format). */
+export function extractMentionLabelsFromBody(body: string): string[] {
+  const labels = new Set<string>();
+  let idx = 0;
+  while (idx < body.length) {
+    const at = body.indexOf("@", idx);
+    if (at === -1) break;
+    const rest = body.slice(at + 1);
+    const match = rest.match(/^([A-Za-z][\w.'-]*(?:\s+[A-Za-z][\w.'-]*){0,4})/);
+    if (match?.[1]) {
+      labels.add(match[1].trim());
+    }
+    idx = at + 1;
+  }
+  return [...labels];
+}
+
+export async function resolveMentionCandidatesFromBody(body: string) {
+  const labels = extractMentionLabelsFromBody(body);
+  if (!labels.length) return [] as LoungeMentionCandidate[];
+
+  const service = createServiceClient();
+  const found = new Map<string, LoungeMentionCandidate>();
+
+  for (const label of labels) {
+    const { data } = await service
+      .from("profiles")
+      .select("id, full_name")
+      .eq("role", "STUDENT")
+      .ilike("full_name", label)
+      .limit(5);
+
+    for (const row of data ?? []) {
+      const name = displayName(row.full_name);
+      if (body.includes(`@${name}`)) {
+        found.set(row.id, { id: row.id, full_name: name });
+      }
+    }
+  }
+
+  return [...found.values()];
+}
+
 /** Match @Full Name tokens against known student names (longest first). */
 export function resolveMentionsFromBody(
   body: string,

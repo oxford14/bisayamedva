@@ -25,6 +25,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const emailFromQuery = searchParams.get("email") ?? "";
   const nextFromQuery = searchParams.get("next") ?? "";
+  const resetSuccess = searchParams.get("reset") === "success";
 
   useEffect(() => {
     if (state?.fieldErrors) {
@@ -45,6 +46,15 @@ export function LoginForm() {
       <p className="mt-2 text-sm leading-relaxed text-muted sm:text-base">
         {authCopy.login.body}
       </p>
+
+      {resetSuccess ? (
+        <p
+          className="mt-4 rounded-xl bg-sand px-3.5 py-2.5 text-sm text-navy"
+          role="status"
+        >
+          {authCopy.login.resetSuccess}
+        </p>
+      ) : null}
 
       <form action={formAction} className="mt-8 space-y-5" noValidate>
         {nextFromQuery ? (

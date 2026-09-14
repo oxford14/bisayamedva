@@ -17,13 +17,13 @@ import {
   createLoungeComment,
   deleteLoungeComment,
   deleteLoungePost,
-  setLoungeReaction,
   toggleHideLoungePost,
   toggleLoungePostComments,
   togglePinLoungeComment,
   togglePinLoungePost,
   updateLoungePost,
   type LoungeActionState,
+  type LoungeCommentMeta,
 } from "@/app/(member)/member/lounge-actions";
 import { MentionTextarea } from "@/components/member/lounge/mention-textarea";
 import { MemberCard } from "@/components/member/ui";
@@ -111,6 +111,7 @@ function CommentBranch({
   commentsLocked,
   candidates,
   depth,
+  onCommentPosted,
 }: {
   comment: LoungeComment;
   postId: string;
@@ -119,15 +120,23 @@ function CommentBranch({
   commentsLocked: boolean;
   candidates: LoungeMentionCandidate[];
   depth: number;
+  onCommentPosted?: (meta: LoungeCommentMeta) => void;
 }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [state, action, pending] = useActionState(createLoungeComment, initial);
   const [pendingDelete, startDelete] = useTransition();
   const [pendingPin, startPin] = useTransition();
+  const replyFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state.ok) setReplyOpen(false);
-  }, [state]);
+    if (state.ok) {
+      setReplyOpen(false);
+      replyFormRef.current?.reset();
+      if (state.commentMeta) {
+        onCommentPosted?.(state.commentMeta);
+      }
+    }
+  }, [state, onCommentPosted]);
 
   const isPinned = Boolean(comment.pinned_at);
 
@@ -200,7 +209,7 @@ function CommentBranch({
             ) : null}
           </div>
           {replyOpen && !commentsLocked ? (
-            <form action={action} className="mt-2 space-y-2">
+            <form ref={replyFormRef} action={action} className="mt-2 space-y-2">
               <input type="hidden" name="post_id" value={postId} />
               <input type="hidden" name="parent_id" value={comment.id} />
               <MentionTextarea
@@ -242,6 +251,7 @@ function CommentBranch({
               commentsLocked={commentsLocked}
               candidates={candidates}
               depth={1}
+              onCommentPosted={onCommentPosted}
             />
           ))}
         </div>
@@ -258,6 +268,10 @@ export function LoungePostCard({
   viewerIsSuperAdmin,
   candidates,
   highlight,
+  onReaction,
+  pendingReaction,
+  reactionError,
+  onCommentPosted,
 }: {
   post: LoungePost;
   comments: LoungeComment[];
@@ -266,6 +280,10 @@ export function LoungePostCard({
   viewerIsSuperAdmin: boolean;
   candidates: LoungeMentionCandidate[];
   highlight?: boolean;
+  onReaction?: (postId: string, reaction: LoungeReaction) => void;
+  pendingReaction?: LoungeReaction;
+  reactionError?: string;
+  onCommentPosted?: (meta: LoungeCommentMeta) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -280,7 +298,7 @@ export function LoungePostCard({
     createLoungeComment,
     initial,
   );
-  const [reactPending, startReact] = useTransition();
+  const commentFormRef = useRef<HTMLFormElement>(null);
   const [deletePending, startDelete] = useTransition();
   const [pinPending, startPin] = useTransition();
   const [hidePending, startHide] = useTransition();
@@ -298,8 +316,14 @@ export function LoungePostCard({
   }, [editState]);
 
   useEffect(() => {
-    if (commentState.ok) setShowComments(true);
-  }, [commentState]);
+    if (commentState.ok) {
+      setShowComments(true);
+      commentFormRef.current?.reset();
+      if (commentState.commentMeta) {
+        onCommentPosted?.(commentState.commentMeta);
+      }
+    }
+  }, [commentState, onCommentPosted]);
 
   const isMine = post.author.id === viewerId;
   const isPinned = Boolean(post.pinned_at);
@@ -518,24 +542,22 @@ export function LoungePostCard({
               {reactionMeta.map(({ key, label, Icon }) => {
                 const count = post.reaction_counts[key] ?? 0;
                 const active = post.my_reaction === key;
+                const chipPending = pendingReaction === key;
                 return (
                   <button
                     key={key}
                     type="button"
-                    disabled={reactPending}
+                    disabled={chipPending}
+                    aria-busy={chipPending}
                     className={cn(
                       "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
                       active
                         ? "border-navy bg-navy text-cream"
                         : "border-border bg-cream/70 text-navy/80 hover:border-navy/30 hover:bg-white",
+                      chipPending && "opacity-80",
                     )}
                     onClick={() => {
-                      const fd = new FormData();
-                      fd.set("post_id", post.id);
-                      fd.set("reaction", key);
-                      startReact(async () => {
-                        await setLoungeReaction(fd);
-                      });
+                      onReaction?.(post.id, key);
                     }}
                   >
                     <Icon className="size-3.5" aria-hidden />
@@ -544,6 +566,11 @@ export function LoungePostCard({
                   </button>
                 );
               })}
+              {reactionError ? (
+                <p className="w-full text-xs text-destructive" role="status">
+                  {reactionError}
+                </p>
+              ) : null}
               <button
                 type="button"
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-cream/70 px-3 py-1.5 text-xs font-semibold text-navy/80 hover:bg-white"
@@ -567,6 +594,7 @@ export function LoungePostCard({
                     commentsLocked={commentsLocked}
                     candidates={candidates}
                     depth={0}
+                    onCommentPosted={onCommentPosted}
                   />
                 ))}
                 {commentsLocked ? (
@@ -574,7 +602,7 @@ export function LoungePostCard({
                     Comments are off for this post.
                   </p>
                 ) : (
-                  <form action={commentAction} className="space-y-2">
+                  <form ref={commentFormRef} action={commentAction} className="space-y-2">
                     <input type="hidden" name="post_id" value={post.id} />
                     <MentionTextarea
                       id={`comment-${post.id}`}

@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes, timingSafeEqual } from "crypto";
 import { z } from "zod";
 import {
   authCopy,
@@ -22,11 +23,14 @@ import {
 } from "@/lib/promo/codes";
 import {
   expireStalePendingPayments,
-  isPendingHoldFresh,
-  pendingHoldExpiresAt,
+  PAYMENT_HOLD_MS,
 } from "@/lib/payments/expire-pending";
-import { applyReferredBy, resolveReferralCode } from "@/lib/referrals/codes";
-import { creditReferralReward } from "@/lib/referrals/reward";
+import { findProfileIdByEmail } from "@/lib/register/create-student";
+import { finalizeRegistrationFromPayment } from "@/lib/register/finalize-intent";
+import {
+  clearRegistrationPayloadFields,
+  encryptRegistrationPayload,
+} from "@/lib/register/intent-crypto";
 
 const draftSchema = z.object({
   firstName: z.string().min(1),
@@ -47,11 +51,13 @@ export type CheckoutPrepareResult =
       ok: true;
       paymentId: string;
       enrollmentId: string;
+      pollSecret: string;
       qrImageUrl: string;
       amountLabel: string;
       courseTitle: string;
       providerPaymentId: string;
       alreadyPaid: boolean;
+      needsSignIn?: boolean;
       expiresAt?: string;
     }
   | { ok: false; error: string; code?: "EMAIL_TAKEN" };
@@ -69,20 +75,46 @@ class RegisterEmailTakenError extends Error {
   }
 }
 
-function escapeIlikePattern(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+function verifyPollSecret(stored: string | null, provided: string | null) {
+  if (!stored || !provided) return false;
+  try {
+    const a = Buffer.from(stored);
+    const b = Buffer.from(provided);
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
-async function findProfileIdByEmail(email: string) {
+async function cancelPendingIntentsForEmail(email: string) {
   const admin = createServiceClient();
   const normalized = email.trim().toLowerCase();
-  const { data } = await admin
-    .from("profiles")
+
+  const { data: pending } = await admin
+    .from("registration_intents")
     .select("id")
-    .ilike("email", escapeIlikePattern(normalized))
-    .limit(1)
-    .maybeSingle();
-  return (data?.id as string | undefined) ?? null;
+    .eq("email", normalized)
+    .eq("status", "PENDING");
+
+  const intentIds = (pending ?? []).map((row) => row.id);
+  if (intentIds.length === 0) return;
+
+  await admin
+    .from("registration_intents")
+    .update({
+      status: "EXPIRED",
+      ...clearRegistrationPayloadFields(),
+    })
+    .in("id", intentIds)
+    .eq("status", "PENDING");
+
+  await admin
+    .from("payments")
+    .update({ status: "FAILED" })
+    .in("registration_intent_id", intentIds)
+    .eq("status", "PENDING")
+    .is("enrollment_id", null);
 }
 
 export async function checkRegisterEmail(
@@ -110,7 +142,7 @@ export async function checkRegisterEmail(
 }
 
 export type CheckoutActionResult =
-  | { ok: true; redirectTo?: string; status?: string }
+  | { ok: true; redirectTo?: string; status?: string; needsSignIn?: boolean }
   | { ok: false; error: string };
 
 async function resolveFeaturedCourse() {
@@ -175,77 +207,6 @@ async function resolveFeaturedCourse() {
   return { course };
 }
 
-async function ensureStudentUser(draft: z.infer<typeof draftSchema>) {
-  const admin = createServiceClient();
-  const email = draft.email.trim().toLowerCase();
-  const fullName = `${draft.firstName} ${draft.lastName}`.trim();
-  const referrer = await resolveReferralCode(draft.refCode);
-  const referralSource = referrer
-    ? draft.referralSource || "Referral"
-    : draft.referralSource ?? null;
-  const metadata = {
-    full_name: fullName,
-    first_name: draft.firstName,
-    last_name: draft.lastName,
-    mobile: draft.mobile,
-    occupation: draft.occupation ?? null,
-    experience_level: draft.experienceLevel ?? null,
-    messenger_handle: draft.messengerName ?? null,
-    referral_source: referralSource,
-  };
-
-  const existingId = await findProfileIdByEmail(email);
-  if (existingId) {
-    throw new RegisterEmailTakenError();
-  }
-
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password: draft.password,
-    email_confirm: true,
-    user_metadata: metadata,
-  });
-  if (error || !data.user) {
-    const message = error?.message ?? "Could not create your account.";
-    if (/already/i.test(message)) {
-      throw new RegisterEmailTakenError();
-    }
-    throw new Error(message);
-  }
-
-  const userId = data.user.id;
-
-  await admin.from("profiles").upsert({
-    id: userId,
-    email,
-    full_name: fullName,
-    role: "STUDENT",
-    mobile: draft.mobile,
-    occupation: draft.occupation ?? null,
-    experience_level: draft.experienceLevel ?? null,
-    messenger_handle: draft.messengerName ?? null,
-    referral_source: referralSource,
-  });
-
-  if (referrer) {
-    await applyReferredBy(userId, draft.refCode);
-  }
-
-  const supabase = await createClient();
-  const { error: signInError } = await supabase.auth.signInWithPassword({
-    email,
-    password: draft.password,
-  });
-  if (signInError) {
-    throw new Error(
-      signInError.message ||
-        "Account ready, but automatic login failed. Please log in manually.",
-    );
-  }
-
-  return userId;
-}
-
 export async function quoteRegisterPromo(code: string) {
   const { getFeaturedOffer } = await import("@/lib/content/featured-offer");
   const offer = await getFeaturedOffer();
@@ -265,9 +226,17 @@ export async function prepareCheckoutPayment(
     }
 
     const draft = parsed.data;
-    const { course } = await resolveFeaturedCourse();
-    const userId = await ensureStudentUser(draft);
+    const email = draft.email.trim().toLowerCase();
+
+    const existingId = await findProfileIdByEmail(email);
+    if (existingId) {
+      throw new RegisterEmailTakenError();
+    }
+
     await expireStalePendingPayments();
+    await cancelPendingIntentsForEmail(email);
+
+    const { course } = await resolveFeaturedCourse();
     const admin = createServiceClient();
 
     const coursePrice = Number(course.price);
@@ -285,100 +254,57 @@ export async function prepareCheckoutPayment(
       promoId = quote.promoId;
     }
 
-    let { data: enrollment } = await admin
-      .from("enrollments")
-      .select("id, status, created_at")
-      .eq("student_id", userId)
-      .eq("course_id", course.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const expiresAt = new Date(Date.now() + PAYMENT_HOLD_MS).toISOString();
+    const { ciphertext, iv } = encryptRegistrationPayload(draft);
 
-    const reuseHold =
-      enrollment?.status === "PENDING_PAYMENT" &&
-      isPendingHoldFresh(enrollment.created_at);
-    const alreadySeated =
-      enrollment?.status === "ACTIVE" || enrollment?.status === "COMPLETED";
+    const { data: intent, error: intentError } = await admin
+      .from("registration_intents")
+      .insert({
+        email,
+        course_id: course.id,
+        payload_ciphertext: ciphertext,
+        payload_iv: iv,
+        promo_code_id: promoId,
+        original_amount: originalAmount,
+        final_amount: finalAmount,
+        ref_code: draft.refCode?.trim() || null,
+        status: "PENDING",
+        expires_at: expiresAt,
+      })
+      .select("id, expires_at")
+      .single();
 
-    if (!alreadySeated && !reuseHold) {
-      const nowIso = new Date().toISOString();
-      if (enrollment) {
-        const { data: reopened, error } = await admin
-          .from("enrollments")
-          .update({
-            status: "PENDING_PAYMENT",
-            created_at: nowIso,
-          })
-          .eq("id", enrollment.id)
-          .select("id, status, created_at")
-          .single();
-        if (error || !reopened) {
-          return {
-            ok: false,
-            error: error?.message ?? "Could not reserve a new seat.",
-          };
-        }
-        enrollment = reopened;
-      } else {
-        const { data: created, error } = await admin
-          .from("enrollments")
-          .insert({
-            student_id: userId,
-            course_id: course.id,
-            session_id: null,
-            status: "PENDING_PAYMENT",
-          })
-          .select("id, status, created_at")
-          .single();
-        if (error || !created) {
-          return { ok: false, error: error?.message ?? "Could not create enrollment." };
-        }
-        enrollment = created;
-      }
+    if (intentError || !intent) {
+      return {
+        ok: false,
+        error: intentError?.message ?? "Could not start registration checkout.",
+      };
     }
 
-    if (!enrollment) {
-      return { ok: false, error: "Could not create enrollment." };
-    }
+    const pollSecret = randomBytes(32).toString("base64url");
 
-    let { data: payment } = await admin
+    const { data: payment, error: paymentError } = await admin
       .from("payments")
+      .insert({
+        registration_intent_id: intent.id,
+        enrollment_id: null,
+        amount: finalAmount,
+        original_amount: originalAmount,
+        currency: course.currency || "PHP",
+        status: "PENDING",
+        provider: "PAYMONGO",
+        poll_secret: pollSecret,
+      })
       .select(
         "id, amount, currency, status, provider_payment_id, promo_code_id, original_amount",
       )
-      .eq("enrollment_id", enrollment.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .single();
 
-    if (!alreadySeated && !reuseHold) {
-      payment = null;
-    } else if (
-      payment &&
-      (payment.status === "FAILED" || payment.status === "REFUNDED")
-    ) {
-      payment = null;
-    }
-
-    if (!payment) {
-      const { data: createdPayment, error } = await admin
-        .from("payments")
-        .insert({
-          enrollment_id: enrollment.id,
-          amount: finalAmount,
-          original_amount: originalAmount,
-          currency: course.currency || "PHP",
-          status: "PENDING",
-          provider: "PAYMONGO",
-        })
-        .select(
-          "id, amount, currency, status, provider_payment_id, promo_code_id, original_amount",
-        )
-        .single();
-      if (error || !createdPayment) {
-        return { ok: false, error: error?.message ?? "Could not create payment." };
-      }
-      payment = createdPayment;
+    if (paymentError || !payment) {
+      return {
+        ok: false,
+        error: paymentError?.message ?? "Could not create payment.",
+      };
     }
 
     if (promoId) {
@@ -391,77 +317,42 @@ export async function prepareCheckoutPayment(
       if (!bound.ok) {
         return { ok: false, error: bound.error };
       }
-      payment = {
-        ...payment,
-        amount: finalAmount,
-        original_amount: originalAmount,
-        promo_code_id: promoId,
-      };
-    } else if (!payment.promo_code_id) {
-      await admin
-        .from("payments")
-        .update({
-          amount: finalAmount,
-          original_amount: originalAmount,
-        })
-        .eq("id", payment.id);
-      payment = { ...payment, amount: finalAmount, original_amount: originalAmount };
     }
 
-    if (payment.status === "PAID" || enrollment.status === "ACTIVE") {
-      return {
-        ok: true,
-        paymentId: payment.id,
-        enrollmentId: enrollment.id,
-        qrImageUrl: "",
-        amountLabel: formatPeso(Number(payment.amount)),
-        courseTitle: course.title,
-        providerPaymentId: payment.provider_payment_id ?? "",
-        alreadyPaid: true,
-      };
-    }
+    const paidSuccess = (enrollmentId: string) => ({
+      ok: true as const,
+      paymentId: payment.id,
+      enrollmentId,
+      pollSecret,
+      qrImageUrl: "",
+      amountLabel: formatPeso(Number(payment.amount)),
+      courseTitle: course.title,
+      providerPaymentId: payment.provider_payment_id ?? "",
+      alreadyPaid: true,
+      needsSignIn: true,
+    });
 
-    // Complimentary (100% off)
     if (Number(payment.amount) === 0) {
       await admin
         .from("payments")
         .update({ status: "PAID", provider: "PAYMONGO" })
         .eq("id", payment.id);
-      await admin
-        .from("enrollments")
-        .update({ status: "ACTIVE" })
-        .eq("id", enrollment.id);
-      await creditReferralReward(enrollment.id);
-      return {
-        ok: true,
+      const finalized = await finalizeRegistrationFromPayment({
         paymentId: payment.id,
-        enrollmentId: enrollment.id,
-        qrImageUrl: "",
-        amountLabel: formatPeso(0),
-        courseTitle: course.title,
-        providerPaymentId: "",
-        alreadyPaid: true,
-      };
+      });
+      return paidSuccess(finalized.enrollmentId);
     }
 
-    let qrImageUrl = "";
     let providerPaymentId = payment.provider_payment_id ?? "";
 
     if (providerPaymentId) {
       try {
-        const intent = await retrievePaymentIntent(providerPaymentId);
-        if (intent.attributes.status === "succeeded") {
-          await activatePaidEnrollment({ paymentId: payment.id });
-          return {
-            ok: true,
+        const paymongoIntent = await retrievePaymentIntent(providerPaymentId);
+        if (paymongoIntent.attributes.status === "succeeded") {
+          const activated = await activatePaidEnrollment({
             paymentId: payment.id,
-            enrollmentId: enrollment.id,
-            qrImageUrl: "",
-            amountLabel: formatPeso(Number(payment.amount)),
-            courseTitle: course.title,
-            providerPaymentId,
-            alreadyPaid: true,
-          };
+          });
+          return paidSuccess(activated.enrollmentId);
         }
       } catch {
         // Fall through and create a fresh QR checkout.
@@ -472,14 +363,14 @@ export async function prepareCheckoutPayment(
       amountPesos: Number(payment.amount),
       description: `${course.title} · Bisaya MedVA`,
       metadata: {
+        kind: "registration",
         payment_id: payment.id,
-        enrollment_id: enrollment.id,
-        student_id: userId,
+        registration_intent_id: intent.id,
       },
     });
 
     providerPaymentId = live.paymentIntentId;
-    qrImageUrl = normalizeQrSrc(live.qrImageUrl);
+    const qrImageUrl = normalizeQrSrc(live.qrImageUrl);
 
     await admin
       .from("payments")
@@ -494,13 +385,14 @@ export async function prepareCheckoutPayment(
     return {
       ok: true,
       paymentId: payment.id,
-      enrollmentId: enrollment.id,
+      enrollmentId: "",
+      pollSecret,
       qrImageUrl,
       amountLabel: formatPeso(Number(payment.amount)),
       courseTitle: course.title,
       providerPaymentId,
       alreadyPaid: false,
-      expiresAt: pendingHoldExpiresAt(enrollment.created_at).toISOString(),
+      expiresAt: intent.expires_at,
     };
   } catch (error) {
     if (error instanceof RegisterEmailTakenError) {
@@ -513,17 +405,25 @@ export async function prepareCheckoutPayment(
   }
 }
 
+async function afterRegistrationPaid(): Promise<CheckoutActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    return { ok: true, redirectTo: "/member", status: "PAID" };
+  }
+
+  return { ok: true, status: "PAID", needsSignIn: true };
+}
+
 export async function refreshCheckoutPaymentStatus(
   paymentId: string,
+  pollSecret?: string | null,
 ): Promise<CheckoutActionResult> {
   try {
     if (!paymentId) return { ok: false, error: "Missing payment id." };
-
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "Please log in first." };
 
     await expireStalePendingPayments();
 
@@ -531,37 +431,105 @@ export async function refreshCheckoutPaymentStatus(
     const { data: payment } = await admin
       .from("payments")
       .select(
-        "id, status, provider_payment_id, enrollment_id, enrollments(student_id, status)",
+        "id, status, provider_payment_id, enrollment_id, registration_intent_id, poll_secret, registration_intents(status, expires_at)",
       )
       .eq("id", paymentId)
       .maybeSingle();
 
     if (!payment) return { ok: false, error: "Payment not found." };
 
-    const enrollment = Array.isArray(payment.enrollments)
-      ? payment.enrollments[0]
-      : payment.enrollments;
+    const isIntentCheckout = Boolean(payment.registration_intent_id);
+
+    if (isIntentCheckout) {
+      if (!verifyPollSecret(payment.poll_secret, pollSecret ?? null)) {
+        return { ok: false, error: "Invalid checkout session." };
+      }
+
+      const intent = Array.isArray(payment.registration_intents)
+        ? payment.registration_intents[0]
+        : payment.registration_intents;
+
+      if (
+        intent?.status === "EXPIRED" ||
+        (intent?.status === "PENDING" &&
+          intent.expires_at &&
+          new Date(intent.expires_at).getTime() <= Date.now())
+      ) {
+        return { ok: true, status: "EXPIRED" };
+      }
+
+      if (payment.status === "PAID") {
+        return afterRegistrationPaid();
+      }
+
+      if (payment.status === "FAILED") {
+        return { ok: true, status: "EXPIRED" };
+      }
+
+      if (payment.provider_payment_id) {
+        const paymongoIntent = await retrievePaymentIntent(
+          payment.provider_payment_id,
+        );
+        if (paymongoIntent.attributes.status === "succeeded") {
+          await activatePaidEnrollment({ paymentId: payment.id });
+          return afterRegistrationPaid();
+        }
+        return { ok: true, status: paymongoIntent.attributes.status };
+      }
+
+      return { ok: false, error: "No PayMongo intent yet." };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Please log in first." };
+
+    const { data: paymentWithEnrollment } = await admin
+      .from("payments")
+      .select(
+        "id, status, provider_payment_id, enrollment_id, enrollments(student_id, status)",
+      )
+      .eq("id", paymentId)
+      .maybeSingle();
+
+    if (!paymentWithEnrollment) {
+      return { ok: false, error: "Payment not found." };
+    }
+
+    const enrollment = Array.isArray(paymentWithEnrollment.enrollments)
+      ? paymentWithEnrollment.enrollments[0]
+      : paymentWithEnrollment.enrollments;
     if (!enrollment || enrollment.student_id !== user.id) {
       return { ok: false, error: "This payment is not linked to your account." };
     }
 
-    if (payment.status === "PAID") {
+    if (paymentWithEnrollment.status === "PAID") {
       return { ok: true, redirectTo: "/member", status: "PAID" };
     }
 
-    if (payment.provider_payment_id) {
-      const intent = await retrievePaymentIntent(payment.provider_payment_id);
-      if (intent.attributes.status === "succeeded") {
-        await activatePaidEnrollment({ paymentId: payment.id });
+    if (paymentWithEnrollment.provider_payment_id) {
+      const paymongoIntent = await retrievePaymentIntent(
+        paymentWithEnrollment.provider_payment_id,
+      );
+      if (paymongoIntent.attributes.status === "succeeded") {
+        await activatePaidEnrollment({ paymentId: paymentWithEnrollment.id });
         return { ok: true, redirectTo: "/member", status: "PAID" };
       }
-      if (payment.status === "FAILED" || enrollment.status === "CANCELLED") {
+      if (
+        paymentWithEnrollment.status === "FAILED" ||
+        enrollment.status === "CANCELLED"
+      ) {
         return { ok: true, status: "EXPIRED" };
       }
-      return { ok: true, status: intent.attributes.status };
+      return { ok: true, status: paymongoIntent.attributes.status };
     }
 
-    if (payment.status === "FAILED" || enrollment.status === "CANCELLED") {
+    if (
+      paymentWithEnrollment.status === "FAILED" ||
+      enrollment.status === "CANCELLED"
+    ) {
       return { ok: true, status: "EXPIRED" };
     }
 
@@ -570,6 +538,90 @@ export async function refreshCheckoutPaymentStatus(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Status check failed.",
+    };
+  }
+}
+
+export async function completeRegisterCheckout(input: {
+  paymentId: string;
+  pollSecret: string;
+  password: string;
+}): Promise<CheckoutActionResult> {
+  try {
+    const paymentId = input.paymentId?.trim();
+    const pollSecret = input.pollSecret?.trim();
+    const password = input.password;
+
+    if (!paymentId || !pollSecret || !password) {
+      return { ok: false, error: "Missing checkout details." };
+    }
+
+    const admin = createServiceClient();
+    const { data: payment } = await admin
+      .from("payments")
+      .select(
+        "id, status, poll_secret, registration_intent_id, registration_intents(status)",
+      )
+      .eq("id", paymentId)
+      .maybeSingle();
+
+    if (!payment?.registration_intent_id) {
+      return { ok: false, error: "Invalid registration checkout." };
+    }
+
+    if (!verifyPollSecret(payment.poll_secret, pollSecret)) {
+      return { ok: false, error: "Invalid checkout session." };
+    }
+
+    if (payment.status !== "PAID") {
+      return { ok: false, error: "Payment is not confirmed yet." };
+    }
+
+    const intent = Array.isArray(payment.registration_intents)
+      ? payment.registration_intents[0]
+      : payment.registration_intents;
+
+    if (intent?.status !== "FULFILLED") {
+      await activatePaidEnrollment({ paymentId: payment.id });
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      return { ok: true, redirectTo: "/member", status: "PAID" };
+    }
+
+    const { data: intentRow } = await admin
+      .from("registration_intents")
+      .select("email")
+      .eq("id", payment.registration_intent_id)
+      .maybeSingle();
+
+    const email = intentRow?.email?.trim().toLowerCase();
+    if (!email) {
+      return { ok: false, error: "Could not resolve account email." };
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) {
+      return {
+        ok: false,
+        error:
+          signInError.message ||
+          "Account ready, but login failed. Try logging in manually.",
+      };
+    }
+
+    return { ok: true, redirectTo: "/member", status: "PAID" };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not finish checkout.",
     };
   }
 }

@@ -881,6 +881,62 @@ export async function saveReferralCommissions(formData: FormData) {
   return ok();
 }
 
+export async function creditMemberWallet(formData: FormData) {
+  const profile = await requireAdmin();
+  const { canCreditMemberWallets } = await import(
+    "@/lib/admin/wallet-permissions"
+  );
+  if (!canCreditMemberWallets(profile)) {
+    return fail("You cannot credit member wallets.");
+  }
+
+  const studentId = String(formData.get("student_id") ?? "");
+  const amountParsed = z.coerce
+    .number()
+    .positive("Amount must be greater than zero.")
+    .max(1_000_000, "Amount is too large.")
+    .safeParse(formData.get("amount"));
+  const noteRaw = String(formData.get("note") ?? "").trim();
+  const note =
+    noteRaw.slice(0, 500) ||
+    `Admin credit by ${profile.email.split("@")[0] ?? "admin"}`;
+
+  if (!studentId || !uuid.safeParse(studentId).success) {
+    return fail("Invalid student.");
+  }
+  if (!amountParsed.success) {
+    return fail(amountParsed.error.issues[0]?.message ?? "Invalid amount.");
+  }
+
+  const admin = createServiceClient();
+  const { data: student } = await admin
+    .from("profiles")
+    .select("id, role")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (!student || student.role !== "STUDENT") {
+    return fail("Student not found.");
+  }
+
+  const { creditWallet } = await import("@/lib/wallet/ledger");
+  const credit = await creditWallet({
+    studentId,
+    amount: amountParsed.data,
+    type: "ADMIN_ADJUST",
+    referenceType: "admin_credit",
+    referenceId: profile.id,
+    note,
+  });
+
+  if (!credit.ok) return fail(credit.error);
+
+  revalidatePath("/admin/wallets");
+  revalidatePath("/admin");
+  revalidatePath("/member/wallet");
+  return ok();
+}
+
 export async function reviewWalletWithdrawal(formData: FormData) {
   const profile = await requireAdmin();
   const id = String(formData.get("id") ?? "");

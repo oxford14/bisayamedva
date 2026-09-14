@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Banknote,
   CreditCard,
+  Wallet,
   Layers,
   LayoutDashboard,
   Settings,
@@ -77,6 +78,12 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/withdrawals",
     label: "Withdrawals",
     icon: Banknote,
+    section: "manage",
+  },
+  {
+    href: "/admin/wallets",
+    label: "Wallets",
+    icon: Wallet,
     section: "manage",
   },
   {

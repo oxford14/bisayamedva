@@ -1,6 +1,8 @@
 import { requireStudent } from "@/lib/supabase/auth";
 import { MemberShell } from "@/components/member/member-shell";
 
+export const dynamic = "force-dynamic";
+
 export default async function MemberLayout({
   children,
 }: {

@@ -2,78 +2,37 @@
 
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
+import {
+  signInWithPasswordAction,
+  type LoginActionState,
+} from "@/app/auth/login/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authCopy, nav } from "@/content/site";
-import { createClient } from "@/lib/supabase/client";
-import { loginSchema } from "@/lib/validations/auth";
 import { Field } from "./field";
 
+const initialState: LoginActionState | null = null;
+
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const [state, formAction, pending] = useActionState(
+    signInWithPasswordAction,
+    initialState,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [pending, setPending] = useState(false);
   const emailFromQuery = searchParams.get("email") ?? "";
+  const nextFromQuery = searchParams.get("next") ?? "";
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const parsed = loginSchema.safeParse({
-      email: String(form.get("email") ?? ""),
-      password: String(form.get("password") ?? ""),
-    });
-
-    if (!parsed.success) {
-      const next: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        const key = String(issue.path[0]);
-        if (!next[key]) next[key] = issue.message;
-      }
-      setErrors(next);
-      setMessage("");
-      return;
+  useEffect(() => {
+    if (state?.fieldErrors) {
+      setErrors(state.fieldErrors);
+    } else if (state?.ok === false && !state.fieldErrors) {
+      setErrors({});
     }
-
-    setErrors({});
-    setMessage("");
-    setPending(true);
-
-    const supabase = createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: parsed.data.email,
-      password: parsed.data.password,
-    });
-
-    if (error || !data.user) {
-      setPending(false);
-      setMessage(error?.message ?? "Login failed. Check your email and password.");
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    const next = searchParams.get("next");
-    const safeNext =
-      next && next.startsWith("/") && !next.startsWith("//") ? next : null;
-
-    if (profile?.role === "SUPER_ADMIN" || profile?.role === "ADMIN") {
-      router.replace(safeNext?.startsWith("/admin") ? safeNext : "/admin");
-    } else {
-      router.replace(
-        safeNext?.startsWith("/member") ? safeNext : "/member",
-      );
-    }
-    router.refresh();
-  }
+  }, [state]);
 
   return (
     <div>
@@ -87,7 +46,11 @@ export function LoginForm() {
         {authCopy.login.body}
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+      <form action={formAction} className="mt-8 space-y-5" noValidate>
+        {nextFromQuery ? (
+          <input type="hidden" name="next" value={nextFromQuery} />
+        ) : null}
+
         <Field label="Email" htmlFor="email" error={errors.email}>
           <Input
             id="email"
@@ -145,9 +108,12 @@ export function LoginForm() {
           </Link>
         </div>
 
-        {message ? (
-          <p className="rounded-xl bg-sand px-3.5 py-2.5 text-sm text-destructive" role="alert">
-            {message}
+        {state?.ok === false && state.message ? (
+          <p
+            className="rounded-xl bg-sand px-3.5 py-2.5 text-sm text-destructive"
+            role="alert"
+          >
+            {state.message}
           </p>
         ) : null}
 

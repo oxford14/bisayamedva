@@ -5,11 +5,13 @@ import {
   EditUserForm,
   UserRoleActions,
 } from "@/components/admin/user-forms";
+import { StudentProgressSummary } from "@/components/admin/student-progress-summary";
 import {
   AdminTable,
   EmptyState,
   StatusBadge,
 } from "@/components/admin/ui";
+import type { StudentCourseProgressSummary } from "@/lib/admin/student-progress";
 
 export type UserDetailRecord = {
   id: string;
@@ -35,11 +37,13 @@ export type UserEnrollmentRecord = {
 export function UserDetailPanel({
   user,
   enrollments,
+  moduleProgress,
   actorId,
   isSuperAdmin,
 }: {
   user: UserDetailRecord;
   enrollments: UserEnrollmentRecord[];
+  moduleProgress?: StudentCourseProgressSummary[];
   actorId: string | null;
   isSuperAdmin: boolean;
 }) {
@@ -138,6 +142,11 @@ export function UserDetailPanel({
             })}
           </AdminTable>
         )}
+      </div>
+
+      <div>
+        <h2 className="mb-3 font-semibold">Module progress</h2>
+        <StudentProgressSummary courses={moduleProgress ?? []} />
       </div>
     </div>
   );

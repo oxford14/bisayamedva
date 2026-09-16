@@ -4,47 +4,25 @@ import { isAdminRole, type UserRole } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatPeso } from "@/lib/utils";
 
-export type MemberCourse = {
-  id: string;
-  title: string;
-  slug: string | null;
-  subtitle: string | null;
-  description: string | null;
-  course_type: string | null;
-  price: number | null;
-  currency: string | null;
-  sort_order: number | null;
-};
+export type {
+  MemberCourse,
+  MemberEnrollment,
+  MemberPayment,
+  MemberSession,
+} from "@/lib/member/enrollment-shared";
+export {
+  isAssignedSessionStarted,
+  isMemberPaidEnrollment,
+  isSessionStartPast,
+  requiresPaidReenrollment,
+} from "@/lib/member/enrollment-shared";
 
-export type MemberSession = {
-  id: string;
-  title: string;
-  starts_at: string | null;
-  ends_at: string | null;
-  timezone: string | null;
-  format: string | null;
-  meeting_url: string | null;
-  status: string | null;
-};
-
-export type MemberPayment = {
-  id: string;
-  amount: number;
-  currency: string;
-  status: string;
-  provider: string | null;
-  provider_payment_id: string | null;
-  created_at: string;
-};
-
-export type MemberEnrollment = {
-  id: string;
-  status: string;
-  created_at: string;
-  course: MemberCourse | null;
-  session: MemberSession | null;
-  payment: MemberPayment | null;
-};
+import type {
+  MemberCourse,
+  MemberEnrollment,
+  MemberPayment,
+  MemberSession,
+} from "@/lib/member/enrollment-shared";
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;

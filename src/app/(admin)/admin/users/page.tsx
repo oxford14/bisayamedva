@@ -7,6 +7,7 @@ import {
   UserDetailPanel,
   type UserEnrollmentRecord,
 } from "@/components/admin/user-detail-panel";
+import { getStudentProgressByCourse } from "@/lib/admin/student-progress";
 import {
   AdminPageHeader,
   AdminTable,
@@ -69,11 +70,16 @@ export default async function UsersPage({
         .eq("student_id", viewedUserId)
         .order("created_at", { ascending: false })
     : Promise.resolve({ data: [] });
+  const viewedModuleProgressPromise = viewedUserId
+    ? getStudentProgressByCourse(viewedUserId)
+    : Promise.resolve([]);
 
-  const [{ data: viewedUser }, { data: viewedEnrollments }] = await Promise.all([
-    viewedUserPromise,
-    viewedEnrollmentsPromise,
-  ]);
+  const [{ data: viewedUser }, { data: viewedEnrollments }, viewedModuleProgress] =
+    await Promise.all([
+      viewedUserPromise,
+      viewedEnrollmentsPromise,
+      viewedModuleProgressPromise,
+    ]);
 
   return (
     <div>
@@ -168,6 +174,7 @@ export default async function UsersPage({
               courses: row.courses,
               sessions: row.sessions,
             })) as UserEnrollmentRecord[]}
+            moduleProgress={viewedModuleProgress}
             actorId={profile?.id ?? null}
             isSuperAdmin={profile?.role === "SUPER_ADMIN"}
           />

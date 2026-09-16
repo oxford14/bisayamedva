@@ -10,7 +10,7 @@ import { getStudentProfile } from "@/lib/supabase/auth";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ session?: string }>;
+  searchParams: Promise<{ session?: string; promo?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -30,7 +30,7 @@ export default async function CourseCheckoutPage({
   searchParams,
 }: Props) {
   const { slug } = await params;
-  const { session: sessionId } = await searchParams;
+  const { session: sessionId, promo: initialPromoCode } = await searchParams;
 
   if (slug === "deep-dive") {
     redirect("/member/course");
@@ -76,6 +76,7 @@ export default async function CourseCheckoutPage({
         courseTitle={course.title}
         review={review.ok ? review : null}
         reviewError={review.ok ? null : review.error}
+        initialPromoCode={initialPromoCode?.trim() || null}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { getCatalogCourseBySlug } from "@/content/courses";
+import { isSessionStartPast } from "@/lib/member/enrollment-shared";
 import { bindPromoToPayment, validateAndQuotePromo } from "@/lib/promo/codes";
 import {
   expireStalePendingPayments,
@@ -222,18 +223,33 @@ export async function prepareCoursePaymentForStudent(
 
     let { data: enrollment } = await admin
       .from("enrollments")
-      .select("id, status, session_id, created_at")
+      .select("id, status, session_id, created_at, sessions(starts_at)")
       .eq("student_id", studentId)
       .eq("course_id", course.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
+    const assignedSession = enrollment?.sessions as
+      | { starts_at: string | null }
+      | { starts_at: string | null }[]
+      | null
+      | undefined;
+    const assignedStarts = Array.isArray(assignedSession)
+      ? assignedSession[0]?.starts_at
+      : assignedSession?.starts_at;
+
     const reuseHold =
       enrollment?.status === "PENDING_PAYMENT" &&
       isPendingHoldFresh(enrollment.created_at);
+    const cohortLocked =
+      (enrollment?.status === "ACTIVE" ||
+        enrollment?.status === "COMPLETED") &&
+      isSessionStartPast(assignedStarts);
     const alreadySeated =
-      enrollment?.status === "ACTIVE" || enrollment?.status === "COMPLETED";
+      (enrollment?.status === "ACTIVE" ||
+        enrollment?.status === "COMPLETED") &&
+      !cohortLocked;
 
     if (!alreadySeated && !reuseHold) {
       const nowIso = new Date().toISOString();
@@ -246,7 +262,7 @@ export async function prepareCoursePaymentForStudent(
             session_id: session.id,
           })
           .eq("id", enrollment.id)
-          .select("id, status, session_id, created_at")
+          .select("id, status, session_id, created_at, sessions(starts_at)")
           .single();
         if (error || !reopened) {
           return {
@@ -264,7 +280,7 @@ export async function prepareCoursePaymentForStudent(
             session_id: session.id,
             status: "PENDING_PAYMENT",
           })
-          .select("id, status, session_id, created_at")
+          .select("id, status, session_id, created_at, sessions(starts_at)")
           .single();
         if (error || !created) {
           return {

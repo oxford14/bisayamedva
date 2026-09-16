@@ -1,3 +1,4 @@
+import { isSessionStartPast } from "@/lib/member/enrollment-shared";
 import { bindPromoToPayment } from "@/lib/promo/codes";
 import { creditReferralReward } from "@/lib/referrals/reward";
 import { createServiceClient } from "@/lib/supabase/admin";
@@ -84,7 +85,25 @@ export async function enrollWithWallet(input: {
     enrollment = existing;
   }
 
-  if (enrollment?.status === "ACTIVE" || enrollment?.status === "COMPLETED") {
+  let assignedStartsAt: string | null = null;
+  if (enrollment?.session_id) {
+    const { data: assignedSession } = await admin
+      .from("sessions")
+      .select("starts_at")
+      .eq("id", enrollment.session_id)
+      .maybeSingle();
+    assignedStartsAt = (assignedSession?.starts_at as string | null) ?? null;
+  }
+
+  const needsPaidReenroll =
+    Boolean(enrollment?.session_id) &&
+    enrollment!.session_id !== session.id &&
+    isSessionStartPast(assignedStartsAt);
+
+  if (
+    (enrollment?.status === "ACTIVE" || enrollment?.status === "COMPLETED") &&
+    !needsPaidReenroll
+  ) {
     await creditReferralReward(enrollment.id);
     return {
       ok: true,
@@ -94,7 +113,7 @@ export async function enrollWithWallet(input: {
     };
   }
 
-  if (enrollment) {
+  if (enrollment && !needsPaidReenroll) {
     const { data: paidPayment } = await admin
       .from("payments")
       .select("id")

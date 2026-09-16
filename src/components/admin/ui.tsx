@@ -49,21 +49,29 @@ export function StatusBadge({
 }: {
   status: string;
 }) {
+  const normalized = status.replaceAll("_", " ").toUpperCase();
   const tone =
     status === "PUBLISHED" ||
     status === "ACTIVE" ||
     status === "PAID" ||
     status === "COMPLETED" ||
-    status === "APPROVED"
+    status === "APPROVED" ||
+    normalized === "COMPLETE"
       ? "bg-teal-bright/25 text-navy"
-      : status === "DRAFT" || status === "PENDING" || status === "PENDING_PAYMENT"
+      : status === "DRAFT" ||
+          status === "PENDING" ||
+          status === "PENDING_PAYMENT" ||
+          normalized === "NOT STARTED" ||
+          normalized === "LOCKED"
         ? "bg-sand text-navy/80"
-        : status === "FAILED" ||
-            status === "CANCELLED" ||
-            status === "ARCHIVED" ||
-            status === "REJECTED"
-          ? "bg-destructive/10 text-destructive"
-          : "bg-sand text-muted";
+        : normalized === "IN PROGRESS"
+          ? "bg-navy/10 text-navy"
+          : status === "FAILED" ||
+              status === "CANCELLED" ||
+              status === "ARCHIVED" ||
+              status === "REJECTED"
+            ? "bg-destructive/10 text-destructive"
+            : "bg-sand text-muted";
 
   return (
     <span

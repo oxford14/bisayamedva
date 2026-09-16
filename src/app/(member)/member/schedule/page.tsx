@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { MeetingOpenLink } from "@/components/member/meeting-open-link";
 import { ScheduleAssignButton } from "@/components/member/schedule-assign-button";
+import { ScheduleReenrollButton } from "@/components/member/schedule-reenroll-button";
 import {
   MemberCard,
   MemberEmptyState,
   MemberPageHeader,
-  MemberStatusBadge,
 } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
 import { scheduleCopy } from "@/content/site";
@@ -13,21 +13,14 @@ import {
   canShowMeetingUrl,
   formatSessionWhen,
   getMemberEnrollments,
+  isMemberPaidEnrollment,
+  requiresPaidReenrollment,
   type MemberEnrollment,
 } from "@/lib/member/data";
 import { getOpenFutureSessions } from "@/lib/member/open-sessions";
 import type { OpenFutureSession } from "@/lib/member/open-sessions-shared";
 import { getStudentProfile } from "@/lib/supabase/auth";
-
-const SEATED = new Set(["ACTIVE", "PENDING_PAYMENT", "COMPLETED"]);
-
-function isPaidEnrollment(enrollment: MemberEnrollment) {
-  return (
-    enrollment.status === "ACTIVE" ||
-    enrollment.status === "COMPLETED" ||
-    enrollment.payment?.status === "PAID"
-  );
-}
+import { formatPeso } from "@/lib/utils";
 
 function matchesCourse(
   enrollment: MemberEnrollment,
@@ -41,37 +34,11 @@ function matchesCourse(
   );
 }
 
-function sessionFromEnrollment(
-  enrollment: MemberEnrollment,
-): OpenFutureSession | null {
-  const session = enrollment.session;
-  const course = enrollment.course;
-  if (!session?.id || !session.starts_at || !course) return null;
-  return {
-    id: session.id,
-    title: session.title,
-    starts_at: session.starts_at,
-    ends_at: session.ends_at,
-    timezone: session.timezone,
-    format: session.format,
-    meeting_url: session.meeting_url,
-    status: session.status,
-    course: {
-      id: course.id,
-      title: course.title,
-      slug: course.slug,
-      price: course.price,
-      currency: course.currency,
-      status: "PUBLISHED",
-    },
-  };
-}
-
 type ScheduleCard = {
   key: string;
   session: OpenFutureSession;
   enrollment: MemberEnrollment;
-  mode: "seated" | "choose";
+  mode: "seated" | "choose" | "reenroll";
 };
 
 function buildScheduleCards(
@@ -79,35 +46,34 @@ function buildScheduleCards(
   openSessions: OpenFutureSession[],
 ): ScheduleCard[] {
   const cards: ScheduleCard[] = [];
+  const assignedSessionId = (enrollment: MemberEnrollment) =>
+    enrollment.session?.id ?? null;
 
   for (const enrollment of enrollments) {
-    if (!enrollment.session || !SEATED.has(enrollment.status)) continue;
-    const fromOpen = openSessions.find((s) => s.id === enrollment.session?.id);
-    const session = fromOpen ?? sessionFromEnrollment(enrollment);
-    if (!session) continue;
-    cards.push({
-      key: `seated-${enrollment.id}`,
-      session,
-      enrollment,
-      mode: "seated",
-    });
-  }
+    if (!isMemberPaidEnrollment(enrollment)) continue;
 
-  const unscheduledPaid = enrollments.filter(
-    (enrollment) => isPaidEnrollment(enrollment) && !enrollment.session,
-  );
-
-  for (const session of openSessions) {
-    const enrollment = unscheduledPaid.find((item) =>
-      matchesCourse(item, session),
+    const paidAgain = requiresPaidReenrollment(enrollment);
+    const matchingOpen = openSessions.filter((session) =>
+      matchesCourse(enrollment, session),
     );
-    if (!enrollment) continue;
-    cards.push({
-      key: `choose-${session.id}`,
-      session,
-      enrollment,
-      mode: "choose",
-    });
+
+    for (const session of matchingOpen) {
+      const isCurrent = assignedSessionId(enrollment) === session.id;
+      let mode: ScheduleCard["mode"];
+      if (paidAgain) {
+        mode = "reenroll";
+      } else if (isCurrent) {
+        mode = "seated";
+      } else {
+        mode = "choose";
+      }
+      cards.push({
+        key: `${enrollment.id}-${session.id}`,
+        session,
+        enrollment,
+        mode,
+      });
+    }
   }
 
   return cards.sort(
@@ -124,10 +90,20 @@ function ScheduleSessionCard({
 }: {
   session: OpenFutureSession;
   enrollment: MemberEnrollment;
-  mode: "seated" | "choose";
+  mode: "seated" | "choose" | "reenroll";
 }) {
   const seated = mode === "seated";
+  const reenroll = mode === "reenroll";
   const showMeeting = seated ? canShowMeetingUrl(enrollment) : false;
+  const meetingUrl =
+    session.meeting_url ?? enrollment.session?.meeting_url ?? null;
+  const switching =
+    Boolean(enrollment.session?.id) &&
+    enrollment.session?.id !== session.id;
+  const courseSlug = session.course.slug ?? enrollment.course?.slug ?? "";
+  const listPrice = Number(
+    session.course.price ?? enrollment.course?.price ?? 0,
+  );
 
   return (
     <MemberCard>
@@ -141,7 +117,13 @@ function ScheduleSessionCard({
           </h2>
         </div>
         {seated ? (
-          <MemberStatusBadge status={enrollment.status} />
+          <span className="inline-flex rounded-md bg-teal-bright/25 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-navy uppercase">
+            {scheduleCopy.currentSessionLabel}
+          </span>
+        ) : reenroll ? (
+          <span className="inline-flex rounded-md bg-sand px-2 py-0.5 text-[10px] font-semibold tracking-wide text-navy/70 uppercase">
+            {scheduleCopy.reenrollBadge}
+          </span>
         ) : (
           <span className="inline-flex rounded-md bg-sand px-2 py-0.5 text-[10px] font-semibold tracking-wide text-navy/70 uppercase">
             {scheduleCopy.pickTitle}
@@ -188,8 +170,8 @@ function ScheduleSessionCard({
             Meeting link
           </dt>
           <dd className="mt-1 text-sm text-ink">
-            {showMeeting && enrollment.session?.meeting_url ? (
-              <MeetingOpenLink href={enrollment.session.meeting_url} />
+            {showMeeting && meetingUrl ? (
+              <MeetingOpenLink href={meetingUrl} />
             ) : seated && enrollment.status === "PENDING_PAYMENT" ? (
               <span className="text-muted">
                 Available after payment is confirmed.
@@ -198,6 +180,8 @@ function ScheduleSessionCard({
               <span className="text-muted">
                 Meeting link coming soon from the team.
               </span>
+            ) : reenroll ? (
+              <span className="text-muted">{scheduleCopy.reenrollBody}</span>
             ) : (
               <span className="text-muted">{scheduleCopy.pickBody}</span>
             )}
@@ -221,10 +205,23 @@ function ScheduleSessionCard({
 
       {seated ? (
         <p className="mt-6 text-sm text-muted">{scheduleCopy.seatedBody}</p>
+      ) : reenroll ? (
+        <>
+          <p className="mt-6 text-sm text-muted">{scheduleCopy.reenrollBody}</p>
+          <ScheduleReenrollButton
+            courseSlug={courseSlug}
+            sessionId={session.id}
+            label={scheduleCopy.reenrollButton.replace(
+              "{price}",
+              formatPeso(listPrice),
+            )}
+          />
+        </>
       ) : (
         <ScheduleAssignButton
           enrollmentId={enrollment.id}
           sessionId={session.id}
+          switching={switching}
         />
       )}
     </MemberCard>
@@ -239,7 +236,7 @@ export default async function MemberSchedulePage() {
   ]);
 
   const cards = buildScheduleCards(enrollments, openSessions);
-  const hasPaidCourse = enrollments.some(isPaidEnrollment);
+  const hasPaidCourse = enrollments.some(isMemberPaidEnrollment);
 
   return (
     <div>

@@ -1,5 +1,9 @@
 import { createServiceClient } from "@/lib/supabase/admin";
-import { quizPassed } from "@/lib/member/module-player-shared";
+import {
+  buildDoneItemKeys,
+  type AttemptRow,
+  type CompletionRow,
+} from "@/lib/member/module-item-progress";
 
 export type CertificateCompletionResult = {
   complete: boolean;
@@ -48,14 +52,18 @@ export async function getCertificateCourseCompletion(
   const quizModules = new Set(
     (questions ?? []).map((row) => row.module_id as string),
   );
-  const done = new Set(
-    (completions ?? []).map((row) => `${row.item_kind}:${row.item_id}`),
+  const done = buildDoneItemKeys(
+    (completions ?? []) as CompletionRow[],
+    (attempts ?? []).map(
+      (attempt) =>
+        ({
+          module_id: attempt.module_id as string,
+          score: Number(attempt.score),
+          total: Number(attempt.total),
+          submitted_at: attempt.submitted_at as string | undefined,
+        }) satisfies AttemptRow,
+    ),
   );
-  for (const attempt of attempts ?? []) {
-    if (quizPassed(Number(attempt.score), Number(attempt.total))) {
-      done.add(`QUIZ:${attempt.module_id as string}`);
-    }
-  }
 
   const required = [
     ...(files ?? []).map((file) => `FILE:${file.id}`),
@@ -69,9 +77,7 @@ export async function getCertificateCourseCompletion(
   const completionTimes = [
     ...(completions ?? []).map((row) => row.completed_at as string),
     ...(attempts ?? [])
-      .filter((attempt) =>
-        quizPassed(Number(attempt.score), Number(attempt.total)),
-      )
+      .filter((attempt) => done.has(`QUIZ:${attempt.module_id as string}`))
       .map((attempt) => attempt.submitted_at as string),
   ].filter(Boolean);
   const completedAt =

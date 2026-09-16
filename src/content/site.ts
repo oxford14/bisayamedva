@@ -351,7 +351,7 @@ export const authCopy = {
   checkout: {
     eyebrow: "PAYMONGO",
     title: "Scan to pay with QR Ph",
-    body: "I-scan ang live QR gamit ang imong bank or e-wallet app. Wala pa mi mag-create sa imong account hangtod successful ang payment — after that, we confirm automatically and open your training dashboard.",
+    body: "I-scan ang live QR gamit ang imong bank or e-wallet app. After a successful pay, we confirm automatically and open your training dashboard.",
     back: "Back to registration",
     home: "Back to home",
     refresh: "Check payment status",
@@ -456,10 +456,17 @@ export const scheduleCopy = {
   description:
     "Pick a weekend session for a course you already paid. Wala na'y extra bayad.",
   chooseSession: "Choose this session",
+  switchSession: "Switch to this date",
   choosing: "Saving…",
   pickTitle: "Pick your weekend session",
   pickBody: "Choose a date for your paid course.",
-  seatedBody: "Naa na kay weekend session for this course.",
+  currentSessionLabel: "Your session",
+  reenrollBadge: "New cohort",
+  reenrollBody:
+    "Na-start na imong previous session. Enroll and pay again para maka-join sa ni nga date.",
+  reenrollButton: "Enroll · {price}",
+  seatedBody:
+    "Ni nga date imong assigned weekend session. Pili og laing open date kung gusto mo mo-switch.",
   emptyTitle: "Wala pa’y open schedule",
   emptyPaidTitle: "Wala pa kay paid course nga need og schedule",
   emptyPaidBody:
@@ -531,13 +538,106 @@ export const certificatesCopy = {
     "Naka-pass na ka sa last quiz. Imong certificate dili pa ma-generate for now — i-release namo ni later.",
 } as const;
 
+export const practiceCopy = {
+  nav: "Practice Lab",
+  hubTitle: "Practice Lab",
+  hubDescription:
+    "Interactive Medical VA drills — client-side lang ni, wala sa database. Use fake patients only.",
+  disclaimer:
+    "Simulation only. Do not enter real Patient PHI. Data stays sa imong browser (IndexedDB) and clears when you log out.",
+  hubSimulationsLabel: "Simulations",
+  registrationTitle: "Patient registration",
+  registrationDescription:
+    "Practice US-style intake: demographics, address, emergency contact, and primary Insurance fields.",
+  registrationCta: "Open registration sim",
+  schedulingTitle: "Patient scheduling",
+  schedulingDescription:
+    "Book fake appointments for registered patients — provider, visit type, date/time, and status. Simulation only; wala real scheduling rules.",
+  schedulingCta: "Open scheduling sim",
+  schedulingSimNote:
+    "No real provider availability rules — practice lang sa front-desk workflow.",
+  schedulingSearchPlaceholder: "Search patient or provider…",
+  schedulingNew: "Book appointment",
+  schedulingSelect: "Select an appointment or book new.",
+  schedulingEmptyList: "No appointments yet.",
+  schedulingNoPatients:
+    "Mark at least one patient as registered sa registration sim una.",
+  schedulingSave: "Save appointment",
+  schedulingDeleteConfirm: "Delete this practice appointment?",
+  schedulingPatient: "Patient",
+  schedulingProvider: "Provider",
+  schedulingVisitType: "Visit type",
+  schedulingLocation: "Location",
+  schedulingDateTime: "Date and time",
+  schedulingDuration: "Duration (minutes)",
+  schedulingReason: "Reason for visit",
+  schedulingStatus: "Status",
+  schedulingNotes: "Notes",
+  schedulingStatusScheduled: "Scheduled",
+  schedulingStatusCheckedIn: "Checked in",
+  schedulingStatusCompleted: "Completed",
+  schedulingStatusCancelled: "Cancelled",
+  schedulingStatusNoShow: "No show",
+  schedulingToday: "Today",
+  schedulingWeek: "Week",
+  schedulingDay: "Day",
+  schedulingWeekLabel: "Week",
+  schedulingPractitioner: "Practitioner",
+  schedulingAllProviders: "All providers",
+  schedulingBookAppointment: "Book appointment",
+  schedulingEditAppointment: "Edit appointment",
+  schedulingNewBlock: "Time block",
+  schedulingKindAppointment: "Patient appointment",
+  schedulingKindBlock: "Note / time block",
+  schedulingEmptyGrid: "Click a time slot to book — simulation only.",
+  schedulingLegendTitle: "Legend",
+  schedulingLegendNew: "New",
+  schedulingLegendNewHint:
+    "Scheduled sa system — patient confirmation simulated lang.",
+  schedulingLegendRequested: "Requested",
+  schedulingLegendRequestedHint:
+    "Patient-side request simulated — confirm sa front desk.",
+  schedulingLegendConfirmed: "Confirmed",
+  schedulingLegendConfirmedHint: "Visit complete or confirmed sa both sides.",
+  schedulingLegendBlock: "Note / block",
+  schedulingLegendBlockHint:
+    "Blocked time — dili patient visit (e.g. admin note).",
+  resetData: "Reset practice data",
+  resetConfirm:
+    "I-reset ang tanan demo patients ug appointments sa ni nga browser? Dili ni ma-undo.",
+  gateTitle: "Practice Lab is for enrolled students",
+  gateBody:
+    "Enroll and activate sa course una para ma-open ang practice simulations.",
+  gateCta: "Browse courses",
+  gatePreviewTitle: "Practice Lab — preview mode",
+  gatePreviewBody:
+    "Open pa lang ni for SUPER_ADMIN preview sa student app. Mo-roll out sa enrolled students soon.",
+  gatePreviewCta: "Back to home",
+  searchPlaceholder: "Search by last name…",
+  newPatient: "New patient",
+  saveDraft: "Save draft",
+  markRegistered: "Mark registered",
+  deletePatient: "Delete patient",
+  deleteConfirm: "Delete this practice patient record?",
+  draftBadge: "Draft",
+  registeredBadge: "Registered",
+  selectPatient: "Select a patient or create new.",
+  storageNote: "Saved locally sa imong browser while logged in.",
+  sectionDemographics: "Demographics",
+  sectionContact: "Contact",
+  sectionAddress: "US address",
+  sectionEmergency: "Emergency contact",
+  sectionInsurance: "Primary insurance",
+  sectionNotes: "Notes",
+} as const;
+
 export const modulesCopy = {
   nav: "Modules",
   title: "Modules",
   description:
-    "Open the lessons and quizzes for courses you enrolled in. Locked sila until your Zoom session starts.",
+    "Open the lessons and quizzes for courses you enrolled and paid for. Live Zoom schedule is separate — modules are ready once activated.",
   dashboardDescription:
-    "Imong Modules dashboard — lessons and quizzes for courses you enrolled in. Locked sila until your Zoom session starts.",
+    "Imong Modules dashboard — lessons and quizzes for courses you enrolled and paid for. Open na once activated.",
   statEnrolled: "Enrolled",
   statOpen: "Open now",
   statLocked: "Locked",
@@ -553,14 +653,15 @@ export const modulesCopy = {
   allModules: "All modules",
   emptyTitle: "Wala pa kay enrolled course",
   emptyBody:
-    "Enroll sa course una. Modules mo-open when your Zoom session starts.",
+    "Enroll sa course una ug complete payment. Modules mo-open once activated.",
   emptyCta: "Browse courses",
   filterAll: "All courses",
   lockedBadge: "Locked",
   openBadge: "Open",
   lockedTitle: "Locked pa ni",
-  lockedBody: "Open ni during your scheduled Zoom and after.",
-  unlocksAt: "Opens",
+  lockedBody:
+    "Complete payment or enrollment activation first. Zoom schedule does not block modules once paid.",
+  unlocksAt: "Your Zoom session",
   filesTitle: "Lesson files",
   quizTitle: "Quiz",
   quizCta: "Take the quiz",

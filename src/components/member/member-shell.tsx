@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
-import { memberNav, type MemberNavItem } from "@/components/member/nav-config";
+import { type MemberNavItem } from "@/components/member/nav-config";
+import { getMemberNavForRole } from "@/lib/member/practice-access";
 import { UserMenu } from "@/components/auth/user-menu";
 import { MemberInboxBell } from "@/components/member/member-inbox-bell";
 import { ShellNavLink } from "@/components/navigation/shell-nav-link";
@@ -27,8 +28,9 @@ export function MemberShell({
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreOpenedAt, setMoreOpenedAt] = useState(pathname);
 
-  const primaryMobile = memberNav.filter((item) => item.mobilePrimary);
-  const moreMobile = memberNav.filter((item) => !item.mobilePrimary);
+  const memberNavItems = getMemberNavForRole(profile.role);
+  const primaryMobile = memberNavItems.filter((item) => item.mobilePrimary);
+  const moreMobile = memberNavItems.filter((item) => !item.mobilePrimary);
   const moreSheetOpen = moreOpen && moreOpenedAt === pathname;
 
   useEffect(() => {
@@ -91,7 +93,7 @@ export function MemberShell({
           </div>
 
           <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-5" aria-label="Member">
-            {memberNav.map((item) => {
+            {memberNavItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item);
               return (

@@ -438,8 +438,24 @@ export async function assignEnrollmentSession(
       return { ok: false, error: "Pay the course first before you pick a schedule." };
     }
   }
+  if (enrollment.session_id === sessionId) {
+    return { ok: true };
+  }
+
   if (enrollment.session_id) {
-    return { ok: false, error: "Naa na kay weekend session for this course." };
+    const { isSessionStartPast } = await import("@/lib/member/data");
+    const { data: assigned } = await admin
+      .from("sessions")
+      .select("starts_at")
+      .eq("id", enrollment.session_id)
+      .maybeSingle();
+    if (isSessionStartPast(assigned?.starts_at as string | null | undefined)) {
+      return {
+        ok: false,
+        error:
+          "Session start na. Enroll and pay again sa Schedule para sa laing date.",
+      };
+    }
   }
 
   const { data: session } = await admin

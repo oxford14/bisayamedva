@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 export function ScheduleAssignButton({
   enrollmentId,
   sessionId,
+  switching = false,
 }: {
   enrollmentId: string;
   sessionId: string;
+  switching?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -40,7 +42,11 @@ export function ScheduleAssignButton({
           });
         }}
       >
-        {pending ? scheduleCopy.choosing : scheduleCopy.chooseSession}
+        {pending
+          ? scheduleCopy.choosing
+          : switching
+            ? scheduleCopy.switchSession
+            : scheduleCopy.chooseSession}
       </Button>
     </div>
   );

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
-  completeRegisterCheckout,
   prepareCheckoutPayment,
   refreshCheckoutPaymentStatus,
   type CheckoutPrepareResult,
@@ -15,9 +14,7 @@ import { PaymentHoldCountdown } from "@/components/payments/payment-hold-countdo
 import { normalizeQrSrc } from "@/lib/paymongo/qr";
 import {
   clearRegisterDraft,
-  readRegisterCheckoutSession,
   readRegisterDraft,
-  saveRegisterCheckoutSession,
   type RegisterDraft,
 } from "@/lib/register/draft";
 
@@ -34,31 +31,7 @@ export function CheckoutPaymentPanel() {
   const [qrSrc, setQrSrc] = useState("");
   const [holdExpired, setHoldExpired] = useState(false);
   const draftRef = useRef<RegisterDraft | null>(null);
-  const pollSecretRef = useRef("");
   const bootstrapped = useRef(false);
-
-  const finishPaidCheckout = useCallback(
-    async (paymentId: string, pollSecret: string) => {
-      const draft = draftRef.current ?? readRegisterDraft();
-      if (!draft) {
-        setMissingDraft(true);
-        return;
-      }
-      const signedIn = await completeRegisterCheckout({
-        paymentId,
-        pollSecret,
-        password: draft.password,
-      });
-      if (!signedIn.ok) {
-        setError(signedIn.error);
-        return;
-      }
-      clearRegisterDraft();
-      setMessage(authCopy.checkout.paid);
-      router.replace(signedIn.redirectTo ?? "/member");
-    },
-    [router],
-  );
 
   const runPrepare = useCallback(
     (draft: RegisterDraft) => {
@@ -78,17 +51,14 @@ export function CheckoutPaymentPanel() {
         setHoldExpired(false);
         setReady(result);
         setQrSrc(normalizeQrSrc(result.qrImageUrl));
-        pollSecretRef.current = result.pollSecret;
-        saveRegisterCheckoutSession({
-          paymentId: result.paymentId,
-          pollSecret: result.pollSecret,
-        });
         if (result.alreadyPaid) {
-          await finishPaidCheckout(result.paymentId, result.pollSecret);
+          clearRegisterDraft();
+          setMessage(authCopy.checkout.paid);
+          router.replace("/member");
         }
       });
     },
-    [finishPaidCheckout],
+    [router],
   );
 
   useEffect(() => {
@@ -108,26 +78,13 @@ export function CheckoutPaymentPanel() {
   useEffect(() => {
     if (!ready || ready.alreadyPaid || !ready.paymentId || holdExpired) return;
 
-    const pollSecret =
-      pollSecretRef.current ||
-      ready.pollSecret ||
-      readRegisterCheckoutSession()?.pollSecret ||
-      "";
-
     const timer = window.setInterval(() => {
       startTransition(async () => {
-        const result = await refreshCheckoutPaymentStatus(
-          ready.paymentId,
-          pollSecret,
-        );
+        const result = await refreshCheckoutPaymentStatus(ready.paymentId);
         if (result.ok && result.redirectTo) {
           clearRegisterDraft();
           setMessage(authCopy.checkout.paid);
           router.replace(result.redirectTo);
-          return;
-        }
-        if (result.ok && result.needsSignIn && result.status === "PAID") {
-          await finishPaidCheckout(ready.paymentId, pollSecret);
           return;
         }
         if (result.ok && result.status === "EXPIRED") {
@@ -137,7 +94,7 @@ export function CheckoutPaymentPanel() {
     }, 8000);
 
     return () => window.clearInterval(timer);
-  }, [finishPaidCheckout, holdExpired, ready, router]);
+  }, [holdExpired, ready, router]);
 
   function downloadQr() {
     if (!qrSrc) return;
@@ -159,16 +116,8 @@ export function CheckoutPaymentPanel() {
 
   function onRefresh() {
     if (!ready?.paymentId) return;
-    const pollSecret =
-      pollSecretRef.current ||
-      ready.pollSecret ||
-      readRegisterCheckoutSession()?.pollSecret ||
-      "";
     startTransition(async () => {
-      const result = await refreshCheckoutPaymentStatus(
-        ready.paymentId,
-        pollSecret,
-      );
+      const result = await refreshCheckoutPaymentStatus(ready.paymentId);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -177,10 +126,6 @@ export function CheckoutPaymentPanel() {
         clearRegisterDraft();
         setMessage(authCopy.checkout.paid);
         router.replace(result.redirectTo);
-        return;
-      }
-      if (result.needsSignIn && result.status === "PAID") {
-        await finishPaidCheckout(ready.paymentId, pollSecret);
         return;
       }
       if (result.status === "EXPIRED") {

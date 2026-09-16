@@ -1,5 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { finalizeRegistrationFromPayment } from "@/lib/register/finalize-intent";
 import { creditReferralReward } from "@/lib/referrals/reward";
 import { createServiceClient } from "@/lib/supabase/admin";
 
@@ -35,8 +34,7 @@ export async function activatePaidEnrollment(input: {
     | {
         id: string;
         status: string;
-        enrollment_id: string | null;
-        registration_intent_id: string | null;
+        enrollment_id: string;
         provider_payment_id: string | null;
       }
     | null = null;
@@ -44,9 +42,7 @@ export async function activatePaidEnrollment(input: {
   if (input.paymentId) {
     const { data } = await admin
       .from("payments")
-      .select(
-        "id, status, enrollment_id, registration_intent_id, provider_payment_id",
-      )
+      .select("id, status, enrollment_id, provider_payment_id")
       .eq("id", input.paymentId)
       .maybeSingle();
     payment = data;
@@ -55,9 +51,7 @@ export async function activatePaidEnrollment(input: {
   if (!payment && input.providerPaymentId) {
     const { data } = await admin
       .from("payments")
-      .select(
-        "id, status, enrollment_id, registration_intent_id, provider_payment_id",
-      )
+      .select("id, status, enrollment_id, provider_payment_id")
       .eq("provider_payment_id", input.providerPaymentId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -67,23 +61,6 @@ export async function activatePaidEnrollment(input: {
 
   if (!payment) {
     throw new Error("Payment not found for activation.");
-  }
-
-  if (payment.registration_intent_id && !payment.enrollment_id) {
-    const finalized = await finalizeRegistrationFromPayment({
-      paymentId: payment.id,
-    });
-    revalidatePaymentPaths();
-    return {
-      ok: true,
-      paymentId: finalized.paymentId,
-      enrollmentId: finalized.enrollmentId,
-      alreadyActive: finalized.alreadyFulfilled,
-    };
-  }
-
-  if (!payment.enrollment_id) {
-    throw new Error("Enrollment not found for activation.");
   }
 
   const { data: enrollment } = await admin

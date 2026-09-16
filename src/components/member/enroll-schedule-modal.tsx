@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatPeso } from "@/lib/utils";
 import type { OpenFutureSession } from "@/lib/member/open-sessions-shared";
 import {
@@ -30,10 +31,12 @@ export function EnrollScheduleModal({
   const titleId = useId();
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string>("");
+  const [promoInput, setPromoInput] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setSelectedId(sessions[0]?.id ?? "");
+    setPromoInput("");
   }, [open, sessions]);
 
   useEffect(() => {
@@ -51,7 +54,11 @@ export function EnrollScheduleModal({
 
   function confirm() {
     if (!selectedId) return;
-    router.push(courseCheckoutWithSession(courseSlug, selectedId));
+    const base = courseCheckoutWithSession(courseSlug, selectedId);
+    const code = promoInput.trim();
+    router.push(
+      code ? `${base}&promo=${encodeURIComponent(code.toUpperCase())}` : base,
+    );
   }
 
   return (
@@ -116,7 +123,27 @@ export function EnrollScheduleModal({
               );
             })}
           </fieldset>
-        ) : (
+        ) : null}
+
+        {hasSessions ? (
+          <div className="mt-4">
+            <label
+              htmlFor="enroll-promo"
+              className="text-xs font-semibold tracking-wide text-muted uppercase"
+            >
+              Promo code (optional)
+            </label>
+            <Input
+              id="enroll-promo"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              placeholder="Enter code"
+              className="mt-1.5"
+            />
+          </div>
+        ) : null}
+
+        {!hasSessions ? (
           <div className="mt-5 rounded-xl border border-dashed border-border bg-cream/70 px-4 py-8 text-center">
             <p className="font-semibold text-ink">No schedule available yet.</p>
             <p className="mt-2 text-sm text-muted">
@@ -124,7 +151,7 @@ export function EnrollScheduleModal({
               when admin opens one.
             </p>
           </div>
-        )}
+        ) : null}
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={onClose}>

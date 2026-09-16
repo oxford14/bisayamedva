@@ -12,6 +12,7 @@ import {
   ClipboardList,
   TicketPercent,
   Megaphone,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -65,6 +66,12 @@ export const adminNav: AdminNavItem[] = [
     label: "Enrollments",
     icon: ClipboardList,
     mobilePrimary: true,
+    section: "manage",
+  },
+  {
+    href: "/admin/progress",
+    label: "Progress",
+    icon: GraduationCap,
     section: "manage",
   },
   {

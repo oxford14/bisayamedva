@@ -6,6 +6,7 @@ import {
   type MemberEnrollment,
   type MemberSession,
 } from "@/lib/member/data";
+import { modulesUnlockedForEnrollment } from "@/lib/member/module-access-shared";
 import { moduleFileHref } from "@/lib/member/module-player-shared";
 import {
   mapQuizReviewQuestions,
@@ -99,7 +100,6 @@ export function formatModuleUnlockWhen(
 export function courseModuleAccess(
   enrollments: MemberEnrollment[],
   courseId: string,
-  now = new Date(),
 ): CourseModuleAccess {
   const relevant = enrollments.filter(
     (enrollment) =>
@@ -118,50 +118,16 @@ export function courseModuleAccess(
     };
   }
 
-  const dated = relevant
-    .map((enrollment) => ({
-      enrollment,
-      start: enrollment.session?.starts_at
-        ? new Date(enrollment.session.starts_at)
-        : null,
-    }))
-    .filter((row) => row.start && !Number.isNaN(row.start.getTime())) as {
-    enrollment: MemberEnrollment;
-    start: Date;
-  }[];
-
-  const started = dated
-    .filter((row) => row.start.getTime() <= now.getTime())
-    .sort((a, b) => a.start.getTime() - b.start.getTime());
-
-  if (started[0]) {
-    const pick = started[0];
-    return {
-      enrolled: true,
-      unlocked: true,
-      unlocksAt: pick.start.toISOString(),
-      unlockLabel: formatModuleUnlockWhen(
-        pick.enrollment.session?.starts_at ?? pick.start.toISOString(),
-        pick.enrollment.session?.timezone,
-      ),
-      enrollmentId: pick.enrollment.id,
-      session: pick.enrollment.session,
-      staffPreview: false,
-    };
-  }
-
-  const upcoming = dated.sort((a, b) => a.start.getTime() - b.start.getTime())[0];
-  const fallback = upcoming?.enrollment ?? relevant[0];
+  const pick = relevant[0];
+  const session = pick.session;
+  const startsAt = session?.starts_at ?? null;
   return {
     enrolled: true,
-    unlocked: false,
-    unlocksAt: upcoming?.start.toISOString() ?? null,
-    unlockLabel: formatModuleUnlockWhen(
-      fallback.session?.starts_at ?? null,
-      fallback.session?.timezone,
-    ),
-    enrollmentId: fallback.id,
-    session: fallback.session,
+    unlocked: modulesUnlockedForEnrollment(pick.status),
+    unlocksAt: startsAt,
+    unlockLabel: formatModuleUnlockWhen(startsAt, session?.timezone),
+    enrollmentId: pick.id,
+    session,
     staffPreview: false,
   };
 }

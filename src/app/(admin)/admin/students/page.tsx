@@ -6,5 +6,5 @@ export default async function StudentsRedirectPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  redirect(q ? `/admin/users?q=${encodeURIComponent(q)}` : "/admin/users");
+  redirect(q ? `/admin/progress?q=${encodeURIComponent(q)}` : "/admin/progress");
 }

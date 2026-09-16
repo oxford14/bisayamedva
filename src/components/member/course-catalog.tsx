@@ -13,7 +13,10 @@ import { Button } from "@/components/ui/button";
 import { EnrollScheduleModal } from "@/components/member/enroll-schedule-modal";
 import { MemberStatusBadge } from "@/components/member/ui";
 import { cn, formatPeso } from "@/lib/utils";
-import type { MemberEnrollment } from "@/lib/member/data";
+import {
+  requiresPaidReenrollment,
+  type MemberEnrollment,
+} from "@/lib/member/enrollment-shared";
 import type { OpenFutureSession } from "@/lib/member/open-sessions-shared";
 
 function primaryOwned(enrollments: MemberEnrollment[]) {
@@ -136,30 +139,41 @@ function CourseCard({
                 {formatPeso(course.price)}
               </p>
               {owned ? (
-                <Button variant="secondary" className="w-full" asChild>
-                  {enrollment?.status === "COMPLETED" ? (
-                    <Link
-                      href={
-                        certificatesEnabled
-                          ? `/member/certificates/${course.slug}`
-                          : "/member/modules"
-                      }
-                    >
-                      {certificatesEnabled
-                        ? certificatesCopy.view
-                        : certificatesCopy.emptyCta}
-                    </Link>
-                  ) : (
-                    <Link href="/member/schedule">
-                      {enrollment &&
-                      !enrollment.session &&
-                      (enrollment.status === "ACTIVE" ||
-                        enrollment.payment?.status === "PAID")
-                        ? "Choose schedule"
-                        : "View schedule"}
-                    </Link>
-                  )}
-                </Button>
+                enrollment && requiresPaidReenrollment(enrollment) ? (
+                  <Button
+                    variant="accent"
+                    className="w-full"
+                    type="button"
+                    onClick={() => onEnroll(course, sessions)}
+                  >
+                    {`Enroll · ${formatPeso(course.price)}`}
+                  </Button>
+                ) : (
+                  <Button variant="secondary" className="w-full" asChild>
+                    {enrollment?.status === "COMPLETED" ? (
+                      <Link
+                        href={
+                          certificatesEnabled
+                            ? `/member/certificates/${course.slug}`
+                            : "/member/modules"
+                        }
+                      >
+                        {certificatesEnabled
+                          ? certificatesCopy.view
+                          : certificatesCopy.emptyCta}
+                      </Link>
+                    ) : (
+                      <Link href="/member/schedule">
+                        {enrollment &&
+                        !enrollment.session &&
+                        (enrollment.status === "ACTIVE" ||
+                          enrollment.payment?.status === "PAID")
+                          ? "Choose schedule"
+                          : "View schedule"}
+                      </Link>
+                    )}
+                  </Button>
+                )
               ) : (
                 <Button
                   variant="accent"

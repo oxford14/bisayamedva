@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   prepareCoursePayment,
   quoteMemberPromo,
@@ -30,12 +30,14 @@ export function CourseCheckoutPanel({
   courseTitle,
   review,
   reviewError,
+  initialPromoCode,
 }: {
   slug: string;
   sessionId: string;
   courseTitle: string;
   review?: ReviewState | null;
   reviewError?: string | null;
+  initialPromoCode?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -54,8 +56,31 @@ export function CourseCheckoutPanel({
     originalLabel: string;
   } | null>(null);
   const [promoError, setPromoError] = useState("");
+  const initialPromoHandled = useRef(false);
 
   const displayTotal = appliedPromo?.finalLabel ?? review?.coursePriceLabel ?? "—";
+
+  useEffect(() => {
+    const code = initialPromoCode?.trim();
+    if (!code || !review || initialPromoHandled.current) return;
+    initialPromoHandled.current = true;
+    setPromoInput(code.toUpperCase());
+    setPromoError("");
+    startPromoTransition(async () => {
+      const result = await quoteMemberPromo(slug, code);
+      if (!result.ok) {
+        setAppliedPromo(null);
+        setPromoError(result.error);
+        return;
+      }
+      setAppliedPromo({
+        code: result.code,
+        discountLabel: result.discountLabel,
+        finalLabel: result.finalLabel,
+        originalLabel: result.originalLabel,
+      });
+    });
+  }, [initialPromoCode, review, slug]);
 
   const runPrepare = useCallback(() => {
     setError("");

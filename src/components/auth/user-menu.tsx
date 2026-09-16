@@ -113,6 +113,8 @@ export function UserMenu({
   }, [menuOpen, avatarUrl, profile.avatar_path]);
 
   async function signOut() {
+    const { deletePracticeDb } = await import("@/lib/practice/wipe");
+    await deletePracticeDb();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/auth/login");

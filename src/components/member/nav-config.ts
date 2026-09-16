@@ -2,6 +2,7 @@ import {
   Award,
   BookOpen,
   CalendarDays,
+  ClipboardList,
   Gift,
   Layers,
   LayoutDashboard,
@@ -64,6 +65,11 @@ export const memberNav: MemberNavItem[] = [
     label: "Student Lounge",
     icon: MessagesSquare,
     mobilePrimary: true,
+  },
+  {
+    href: "/member/practice",
+    label: "Practice Lab",
+    icon: ClipboardList,
   },
   {
     href: "/member/profile",

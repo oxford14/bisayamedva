@@ -741,9 +741,9 @@ export const practiceCopy = {
   mockCallAudioPrefetchPartial:
     "Caller audio incomplete ({loaded}/{total}). Hard refresh (Ctrl+Shift+R), or run npm run generate:mock-call-audio on the project.",
   mockCallSelectScenario: "Pick a scenario",
-  mockCallScenarioSuperAdminOnly: "SUPER_ADMIN only",
+  mockCallScenarioUnavailable: "Unavailable",
   mockCallStudentScenarioHint:
-    "Basic call flow (training) lang available karon. Other scenarios — SUPER_ADMIN preview.",
+    "Basic call flow (training) lang available karon. Other scenarios unavailable for now.",
   mockCallIncomingTitle: "Incoming call",
   mockCallIncomingSubtitle:
     "Simulation lang — tap Answer when you're ready to pick up like a real Medical VA line.",

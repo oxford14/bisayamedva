@@ -427,7 +427,7 @@ export function MockCallSessionPanel({
                   <option key={s.id} value={s.id} disabled={!allowed}>
                     {allowed
                       ? s.title
-                      : `${s.title} — ${practiceCopy.mockCallScenarioSuperAdminOnly}`}
+                      : `${s.title} — ${practiceCopy.mockCallScenarioUnavailable}`}
                   </option>
                 );
               })}

@@ -25,6 +25,7 @@ import {
   meetsRequiredBooking,
   type MockCallToolState,
 } from "@/lib/practice/mock-call/mock-call-tool-state";
+import { playAudioBlobWithPrefs } from "@/lib/practice/mock-call/play-audio-blob";
 import { getMockCallToolConfigByDialogueKey } from "@/lib/practice/mock-call/tool-config";
 import type { MockCallRecordingKey } from "@/lib/practice/mock-call/use-step-recorder";
 import { useStepRecorder } from "@/lib/practice/mock-call/use-step-recorder";
@@ -174,19 +175,7 @@ export function MockCallDialogueSession({
         blob,
       });
       callerClipIdsRef.current = [...callerClipIdsRef.current, clipId];
-      const url = URL.createObjectURL(blob);
-      await new Promise<void>((resolve, reject) => {
-        const audio = new Audio(url);
-        audio.onended = () => {
-          URL.revokeObjectURL(url);
-          resolve();
-        };
-        audio.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(new Error("Playback failed."));
-        };
-        void audio.play().catch(reject);
-      });
+      await playAudioBlobWithPrefs(blob);
     } catch (err) {
       setTtsHint(
         err instanceof Error ? err.message : practiceCopy.mockCallAudioMissing,

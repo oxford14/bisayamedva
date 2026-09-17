@@ -20,6 +20,7 @@ import {
 } from "@/lib/practice/call-flow";
 import { fetchCallerClipBlob } from "@/lib/practice/mock-call-audio-client";
 import { callerClipsForStep } from "@/lib/practice/mock-call/audio-keys";
+import { playAudioBlobWithPrefs } from "@/lib/practice/mock-call/play-audio-blob";
 import { primeIncomingCallAudio } from "@/lib/practice/mock-call/use-incoming-call-ring";
 import {
   useStepRecorder,
@@ -190,19 +191,7 @@ export function MockCallSessionPanel({
         });
         callerClipIdsRef.current = [...callerClipIdsRef.current, clipId];
 
-        const url = URL.createObjectURL(blob);
-        await new Promise<void>((resolve, reject) => {
-          const audio = new Audio(url);
-          audio.onended = () => {
-            URL.revokeObjectURL(url);
-            resolve();
-          };
-          audio.onerror = () => {
-            URL.revokeObjectURL(url);
-            reject(new Error("Playback failed."));
-          };
-          void audio.play().catch(reject);
-        });
+        await playAudioBlobWithPrefs(blob);
       }
     } catch (err) {
       setTtsHint(

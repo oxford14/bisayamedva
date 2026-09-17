@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { GraduationCap, Headphones } from "lucide-react";
+import { GraduationCap, Headphones, Mic } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { practiceCopy } from "@/content/site";
 import { cn } from "@/lib/utils";
@@ -52,9 +52,11 @@ function HubTile({
 export function MockCallHubDashboard({
   onSelectLearn,
   onSelectPractice,
+  onSelectAudioSetup,
 }: {
   onSelectLearn: () => void;
   onSelectPractice: () => void;
+  onSelectAudioSetup: () => void;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -66,7 +68,7 @@ export function MockCallHubDashboard({
         </h2>
         <p className="mt-1 text-sm text-muted">{practiceCopy.mockCallHubSubtitle}</p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <HubTile
           title={practiceCopy.mockCallHubTileLearnTitle}
           description={practiceCopy.mockCallHubTileLearnDesc}
@@ -81,6 +83,14 @@ export function MockCallHubDashboard({
           icon={<Headphones className="size-5" aria-hidden />}
           onClick={onSelectPractice}
           delay={0.12}
+          reduceMotion={reduceMotion}
+        />
+        <HubTile
+          title={practiceCopy.mockCallHubTileAudioSetupTitle}
+          description={practiceCopy.mockCallHubTileAudioSetupDesc}
+          icon={<Mic className="size-5" aria-hidden />}
+          onClick={onSelectAudioSetup}
+          delay={0.19}
           reduceMotion={reduceMotion}
         />
       </div>

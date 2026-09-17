@@ -677,6 +677,9 @@ export const practiceCopy = {
   mockCallHubTilePracticeTitle: "Practice",
   mockCallHubTilePracticeDesc:
     "Run mock calls with scenarios, Riverside PM tools, ug review recordings sa My history tab.",
+  mockCallHubTileAudioSetupTitle: "Test mic ug speaker first",
+  mockCallHubTileAudioSetupDesc:
+    "Pick imong microphone ug speaker, record a quick test, ug play a test sound before mock call.",
   mockCallHubTileHistoryTitle: "My history",
   mockCallHubTileHistoryDesc:
     "Review saved mock calls — replay imong responses ug caller clips from this browser.",
@@ -684,6 +687,7 @@ export const practiceCopy = {
   mockCallBackToHubShort: "Hub",
   mockCallNavPhaseWelcome: "Welcome",
   mockCallNavPhaseHub: "Home",
+  mockCallNavPhaseAudioSetup: "Audio setup",
   mockCallLearnSlideProgress: "Step {current} of {total}",
   mockCallLearnPrev: "Previous",
   mockCallLearnNext: "Next step",
@@ -790,6 +794,28 @@ export const practiceCopy = {
     "Opening to close — imong lines ug caller sa correct order.",
   mockCallStopPlayback: "Stop playback",
   mockCallReplayNothing: "Walay audio to replay for this session.",
+  mockCallDownloadConversation: "Download conversation",
+  mockCallDownloadingConversation: "Preparing download…",
+  mockCallDownloadMergeFailed:
+    "Could not merge clips sa imong browser — try Play full conversation or a different browser (Chrome recommended).",
+  mockCallDownloadNothing: "Walay audio to download for this session.",
+  mockCallAudioSetupTitle: "Mic ug speaker setup",
+  mockCallAudioSetupLead:
+    "Choose devices before mock call — settings save locally sa browser lang.",
+  mockCallAudioSetupMicLabel: "Microphone",
+  mockCallAudioSetupSpeakerLabel: "Speaker / headphones",
+  mockCallAudioSetupDefaultDevice: "System default",
+  mockCallAudioSetupRecordTest: "Record mic test",
+  mockCallAudioSetupStopTest: "Stop test",
+  mockCallAudioSetupPlayTest: "Play back mic test",
+  mockCallAudioSetupPlaySpeakerTest: "Play speaker test sound",
+  mockCallAudioSetupSpeakerPlaying: "Playing test sound…",
+  mockCallAudioSetupMicDenied:
+    "Mic permission wala — allow microphone sa browser settings, then refresh.",
+  mockCallSpeakerSelectUnsupported:
+    "Speaker pick works best sa Chrome or Edge. Other browsers gamiton ang system default output.",
+  mockCallAudioSetupSavedNote:
+    "Saved — mock call recording gamiton ni nga mic; replay gamiton ang speaker kung supported.",
   mockCallMoodHappy: "Happy caller",
   mockCallMoodNeutral: "Neutral caller",
   mockCallMoodUpset: "Upset caller",

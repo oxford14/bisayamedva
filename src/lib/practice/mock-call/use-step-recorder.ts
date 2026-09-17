@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CallFlowStepId } from "@/lib/practice/call-flow";
+import {
+  buildMockCallAudioInputConstraints,
+  getMockCallAudioDevicePrefs,
+} from "@/lib/practice/mock-call/audio-device-prefs";
 
 /** Call flow step id or dialogue page recording key (e.g. opening__p0). */
 export type MockCallRecordingKey = CallFlowStepId | string;
@@ -70,7 +74,10 @@ export function useStepRecorder() {
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const { micDeviceId } = getMockCallAudioDevicePrefs();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: buildMockCallAudioInputConstraints(micDeviceId || undefined),
+        });
         const mimeType = pickMimeType();
         const recorder = new MediaRecorder(stream, { mimeType });
         chunksRef.current = [];

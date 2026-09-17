@@ -6,13 +6,19 @@ import { Button } from "@/components/ui/button";
 import { practiceCopy } from "@/content/site";
 import { cn } from "@/lib/utils";
 
-export type MockCallNavPhase = "welcome" | "hub" | "learn" | "practice";
+export type MockCallNavPhase =
+  | "welcome"
+  | "hub"
+  | "learn"
+  | "practice"
+  | "audioSetup";
 
 const phaseLabel: Record<MockCallNavPhase, string> = {
   welcome: practiceCopy.mockCallNavPhaseWelcome,
   hub: practiceCopy.mockCallNavPhaseHub,
   learn: practiceCopy.mockCallTabLearn,
   practice: practiceCopy.mockCallTabPractice,
+  audioSetup: practiceCopy.mockCallNavPhaseAudioSetup,
 };
 
 type Props = {
@@ -22,7 +28,9 @@ type Props = {
 };
 
 export function MockCallContextNav({ phase, onBackToHub, className }: Props) {
-  const showHub = (phase === "learn" || phase === "practice") && onBackToHub;
+  const showHub =
+    (phase === "learn" || phase === "practice" || phase === "audioSetup") &&
+    onBackToHub;
 
   return (
     <nav

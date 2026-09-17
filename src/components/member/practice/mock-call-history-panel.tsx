@@ -11,7 +11,13 @@ import {
   canPlayFullConversation,
   studentRecordingCount,
 } from "@/lib/practice/mock-call/conversation-playback";
+import { applyAudioOutputDevice, getMockCallAudioDevicePrefs } from "@/lib/practice/mock-call/audio-device-prefs";
 import { usesDialogueFlow } from "@/lib/practice/mock-call/dialogue-flow";
+import {
+  conversationDownloadFilename,
+  mergeConversationBlobs,
+  triggerBlobDownload,
+} from "@/lib/practice/mock-call/merge-conversation-audio";
 import type { MockCallAudioRecord, MockCallSession } from "@/lib/practice/types";
 import { cn } from "@/lib/utils";
 
@@ -93,11 +99,23 @@ function createPlaybackHandle(): PlaybackHandle {
           if (aborted) resolve();
           else reject(new Error("Playback failed."));
         };
-        void audio.play().catch((err) => {
-          finish();
-          if (aborted) resolve();
-          else reject(err);
-        });
+        const startPlay = () => {
+          if (aborted) {
+            finish();
+            resolve();
+            return;
+          }
+          void audio.play().catch((err) => {
+            finish();
+            if (aborted) resolve();
+            else reject(err);
+          });
+        };
+        const { speakerDeviceId } = getMockCallAudioDevicePrefs();
+        void applyAudioOutputDevice(
+          audio,
+          speakerDeviceId || undefined,
+        ).finally(startPlay);
       });
     },
   };
@@ -110,6 +128,7 @@ export function MockCallHistoryPanel({
   onLoadAudio,
 }: Props) {
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const playbackRef = useRef<PlaybackHandle | null>(null);
 
@@ -182,6 +201,51 @@ export function MockCallHistoryPanel({
     [onLoadAudio, runPlayback],
   );
 
+  const downloadConversation = useCallback(
+    async (session: MockCallSession) => {
+      if (!canPlayFullConversation(session) || downloadingId) return;
+      setDownloadingId(session.id);
+      setError(null);
+      try {
+        const clips = await onLoadAudio(session.id);
+        const queue = buildConversationPlaybackQueue(session, clips, {
+          fetchBundledCaller: fetchCallerClipBlob,
+        });
+        const blobs: Blob[] = [];
+        for (const segment of queue) {
+          const blob = await segment.getBlob();
+          if (blob) blobs.push(blob);
+        }
+        if (blobs.length === 0) {
+          setError(practiceCopy.mockCallDownloadNothing);
+          return;
+        }
+        const merged = await mergeConversationBlobs(blobs);
+        if (!merged) {
+          setError(practiceCopy.mockCallDownloadMergeFailed);
+          return;
+        }
+        triggerBlobDownload(
+          merged,
+          conversationDownloadFilename(
+            session.scenarioId,
+            session.startedAt,
+            merged,
+          ),
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : practiceCopy.mockCallDownloadMergeFailed,
+        );
+      } finally {
+        setDownloadingId(null);
+      }
+    },
+    [downloadingId, onLoadAudio],
+  );
+
   if (loading) {
     return <p className="text-sm text-muted">Loading history…</p>;
   }
@@ -207,6 +271,8 @@ export function MockCallHistoryPanel({
           const recordedCount = studentRecordingCount(session);
           const isDialogue = usesDialogueFlow(session.scenarioId);
           const isPlaying = playingId === session.id;
+          const isDownloading = downloadingId === session.id;
+          const busyRow = isPlaying || isDownloading;
           return (
             <li key={session.id}>
               <MemberCard className="p-4">
@@ -244,23 +310,38 @@ export function MockCallHistoryPanel({
                         {practiceCopy.mockCallStopPlayback}
                       </Button>
                     ) : (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={!canPlayFullConversation(session)}
-                        title={practiceCopy.mockCallReplayFullConversationHint}
-                        onClick={() => void playFullConversation(session)}
-                      >
-                        {practiceCopy.mockCallReplayFullConversation}
-                      </Button>
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={!canPlayFullConversation(session) || isDownloading}
+                          title={practiceCopy.mockCallReplayFullConversationHint}
+                          onClick={() => void playFullConversation(session)}
+                        >
+                          {practiceCopy.mockCallReplayFullConversation}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={
+                            !canPlayFullConversation(session) || busyRow
+                          }
+                          onClick={() => void downloadConversation(session)}
+                        >
+                          {isDownloading
+                            ? practiceCopy.mockCallDownloadingConversation
+                            : practiceCopy.mockCallDownloadConversation}
+                        </Button>
+                      </>
                     )}
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       className={cn("text-destructive")}
-                      disabled={isPlaying}
+                      disabled={busyRow}
                       onClick={() => {
                         if (!window.confirm(practiceCopy.mockCallDeleteConfirm)) {
                           return;

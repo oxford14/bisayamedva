@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MockCallContextNav } from "@/components/member/practice/mock-call/mock-call-context-nav";
+import { MockCallAudioSetupPanel } from "@/components/member/practice/mock-call/mock-call-audio-setup-panel";
 import { MockCallHubDashboard } from "@/components/member/practice/mock-call/mock-call-hub-dashboard";
 import { MockCallLearnDeck } from "@/components/member/practice/mock-call/mock-call-learn-deck";
 import { MockCallPracticeArea } from "@/components/member/practice/mock-call/mock-call-practice-area";
@@ -15,7 +16,7 @@ import { prefetchAllMockCallAudio } from "@/lib/practice/mock-call-audio-client"
 import { useMockCallSessions } from "@/lib/practice/use-mock-call-sessions";
 import { cn } from "@/lib/utils";
 
-type MockCallPhase = "welcome" | "hub" | "learn" | "practice";
+type MockCallPhase = "welcome" | "hub" | "learn" | "practice" | "audioSetup";
 
 export function MockCallWorkspace({ ownerUserId }: { ownerUserId: string }) {
   const [phase, setPhase] = useState<MockCallPhase>("welcome");
@@ -70,6 +71,10 @@ export function MockCallWorkspace({ ownerUserId }: { ownerUserId: string }) {
     setPhase("practice");
   };
 
+  const enterAudioSetup = () => {
+    setPhase("audioSetup");
+  };
+
   return (
     <div className="space-y-4">
       <MockCallSimulationDialog
@@ -107,7 +112,12 @@ export function MockCallWorkspace({ ownerUserId }: { ownerUserId: string }) {
         <MockCallHubDashboard
           onSelectLearn={enterLearn}
           onSelectPractice={enterPractice}
+          onSelectAudioSetup={enterAudioSetup}
         />
+      ) : null}
+
+      {phase === "audioSetup" ? (
+        <MockCallAudioSetupPanel onBackToHub={() => setPhase("hub")} />
       ) : null}
 
       {phase === "learn" ? (

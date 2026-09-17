@@ -27,7 +27,7 @@ export default async function MemberPracticeMockCallPage() {
         title={practiceCopy.mockCallTitle}
         description={practiceCopy.mockCallDescription}
       />
-      <MockCallWorkspace ownerUserId={profile.id} />
+      <MockCallWorkspace ownerUserId={profile.id} userRole={profile.role} />
     </div>
   );
 }

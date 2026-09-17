@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 type Segment = "call" | "history";
 
 type Props = {
+  userRole: string;
   initialSegment?: Segment;
   sessions: MockCallSession[];
   historyLoading: boolean;
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export function MockCallPracticeArea({
+  userRole,
   initialSegment = "call",
   sessions,
   historyLoading,
@@ -76,6 +78,7 @@ export function MockCallPracticeArea({
 
       {segment === "call" ? (
         <MockCallSessionPanel
+          userRole={userRole}
           onSessionSaved={() => {
             onSessionSaved();
             setSegment("history");

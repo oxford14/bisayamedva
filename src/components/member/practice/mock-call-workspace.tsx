@@ -18,7 +18,13 @@ import { cn } from "@/lib/utils";
 
 type MockCallPhase = "welcome" | "hub" | "learn" | "practice" | "audioSetup";
 
-export function MockCallWorkspace({ ownerUserId }: { ownerUserId: string }) {
+export function MockCallWorkspace({
+  ownerUserId,
+  userRole,
+}: {
+  ownerUserId: string;
+  userRole: string;
+}) {
   const [phase, setPhase] = useState<MockCallPhase>("welcome");
   const [learnResetKey, setLearnResetKey] = useState(0);
   const [practiceMountKey, setPracticeMountKey] = useState(0);
@@ -131,6 +137,7 @@ export function MockCallWorkspace({ ownerUserId }: { ownerUserId: string }) {
       {phase === "practice" ? (
         <MockCallPracticeArea
           key={practiceMountKey}
+          userRole={userRole}
           sessions={sessions}
           historyLoading={loading}
           onDeleteSession={removeSession}

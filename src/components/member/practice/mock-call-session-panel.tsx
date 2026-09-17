@@ -33,10 +33,16 @@ import {
   mockCallScenarios,
   type MockCallScenario,
 } from "@/lib/practice/mock-call-scenarios";
+import {
+  canAccessAllMockCallScenarios,
+  isMockCallScenarioAllowed,
+  MOCK_CALL_STUDENT_SCENARIO_ID,
+} from "@/lib/member/practice-access";
 import type { MockCallSession } from "@/lib/practice/types";
 import { cn } from "@/lib/utils";
 
 type Props = {
+  userRole: string;
   onSessionSaved: () => void;
   persistSession: (session: MockCallSession) => Promise<MockCallSession>;
   persistAudio: (record: {
@@ -67,12 +73,19 @@ function newSessionId() {
   return crypto.randomUUID();
 }
 
+function initialScenarioId(userRole: string) {
+  const preferred = mockCallScenarios[0]?.id ?? MOCK_CALL_STUDENT_SCENARIO_ID;
+  if (isMockCallScenarioAllowed(preferred, userRole)) return preferred;
+  return MOCK_CALL_STUDENT_SCENARIO_ID;
+}
+
 export function MockCallSessionPanel({
+  userRole,
   onSessionSaved,
   persistSession,
   persistAudio,
 }: Props) {
-  const [scenarioId, setScenarioId] = useState(mockCallScenarios[0]?.id ?? "");
+  const [scenarioId, setScenarioId] = useState(() => initialScenarioId(userRole));
   const [active, setActive] = useState(false);
   const [callUi, setCallUi] = useState<CallUi>("idle");
   const [stepBeat, setStepBeat] = useState<StepBeat>("sayGuide");
@@ -98,6 +111,12 @@ export function MockCallSessionPanel({
     reset: resetStepRecorder,
     isRecording,
   } = useStepRecorder();
+
+  useEffect(() => {
+    if (!isMockCallScenarioAllowed(scenarioId, userRole)) {
+      setScenarioId(MOCK_CALL_STUDENT_SCENARIO_ID);
+    }
+  }, [scenarioId, userRole]);
 
   const scenario = useMemo(
     () => mockCallScenarios.find((s) => s.id === scenarioId),
@@ -395,14 +414,29 @@ export function MockCallSessionPanel({
               id="mock-call-scenario"
               className="mt-2 h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm text-ink"
               value={scenarioId}
-              onChange={(e) => setScenarioId(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (isMockCallScenarioAllowed(next, userRole)) {
+                  setScenarioId(next);
+                }
+              }}
             >
-              {mockCallScenarios.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
+              {mockCallScenarios.map((s) => {
+                const allowed = isMockCallScenarioAllowed(s.id, userRole);
+                return (
+                  <option key={s.id} value={s.id} disabled={!allowed}>
+                    {allowed
+                      ? s.title
+                      : `${s.title} — ${practiceCopy.mockCallScenarioSuperAdminOnly}`}
+                  </option>
+                );
+              })}
             </select>
+            {!canAccessAllMockCallScenarios(userRole) ? (
+              <p className="mt-2 text-xs text-muted">
+                {practiceCopy.mockCallStudentScenarioHint}
+              </p>
+            ) : null}
           </div>
           {scenario ? (
             <div className="space-y-2 text-sm">

@@ -630,7 +630,7 @@ export const practiceCopy = {
   gateCta: "Browse courses",
   gatePreviewTitle: "Practice Lab — preview mode",
   gatePreviewBody:
-    "Open pa lang ni for SUPER_ADMIN preview sa student app. Mo-roll out sa enrolled students soon.",
+    "Practice Lab is for enrolled students ug SUPER_ADMIN staff preview. Sign in with a student account para ma-open.",
   gatePreviewCta: "Back to home",
   searchPlaceholder: "Search by last name…",
   newPatient: "New patient",
@@ -741,6 +741,9 @@ export const practiceCopy = {
   mockCallAudioPrefetchPartial:
     "Caller audio incomplete ({loaded}/{total}). Hard refresh (Ctrl+Shift+R), or run npm run generate:mock-call-audio on the project.",
   mockCallSelectScenario: "Pick a scenario",
+  mockCallScenarioSuperAdminOnly: "SUPER_ADMIN only",
+  mockCallStudentScenarioHint:
+    "Basic call flow (training) lang available karon. Other scenarios — SUPER_ADMIN preview.",
   mockCallIncomingTitle: "Incoming call",
   mockCallIncomingSubtitle:
     "Simulation lang — tap Answer when you're ready to pick up like a real Medical VA line.",
@@ -796,6 +799,10 @@ export const practiceCopy = {
   mockCallReplayNothing: "Walay audio to replay for this session.",
   mockCallDownloadConversation: "Download conversation",
   mockCallDownloadingConversation: "Preparing download…",
+  mockCallDownloadPhaseFetching: "Fetching clips",
+  mockCallDownloadPhaseMerging: "Merging audio",
+  mockCallDownloadPhaseSaving: "Saving file",
+  mockCallDownloadProgressLabel: "{percent}% — {phase}",
   mockCallDownloadMergeFailed:
     "Could not merge clips sa imong browser — try Play full conversation or a different browser (Chrome recommended).",
   mockCallDownloadNothing: "Walay audio to download for this session.",

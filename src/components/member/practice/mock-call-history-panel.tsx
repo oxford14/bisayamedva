@@ -16,6 +16,7 @@ import { usesDialogueFlow } from "@/lib/practice/mock-call/dialogue-flow";
 import {
   conversationDownloadFilename,
   mergeConversationBlobs,
+  type MergeConversationProgress,
   triggerBlobDownload,
 } from "@/lib/practice/mock-call/merge-conversation-audio";
 import type { MockCallAudioRecord, MockCallSession } from "@/lib/practice/types";
@@ -129,6 +130,8 @@ export function MockCallHistoryPanel({
 }: Props) {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadPhaseLabel, setDownloadPhaseLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
   const playbackRef = useRef<PlaybackHandle | null>(null);
 
@@ -201,10 +204,24 @@ export function MockCallHistoryPanel({
     [onLoadAudio, runPlayback],
   );
 
+  const mapMergeProgressToPercent = useCallback(
+    (p: MergeConversationProgress): number => {
+      if (p.phase === "decode") {
+        return 50 + Math.round((p.current / Math.max(p.total, 1)) * 25);
+      }
+      if (p.phase === "merge") return 78;
+      if (p.phase === "encode") return p.current >= 1 ? 90 : 84;
+      return 50;
+    },
+    [],
+  );
+
   const downloadConversation = useCallback(
     async (session: MockCallSession) => {
       if (!canPlayFullConversation(session) || downloadingId) return;
       setDownloadingId(session.id);
+      setDownloadProgress(0);
+      setDownloadPhaseLabel(practiceCopy.mockCallDownloadPhaseFetching);
       setError(null);
       try {
         const clips = await onLoadAudio(session.id);
@@ -212,19 +229,30 @@ export function MockCallHistoryPanel({
           fetchBundledCaller: fetchCallerClipBlob,
         });
         const blobs: Blob[] = [];
+        const segmentTotal = Math.max(queue.length, 1);
+        let segmentIndex = 0;
         for (const segment of queue) {
           const blob = await segment.getBlob();
           if (blob) blobs.push(blob);
+          segmentIndex += 1;
+          setDownloadProgress(
+            Math.round((segmentIndex / segmentTotal) * 50),
+          );
         }
         if (blobs.length === 0) {
           setError(practiceCopy.mockCallDownloadNothing);
           return;
         }
-        const merged = await mergeConversationBlobs(blobs);
+        setDownloadPhaseLabel(practiceCopy.mockCallDownloadPhaseMerging);
+        const merged = await mergeConversationBlobs(blobs, (p) => {
+          setDownloadProgress(mapMergeProgressToPercent(p));
+        });
         if (!merged) {
           setError(practiceCopy.mockCallDownloadMergeFailed);
           return;
         }
+        setDownloadPhaseLabel(practiceCopy.mockCallDownloadPhaseSaving);
+        setDownloadProgress(95);
         triggerBlobDownload(
           merged,
           conversationDownloadFilename(
@@ -233,6 +261,7 @@ export function MockCallHistoryPanel({
             merged,
           ),
         );
+        setDownloadProgress(100);
       } catch (err) {
         setError(
           err instanceof Error
@@ -241,9 +270,11 @@ export function MockCallHistoryPanel({
         );
       } finally {
         setDownloadingId(null);
+        setDownloadProgress(0);
+        setDownloadPhaseLabel("");
       }
     },
-    [downloadingId, onLoadAudio],
+    [downloadingId, mapMergeProgressToPercent, onLoadAudio],
   );
 
   if (loading) {
@@ -353,6 +384,28 @@ export function MockCallHistoryPanel({
                     </Button>
                   </div>
                 </div>
+                {isDownloading ? (
+                  <div className="mt-3 space-y-1.5">
+                    <div
+                      className="h-1.5 w-full overflow-hidden rounded-full bg-border"
+                      role="progressbar"
+                      aria-valuenow={downloadProgress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={practiceCopy.mockCallDownloadingConversation}
+                    >
+                      <div
+                        className="h-full rounded-full bg-navy transition-[width] duration-200 ease-out"
+                        style={{ width: `${downloadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted">
+                      {practiceCopy.mockCallDownloadProgressLabel
+                        .replace("{percent}", String(downloadProgress))
+                        .replace("{phase}", downloadPhaseLabel)}
+                    </p>
+                  </div>
+                ) : null}
               </MemberCard>
             </li>
           );

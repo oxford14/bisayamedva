@@ -1,10 +1,25 @@
 import { memberNav, type MemberNavItem } from "@/components/member/nav-config";
+import { isStudentRole } from "@/lib/supabase/roles";
 
 const PRACTICE_HREF = "/member/practice";
 
-/** Practice Lab is SUPER_ADMIN preview until rolled out to enrolled students. */
+/** Scenario students may run in Mock Call; other scenarios are visible but disabled. */
+export const MOCK_CALL_STUDENT_SCENARIO_ID = "basic-call-flow-training";
+
 export function canAccessPracticeLab(role: string | null | undefined) {
+  return role === "SUPER_ADMIN" || isStudentRole(role);
+}
+
+export function canAccessAllMockCallScenarios(role: string | null | undefined) {
   return role === "SUPER_ADMIN";
+}
+
+export function isMockCallScenarioAllowed(
+  scenarioId: string,
+  role: string | null | undefined,
+) {
+  if (canAccessAllMockCallScenarios(role)) return true;
+  return scenarioId === MOCK_CALL_STUDENT_SCENARIO_ID;
 }
 
 export function getMemberNavForRole(

@@ -53,8 +53,8 @@ export const US_STATES = [
 ] as const;
 
 export const PRACTICE_DB_NAME = "bisayamedva-practice-v1";
-export const PRACTICE_DB_VERSION = 3;
-export const PRACTICE_SCHEMA_VERSION = 3;
+export const PRACTICE_DB_VERSION = 4;
+export const PRACTICE_SCHEMA_VERSION = 4;
 
 export const SCHEDULING_CLINIC_START_HOUR = 8;
 export const SCHEDULING_CLINIC_END_HOUR = 17;

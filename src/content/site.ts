@@ -648,6 +648,201 @@ export const practiceCopy = {
   sectionEmergency: "Emergency contact",
   sectionInsurance: "Primary insurance",
   sectionNotes: "Notes",
+  mockCallSimulationDialogTitle: "Simulation reminder",
+  mockCallSimulationDialogBody:
+    "Simulation only. Do not enter real Patient PHI. Practice data is stored locally in your browser and is cleared when you log out.",
+  mockCallSimulationDialogOk: "OK",
+  mockCallTitle: "Mock Call",
+  mockCallDescription:
+    "Practice Medical VA phone handling — learn the call flow, then run guided scenarios with AI caller lines (simulation only).",
+  mockCallTabLearn: "Learn flow",
+  mockCallTabPractice: "Practice",
+  mockCallTabHistory: "History",
+  mockCallWelcomeTitle: "Welcome to Mock Call",
+  mockCallWelcomeLead:
+    "Simulation lang ni — practice professional phone handling for Medical VA work without real Patient PHI.",
+  mockCallWelcomeBullet1:
+    "Eight-step call flow — opening to closing, with example scripts.",
+  mockCallWelcomeBullet2:
+    "Guided scenarios with AI caller audio (bundled clips sa browser).",
+  mockCallWelcomeBullet3:
+    "Optional per-step recording — saved locally until you log out.",
+  mockCallWelcomeContinue: "Continue",
+  mockCallHubTitle: "Unsa ang imong sugdan?",
+  mockCallHubSubtitle:
+    "Pick Learn flow first kung bag-o ka, or dive into Practice — My history is inside Practice.",
+  mockCallHubTileLearnTitle: "Learn flow first",
+  mockCallHubTileLearnDesc:
+    "Walk through each call step — VA focus, example lines, ug typical caller behavior.",
+  mockCallHubTilePracticeTitle: "Practice",
+  mockCallHubTilePracticeDesc:
+    "Run mock calls with scenarios, Riverside PM tools, ug review recordings sa My history tab.",
+  mockCallHubTileHistoryTitle: "My history",
+  mockCallHubTileHistoryDesc:
+    "Review saved mock calls — replay imong responses ug caller clips from this browser.",
+  mockCallBackToHub: "Back to hub",
+  mockCallBackToHubShort: "Hub",
+  mockCallNavPhaseWelcome: "Welcome",
+  mockCallNavPhaseHub: "Home",
+  mockCallLearnSlideProgress: "Step {current} of {total}",
+  mockCallLearnPrev: "Previous",
+  mockCallLearnNext: "Next step",
+  mockCallLearnFinish: "Finish flow",
+  mockCallLearnGoPractice: "Go to Practice",
+  mockCallLearnSummaryTitle: "Call flow summary",
+  mockCallLearnSummaryLead:
+    "Quick recap sa eight steps — use this order on every mock call ug sa real phone work.",
+  mockCallLearnSummaryCta:
+    "Ready na? Finish the flow or jump straight to Practice scenarios.",
+  mockCallLearnExtraTipLabel: "Extra call tip",
+  mockCallLearnExtraTipHoldTitle: "Before you place the caller on hold",
+  mockCallLearnExtraTipHoldBody:
+    "Always ask permission first — dili lang silent hold. Then give a clear timeframe in minutes (e.g. two to three minutes), and balik sooner if you can. If hold mag-dugay, check back briefly: \"Thanks for waiting — still working on this, about one more minute.\"",
+  mockCallLearnExtraTipHoldExample:
+    "May I place you on a brief hold while I verify that in our system? It should be about two minutes.",
+  mockCallLearnViewSummary: "View summary",
+  mockCallLearnSummaryProgressLabel: "Summary",
+  mockCallLearnVaLabel: "VA focus",
+  mockCallLearnExampleLabel: "Example script",
+  mockCallLearnCallerLabel: "Typical caller",
+  mockCallPracticeSegmentCall: "Practice call",
+  mockCallPracticeSegmentHistory: "My history",
+  mockCallLearnIntro:
+    "Eight steps for professional call handling — positive language ug clear next steps for billing, Insurance, ug scheduling.",
+  mockCallRecordingNote:
+    "Per step, pwede nimo i-record ang imong response (Record / Stop / Replay). Clips save locally sa browser lang — log out clears practice data.",
+  mockCallRecordResponse: "Record response",
+  mockCallRecordOpeningSpiel: "Record opening spiel",
+  mockCallSayLineRecordHeading:
+    "Say your line aloud — record your opening spiel if you want, then Continue.",
+  mockCallSayLineNoRecordingYet:
+    "Optional — i-record ang imong line before Continue, or skip sa training mode.",
+  mockCallRecordAgain: "Record again",
+  mockCallStopRecording: "Stop recording",
+  mockCallReplayMyResponse: "Replay my response",
+  mockCallRecordingThisStep: "Recording this step…",
+  mockCallNoRecordingYet:
+    "Optional — i-record ang imong response before Next step, or skip sa training mode.",
+  mockCallStepsRecordedLabel: "Steps recorded",
+  mockCallLegacyWholeCallRecording: "Whole-call recording (older session)",
+  mockCallMicDenied:
+    "Mic permission wala — pwede gihapon mu-practice sa script ug caller text, pero dili ma-save ang imong voice track.",
+  mockCallTtsUnavailable:
+    "Caller audio wala available — basaha ang script below. I-set ang ElevenLabs keys sa server para ma-play ang AI voice.",
+  mockCallAudioMissing:
+    "ElevenLabs clip wala ma-load — hard refresh Mock Call or check DevTools Network for manifest.json ug .mp3. Basaha ang script below meantime.",
+  mockCallAudioPrefetching: "Loading caller audio sa browser cache…",
+  mockCallAudioPrefetchReady:
+    "Caller audio ready ({loaded}/{total}) — bundled ElevenLabs clips. Play when you reach each step.",
+  mockCallAudioPrefetchPartial:
+    "Caller audio incomplete ({loaded}/{total}). Hard refresh (Ctrl+Shift+R), or run npm run generate:mock-call-audio on the project.",
+  mockCallSelectScenario: "Pick a scenario",
+  mockCallIncomingTitle: "Incoming call",
+  mockCallIncomingSubtitle:
+    "Simulation lang — tap Answer when you're ready to pick up like a real Medical VA line.",
+  mockCallAnswerCall: "Answer call",
+  mockCallBeatSayGuide: "1. Say your line",
+  mockCallBeatOpeningSpiel: "1. Opening spiel",
+  mockCallBeatCallerAndRespond: "2. Caller + your turn",
+  mockCallBeatHearCaller: "2. Hear caller",
+  mockCallBeatYourTurn: "3. Your turn",
+  mockCallContinueToCaller: "Continue — caller + your turn",
+  mockCallContinueToDialogue: "Continue — patient on the line",
+  mockCallDialoguePageLabel: "Exchange",
+  mockCallBookTenBeforeNext:
+    "Book Monday 10:00 a.m. sa Schedule ug Save appointment before Next step.",
+  mockCallContinueToRespond: "Continue — your turn",
+  mockCallCallerPlaying: "Playing caller…",
+  mockCallVaLineLabel: "Your line (say aloud)",
+  mockCallStartCall: "Start mock call",
+  mockCallEndCall: "End call",
+  mockCallInCallLabel: "Active mock call",
+  mockCallGenericCallerName: "Caller",
+  mockCallPreviousStep: "Previous step",
+  mockCallNextStep: "Next step",
+  mockCallPlayCaller: "Play caller line",
+  mockCallStepLabel: "Step",
+  mockCallCoachHint: "Coach hint",
+  mockCallCallerScript: "Caller script",
+  mockCallStudentGuide: "Suggested response (guide)",
+  mockCallStudentGuideNote:
+    "Guide lang — pwede imong own words basta naa ang key steps sa call flow.",
+  mockCallToolSectionTitle: "Practice tool (click guide)",
+  mockCallToolSectionIntro:
+    "Fake Riverside PM lang ni — walay real patient data. Navigate like real software: pick the right module ug buttons para sa caller, sunod-sunod sa numbered guide.",
+  mockCallToolWrongControl:
+    "Dili ni ang sunod step — tan-awa ang guide ug unsa ang gikinahanglan sa caller.",
+  mockCallToolStepDone: "done",
+  mockCallToolOptionalNote:
+    "Optional: finish the click guide when you can — pwede gihapon Next step sa training.",
+  mockCallToolWrongOrder:
+    "Sunod nga step sa guide first — tan-awa ang numbered list.",
+  mockCallToolAllDone: "Click guide complete — nice work sa system navigation.",
+  mockCallYourTurn:
+    "Your turn — respond out loud, record if you want, then tap Next step.",
+  mockCallHistoryEmpty: "No mock calls saved yet.",
+  mockCallDeleteSession: "Delete session",
+  mockCallDeleteConfirm: "Delete this mock call recording from this browser?",
+  mockCallReplayStudent: "Play your recording",
+  mockCallReplayCaller: "Play caller clips",
+  mockCallReplayFullConversation: "Play full conversation",
+  mockCallReplayFullConversationHint:
+    "Opening to close — imong lines ug caller sa correct order.",
+  mockCallStopPlayback: "Stop playback",
+  mockCallReplayNothing: "Walay audio to replay for this session.",
+  mockCallMoodHappy: "Happy caller",
+  mockCallMoodNeutral: "Neutral caller",
+  mockCallMoodUpset: "Upset caller",
+  mockCallMoodWorried: "Worried caller",
+  mockCallStepOpeningTitle: "Opening spiel",
+  mockCallStepOpeningVaFocus:
+    "Greet the caller, name the clinic or practice, say your role as Medical VA, and offer help.",
+  mockCallStepOpeningExample:
+    "Good morning, thank you for calling Riverside Family Medicine. My name is ________, Medical VA support. How can I help you today?",
+  mockCallStepOpeningCaller: "Brief hello or they state why they're calling.",
+  mockCallStepRapportTitle: "Build rapport",
+  mockCallStepRapportVaFocus:
+    "Ask how they are today. Match mood — empathize if sad, frustrated, or worried; stay warm if they're upbeat.",
+  mockCallStepRapportExample:
+    "I'm glad you reached out. Before we dive in, how are you doing today?",
+  mockCallStepRapportCaller: "Short answer about their day or emotional tone.",
+  mockCallStepMainConcernTitle: "Main concern",
+  mockCallStepMainConcernVaFocus:
+    "Use open questions. Listen, clarify dates, Insurance, and account details without interrupting.",
+  mockCallStepMainConcernExample:
+    "So I understand clearly — what would you like us to help you with on this call?",
+  mockCallStepMainConcernCaller:
+    "States billing balance, Eligibility, prior auth, scheduling, or chart update.",
+  mockCallStepApologyTitle: "Apologize + assurance",
+  mockCallStepApologyVaFocus:
+    "Acknowledge inconvenience or confusion. Assure them you will do your best to resolve the issue today.",
+  mockCallStepApologyExample:
+    "I'm sorry for the confusion on your statement. I'll review your account with you and we'll work through this together.",
+  mockCallStepApologyCaller: "May vent, worry, or accept your empathy.",
+  mockCallStepSolutionTitle: "Positive solution",
+  mockCallStepSolutionVaFocus:
+    "Use positive framing: here's what we can do, here's what you need to do. Clear timeline and next steps.",
+  mockCallStepSolutionExample:
+    "Here's what we can do today: I'll verify the claim with your payer and send you a portal message within two business days.",
+  mockCallStepSolutionCaller: "Confirms understanding or asks a quick follow-up.",
+  mockCallStepMoreConcernsTitle: "More concerns?",
+  mockCallStepMoreConcernsVaFocus:
+    "Invite other questions about the visit, Insurance, or billing before you wrap up.",
+  mockCallStepMoreConcernsExample:
+    "Before we finish, is there anything else I can help you with today?",
+  mockCallStepMoreConcernsCaller: "Yes/no or a small add-on question.",
+  mockCallStepAllAddressedTitle: "All concerns addressed?",
+  mockCallStepAllAddressedVaFocus:
+    "Summarize what you did. Confirm they're comfortable with the plan.",
+  mockCallStepAllAddressedExample:
+    "Just to recap: we updated your Insurance and resubmitted the claim. Does that cover everything for you today?",
+  mockCallStepAllAddressedCaller: "Confirms or raises one last item.",
+  mockCallStepClosingTitle: "Closing spiel",
+  mockCallStepClosingVaFocus:
+    "Thank them for calling, recap key action, invite them to call back, warm goodbye.",
+  mockCallStepClosingExample:
+    "Thank you for calling Riverside Family Medicine. We appreciate your patience. Have a great day!",
+  mockCallStepClosingCaller: "Thanks and goodbye.",
 } as const;
 
 export const modulesCopy = {

@@ -1,3 +1,5 @@
+import type { CallFlowStepId } from "@/lib/practice/call-flow";
+
 export type PracticePatientStatus = "draft" | "registered";
 
 export type PracticePatient = {
@@ -58,4 +60,34 @@ export type PracticeAppointment = {
   notes: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type MockCallStepStatus = "pending" | "done" | "skipped";
+
+export type MockCallSession = {
+  id: string;
+  scenarioId: string;
+  scenarioTitle: string;
+  startedAt: string;
+  endedAt: string | null;
+  stepProgress: Record<CallFlowStepId, MockCallStepStatus>;
+  /** Legacy whole-call student track */
+  studentAudioId: string | null;
+  /** Per-step / per-dialogue-page student recordings (key → audio record id) */
+  studentStepAudioIds: Partial<Record<string, string>>;
+  callerClipIds: string[];
+};
+
+export type MockCallAudioKind = "student" | "caller";
+
+export type MockCallAudioRecord = {
+  id: string;
+  sessionId: string;
+  kind: MockCallAudioKind;
+  stepId?: CallFlowStepId;
+  /** Dialogue page id when caller clip was saved during dialogue flow */
+  dialoguePageId?: string;
+  mimeType: string;
+  createdAt: string;
+  blob: Blob;
 };

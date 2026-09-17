@@ -1,4 +1,9 @@
-import { CalendarClock, ClipboardList, type LucideIcon } from "lucide-react";
+import {
+  CalendarClock,
+  ClipboardList,
+  Phone,
+  type LucideIcon,
+} from "lucide-react";
 import { practiceCopy } from "@/content/site";
 
 export type PracticeSimTile = {
@@ -21,5 +26,11 @@ export const practiceSimTiles: PracticeSimTile[] = [
     title: practiceCopy.schedulingTitle,
     description: practiceCopy.schedulingDescription,
     icon: CalendarClock,
+  },
+  {
+    href: "/member/practice/mock-call",
+    title: practiceCopy.mockCallTitle,
+    description: practiceCopy.mockCallDescription,
+    icon: Phone,
   },
 ];

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate:mock-call-audio": "npx --yes tsx scripts/generate-mock-call-audio.ts",
+    "generate:mock-call-audio:force": "npx --yes tsx scripts/generate-mock-call-audio.ts --force"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -16,13 +16,27 @@ const PRESETS = [499, 1000, 2000];
 
 export function WalletTopupPanel({
   balanceLabel,
+  suggestAmount,
 }: {
   balanceLabel: string;
+  suggestAmount?: number;
 }) {
   const router = useRouter();
   const titleId = useId();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("1000");
+
+  useEffect(() => {
+    if (
+      suggestAmount == null ||
+      !Number.isFinite(suggestAmount) ||
+      suggestAmount < 20
+    ) {
+      return;
+    }
+    setAmount(String(Math.ceil(suggestAmount)));
+    setOpen(true);
+  }, [suggestAmount]);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");

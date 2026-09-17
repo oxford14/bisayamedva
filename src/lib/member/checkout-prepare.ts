@@ -1,16 +1,10 @@
 import { getCatalogCourseBySlug } from "@/content/courses";
-import { isSessionStartPast } from "@/lib/member/enrollment-shared";
-import { bindPromoToPayment, validateAndQuotePromo } from "@/lib/promo/codes";
-import {
-  expireStalePendingPayments,
-  isPendingHoldFresh,
-  pendingHoldExpiresAt,
-} from "@/lib/payments/expire-pending";
+import { validateAndQuotePromo } from "@/lib/promo/codes";
+import { expireStalePendingPayments } from "@/lib/payments/expire-pending";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { formatPeso } from "@/lib/utils";
 import { getOrCreateWallet } from "@/lib/wallet/ledger";
 import { enrollWithWallet } from "@/lib/wallet/enroll";
-import { prepareWalletTopup } from "@/lib/wallet/topup";
 
 export type MemberCheckoutPrepareResult =
   | {
@@ -23,20 +17,14 @@ export type MemberCheckoutPrepareResult =
       sessionLabel: string;
     }
   | {
-      ok: true;
-      mode: "topup";
-      topupId: string;
-      qrImageUrl: string;
-      amountLabel: string;
-      providerPaymentId: string;
-      balanceLabel: string;
-      shortfallLabel: string;
-      courseTitle: string;
-      sessionLabel: string;
-      coursePriceLabel: string;
-      expiresAt: string;
-    }
-  | { ok: false; error: string };
+      ok: false;
+      error: string;
+      code?: "INSUFFICIENT_WALLET";
+      balanceLabel?: string;
+      shortfallLabel?: string;
+      shortfallAmount?: number;
+      totalLabel?: string;
+    };
 
 export type MemberCheckoutReview =
   | {
@@ -45,6 +33,7 @@ export type MemberCheckoutReview =
       coursePrice: number;
       coursePriceLabel: string;
       sessionLabel: string;
+      balance: number;
       balanceLabel: string;
     }
   | { ok: false; error: string };
@@ -150,19 +139,21 @@ export async function getMemberCheckoutReview(
 
   const wallet = await getOrCreateWallet(studentId);
   const price = Number(offer.course.price);
+  const balance = Number(wallet.balance);
   return {
     ok: true,
     courseTitle: offer.course.title,
     coursePrice: price,
     coursePriceLabel: formatPeso(price),
     sessionLabel: formatMemberSessionLabel(offer.session),
-    balanceLabel: formatPeso(wallet.balance),
+    balance,
+    balanceLabel: formatPeso(balance),
   };
 }
 
 /**
- * Member enroll: spend wallet if enough, otherwise prepare PayMongo top-up
- * with enroll intent (credits wallet then auto-enrolls).
+ * Member enroll: debit wallet when balance covers the course total.
+ * If kulang, return INSUFFICIENT_WALLET — student tops up sa Wallet page first.
  */
 export async function prepareCoursePaymentForStudent(
   slug: string,
@@ -174,7 +165,7 @@ export async function prepareCoursePaymentForStudent(
     const offer = await loadPublishedOffer(slug, sessionId);
     if (!offer.ok) return offer;
 
-    const { admin, course, session } = offer;
+    const { course, session } = offer;
     await expireStalePendingPayments();
     const label = formatMemberSessionLabel(session);
     const wallet = await getOrCreateWallet(studentId);
@@ -205,182 +196,31 @@ export async function prepareCoursePaymentForStudent(
         ok: true,
         mode: "enrolled",
         enrollmentId: enrolled.enrollmentId,
-        balanceLabel: formatPeso(enrolled.balance || wallet.balance),
+        balanceLabel: formatPeso(enrolled.balance ?? wallet.balance),
         alreadyActive: enrolled.alreadyActive,
         courseTitle: course.title,
         sessionLabel: label,
       };
     }
 
-    if (enrolled.shortfall == null && !enrolled.error.includes("Kulang")) {
-      return { ok: false, error: enrolled.error };
-    }
-
+    const balance = enrolled.balance ?? Number(wallet.balance);
     const shortfall =
       enrolled.shortfall ??
-      Math.max(0, Number((finalAmount - wallet.balance).toFixed(2)));
-    const topupAmount = Math.max(shortfall, 20);
+      Math.max(0, Number((finalAmount - balance).toFixed(2)));
 
-    let { data: enrollment } = await admin
-      .from("enrollments")
-      .select("id, status, session_id, created_at, sessions(starts_at)")
-      .eq("student_id", studentId)
-      .eq("course_id", course.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const assignedSession = enrollment?.sessions as
-      | { starts_at: string | null }
-      | { starts_at: string | null }[]
-      | null
-      | undefined;
-    const assignedStarts = Array.isArray(assignedSession)
-      ? assignedSession[0]?.starts_at
-      : assignedSession?.starts_at;
-
-    const reuseHold =
-      enrollment?.status === "PENDING_PAYMENT" &&
-      isPendingHoldFresh(enrollment.created_at);
-    const cohortLocked =
-      (enrollment?.status === "ACTIVE" ||
-        enrollment?.status === "COMPLETED") &&
-      isSessionStartPast(assignedStarts);
-    const alreadySeated =
-      (enrollment?.status === "ACTIVE" ||
-        enrollment?.status === "COMPLETED") &&
-      !cohortLocked;
-
-    if (!alreadySeated && !reuseHold) {
-      const nowIso = new Date().toISOString();
-      if (enrollment) {
-        const { data: reopened, error } = await admin
-          .from("enrollments")
-          .update({
-            status: "PENDING_PAYMENT",
-            created_at: nowIso,
-            session_id: session.id,
-          })
-          .eq("id", enrollment.id)
-          .select("id, status, session_id, created_at, sessions(starts_at)")
-          .single();
-        if (error || !reopened) {
-          return {
-            ok: false,
-            error: error?.message ?? "Could not reserve a new seat.",
-          };
-        }
-        enrollment = reopened;
-      } else {
-        const { data: created, error } = await admin
-          .from("enrollments")
-          .insert({
-            student_id: studentId,
-            course_id: course.id,
-            session_id: session.id,
-            status: "PENDING_PAYMENT",
-          })
-          .select("id, status, session_id, created_at, sessions(starts_at)")
-          .single();
-        if (error || !created) {
-          return {
-            ok: false,
-            error: error?.message ?? "Could not create enrollment.",
-          };
-        }
-        enrollment = created;
-      }
-    } else if (enrollment && enrollment.session_id !== session.id && reuseHold) {
-      await admin
-        .from("enrollments")
-        .update({ session_id: session.id })
-        .eq("id", enrollment.id);
+    if (shortfall > 0 || enrolled.error.includes("Kulang")) {
+      return {
+        ok: false,
+        code: "INSUFFICIENT_WALLET",
+        error: enrolled.error,
+        balanceLabel: formatPeso(balance),
+        shortfallLabel: formatPeso(shortfall),
+        shortfallAmount: shortfall,
+        totalLabel: formatPeso(finalAmount),
+      };
     }
 
-    if (!enrollment) {
-      return { ok: false, error: "Could not create enrollment." };
-    }
-
-    let { data: payment } = reuseHold
-      ? await admin
-          .from("payments")
-          .select("id, promo_code_id, status")
-          .eq("enrollment_id", enrollment.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      : { data: null };
-
-    if (payment && (payment.status === "FAILED" || payment.status === "REFUNDED")) {
-      payment = null;
-    }
-
-    if (!payment) {
-      const { data: createdPayment, error } = await admin
-        .from("payments")
-        .insert({
-          enrollment_id: enrollment.id,
-          amount: finalAmount,
-          original_amount: originalAmount,
-          currency: course.currency || "PHP",
-          status: "PENDING",
-          provider: "PAYMONGO",
-        })
-        .select("id, promo_code_id, status")
-        .single();
-      if (error || !createdPayment) {
-        return {
-          ok: false,
-          error: error?.message ?? "Could not create payment.",
-        };
-      }
-      payment = createdPayment;
-    } else if (payment.status !== "PAID") {
-      await admin
-        .from("payments")
-        .update({
-          amount: finalAmount,
-          original_amount: originalAmount,
-        })
-        .eq("id", payment.id);
-    }
-
-    if (promoId && payment.status !== "PAID") {
-      const bound = await bindPromoToPayment({
-        paymentId: payment.id,
-        promoId,
-        originalAmount,
-        finalAmount,
-      });
-      if (!bound.ok) return { ok: false, error: bound.error };
-    }
-
-    const topup = await prepareWalletTopup({
-      studentId,
-      amountPesos: topupAmount,
-      intentEnrollmentId: enrollment.id,
-      intentCourseId: course.id,
-      intentSessionId: session.id,
-    });
-
-    if (!topup.ok) {
-      return { ok: false, error: topup.error };
-    }
-
-    return {
-      ok: true,
-      mode: "topup",
-      topupId: topup.topupId,
-      qrImageUrl: topup.qrImageUrl,
-      amountLabel: topup.amountLabel,
-      providerPaymentId: topup.providerPaymentId,
-      balanceLabel: formatPeso(wallet.balance),
-      shortfallLabel: formatPeso(shortfall),
-      courseTitle: course.title,
-      sessionLabel: label,
-      coursePriceLabel: formatPeso(finalAmount),
-      expiresAt: pendingHoldExpiresAt(enrollment.created_at).toISOString(),
-    };
+    return { ok: false, error: enrolled.error };
   } catch (error) {
     return {
       ok: false,

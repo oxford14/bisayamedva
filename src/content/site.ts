@@ -392,6 +392,25 @@ export const referCopy = {
   noFriendCourses: "Wala pa enrolled course.",
 } as const;
 
+export const memberCheckoutCopy = {
+  eyebrow: "Review enrollment",
+  body: "Check your schedule and add a promo if you have one. Bayad via Wallet lang — if kulang ang balance, top up sa Wallet first, then balik dinhi.",
+  walletNow: "Wallet now",
+  proceed: "Proceed",
+  proceeding: "Preparing…",
+  openWallet: "Top up Wallet",
+  backSchedule: "Back to Schedule",
+  insufficientTitle: "Kulang ang wallet balance",
+  insufficientBody:
+    "Need {total} for this enrollment. Imong balance: {balance}. Top up at least {shortfall} sa Wallet, then click Proceed again.",
+  insufficientHint:
+    "Generate PayMongo QR sa Wallet page only — dili dinhi sa checkout.",
+  lowBalanceWarning:
+    "Kulang pa ang wallet para sa total. Top up sa Wallet before you proceed.",
+  enrolledRedirect: "Nabayran via wallet. Redirecting…",
+  enrolledActive: "Active na imong seat. Redirecting…",
+} as const;
+
 export const walletCopy = {
   button: "Top up",
   title: "Top up wallet",

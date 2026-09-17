@@ -20,7 +20,19 @@ import {
 } from "@/lib/wallet/ledger";
 import { listStudentWithdrawals } from "@/lib/wallet/withdraw";
 
-export default async function MemberWalletPage() {
+export default async function MemberWalletPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ suggest?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const suggestRaw = params.suggest?.trim();
+  const suggestParsed = suggestRaw ? Number(suggestRaw) : NaN;
+  const suggestAmount =
+    Number.isFinite(suggestParsed) && suggestParsed >= 20
+      ? suggestParsed
+      : undefined;
+
   const profile = await getStudentProfile();
   const [wallet, transactions, payments, withdrawals] = await Promise.all([
     getOrCreateWallet(profile.id),
@@ -57,7 +69,10 @@ export default async function MemberWalletPage() {
             first. Withdrawals need admin approval before payout.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <WalletTopupPanel balanceLabel={balanceLabel} />
+            <WalletTopupPanel
+              balanceLabel={balanceLabel}
+              suggestAmount={suggestAmount}
+            />
             <WalletWithdrawPanel
               balanceLabel={balanceLabel}
               disabled={hasPendingWithdrawal}

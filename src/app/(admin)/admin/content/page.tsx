@@ -54,6 +54,7 @@ export default async function ContentPage() {
         .from("sessions")
         .select("id, title, status, starts_at, ends_at, timezone, format, course_id")
         .eq("status", "PUBLISHED")
+        .is("completed_at", null)
         .gte("starts_at", now)
         .order("starts_at", { ascending: true }),
     ]);

@@ -25,7 +25,12 @@ export async function GET(
   }
 
   const profile = await requireStudent();
-  const authorized = await authorizePlayerFile(profile.id, fileId, profile.role);
+  const authorized = await authorizePlayerFile(
+    profile.id,
+    fileId,
+    profile.role,
+    profile.email,
+  );
   if (!authorized) {
     return new NextResponse("Not found", { status: 404 });
   }

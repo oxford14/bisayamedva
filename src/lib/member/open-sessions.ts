@@ -49,6 +49,7 @@ export async function getOpenFutureSessions(options?: {
     `,
     )
     .eq("status", "PUBLISHED")
+    .is("completed_at", null)
     .gt("starts_at", nowIso)
     .order("starts_at", { ascending: true });
 

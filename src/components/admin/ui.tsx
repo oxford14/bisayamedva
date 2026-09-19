@@ -56,6 +56,7 @@ export function StatusBadge({
     status === "PAID" ||
     status === "COMPLETED" ||
     status === "APPROVED" ||
+    status === "COMPLETED" ||
     normalized === "COMPLETE"
       ? "bg-teal-bright/25 text-navy"
       : status === "DRAFT" ||

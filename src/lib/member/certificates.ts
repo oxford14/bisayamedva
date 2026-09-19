@@ -7,10 +7,11 @@ import {
   type CoursePlayerState,
   type PlayerOutlineItem,
 } from "@/lib/member/module-player";
-import type { UserRole } from "@/lib/supabase/auth";
+import { isAdminRole, type UserRole } from "@/lib/supabase/roles";
 import {
   certificateCode,
   courseCertificateHref,
+  hasModuleCertificateBypass,
   type MemberCertificate,
 } from "@/lib/member/certificate-shared";
 
@@ -55,7 +56,14 @@ export async function ensureCourseEnrollment(
     .eq("student_id", studentId)
     .eq("course_id", courseId)
     .maybeSingle();
-  if (existing) return existing;
+  if (existing) {
+    if (existing.status !== "ACTIVE" && existing.status !== "COMPLETED") {
+      const ok = await activateEnrollment(existing.id as string);
+      if (!ok) return null;
+      return { id: existing.id, status: "ACTIVE" };
+    }
+    return existing;
+  }
 
   const { data: created, error } = await admin
     .from("enrollments")
@@ -75,10 +83,13 @@ export async function recordItemCompletions(
   studentId: string,
   items: Pick<PlayerOutlineItem, "kind" | "moduleId" | "itemId">[],
 ) {
-  if (items.length === 0) return;
+  const qualifying = items.filter(
+    (item) => item.kind === "FILE" || item.kind === "QUIZ",
+  );
+  if (qualifying.length === 0) return;
   const admin = createServiceClient();
   await admin.from("course_module_item_completions").upsert(
-    items.map((item) => ({
+    qualifying.map((item) => ({
       student_id: studentId,
       module_id: item.moduleId,
       item_kind: item.kind,
@@ -146,7 +157,10 @@ async function certificateFromState(
   };
 }
 
-export async function getMemberCertificates(studentId: string) {
+export async function getMemberCertificates(
+  studentId: string,
+  email?: string | null,
+) {
   const enrollments = await getMemberEnrollments(studentId);
   const qualifying = enrollments.filter(
     (enrollment) =>
@@ -158,7 +172,7 @@ export async function getMemberCertificates(studentId: string) {
   for (const enrollment of qualifying) {
     const slug = enrollment.course?.slug;
     if (!slug) continue;
-    const state = await getCoursePlayerState(studentId, slug, "STUDENT");
+    const state = await getCoursePlayerState(studentId, slug, "STUDENT", email);
     const certificate = await certificateFromState(
       studentId,
       enrollment.id,
@@ -173,7 +187,11 @@ export async function getMemberCertificates(studentId: string) {
   );
 }
 
-export async function getMemberCertificate(studentId: string, slug: string) {
+export async function getMemberCertificate(
+  studentId: string,
+  slug: string,
+  email?: string | null,
+) {
   const enrollments = await getMemberEnrollments(studentId);
   const enrollment = enrollments.find(
     (item) =>
@@ -182,7 +200,7 @@ export async function getMemberCertificate(studentId: string, slug: string) {
   );
   if (!enrollment) return null;
 
-  const state = await getCoursePlayerState(studentId, slug, "STUDENT");
+  const state = await getCoursePlayerState(studentId, slug, "STUDENT", email);
   return certificateFromState(studentId, enrollment.id, state);
 }
 
@@ -209,30 +227,28 @@ export async function ensureMemberCertificate(
   studentId: string,
   slug: string,
   role: UserRole,
+  email?: string | null,
 ): Promise<MemberCertificate | null> {
-  const previewState = await getCoursePlayerState(
-    studentId,
-    slug,
-    role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "STUDENT",
-  );
+  const previewState = await getCoursePlayerState(studentId, slug, role, email);
   if (!previewState.course || previewState.flat.length === 0) return null;
 
   let enrollmentId = previewState.access.enrollmentId;
   let state = previewState;
 
-  if (role === "SUPER_ADMIN") {
+  const bootstrapCertificate =
+    isAdminRole(role) || hasModuleCertificateBypass(email);
+
+  if (bootstrapCertificate) {
     const enrollment = await ensureCourseEnrollment(
       studentId,
       previewState.course.id,
     );
     if (!enrollment) return null;
-    if (enrollment.status !== "ACTIVE" && enrollment.status !== "COMPLETED") {
-      const ok = await activateEnrollment(enrollment.id);
-      if (!ok) return null;
-    }
     enrollmentId = enrollment.id;
     await recordItemCompletions(studentId, previewState.flat);
-    await markEnrollmentCompleted(enrollment.id);
+    if (enrollment.status === "ACTIVE") {
+      await markEnrollmentCompleted(enrollment.id);
+    }
     state = {
       ...previewState,
       access: {

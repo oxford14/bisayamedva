@@ -221,6 +221,70 @@ export async function restoreSession(formData: FormData) {
   return ok();
 }
 
+function revalidateSessionConsumerPaths() {
+  revalidatePath("/admin/sessions");
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/admin/content");
+  revalidatePath("/member");
+  revalidatePath("/member/schedule");
+  revalidatePath("/register");
+  revalidatePath("/register/checkout");
+}
+
+export async function completeSession(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const parsed = uuid.safeParse(id);
+  if (!parsed.success) return fail("Invalid session id.");
+
+  const supabase = await createClient();
+  const { data: row } = await supabase
+    .from("sessions")
+    .select("id, status, completed_at")
+    .eq("id", parsed.data)
+    .maybeSingle();
+  if (!row) return fail("Session not found.");
+  if (row.status === "ARCHIVED") {
+    return fail("Archived sessions cannot be marked completed.");
+  }
+  if (row.completed_at) return fail("Session is already completed.");
+
+  const { error } = await supabase
+    .from("sessions")
+    .update({ completed_at: new Date().toISOString() })
+    .eq("id", parsed.data);
+  if (error) return fail(error.message);
+
+  revalidateSessionConsumerPaths();
+  return ok();
+}
+
+export async function reopenSession(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const parsed = uuid.safeParse(id);
+  if (!parsed.success) return fail("Invalid session id.");
+
+  const supabase = await createClient();
+  const { data: row } = await supabase
+    .from("sessions")
+    .select("id, completed_at")
+    .eq("id", parsed.data)
+    .maybeSingle();
+  if (!row) return fail("Session not found.");
+  if (!row.completed_at) return fail("Session is not completed.");
+
+  const { error } = await supabase
+    .from("sessions")
+    .update({ completed_at: null })
+    .eq("id", parsed.data);
+  if (error) return fail(error.message);
+
+  revalidateSessionConsumerPaths();
+  return ok();
+}
+
 const enrollmentSchema = z.object({
   student_id: uuid,
   course_id: uuid,
@@ -363,10 +427,14 @@ export async function saveContentSettings(formData: FormData) {
   if (nextSession) {
     const { data: session } = await supabase
       .from("sessions")
-      .select("id, status, course_id")
+      .select("id, status, course_id, completed_at")
       .eq("id", nextSession)
       .maybeSingle();
-    if (!session || session.status !== "PUBLISHED") {
+    if (
+      !session ||
+      session.status !== "PUBLISHED" ||
+      session.completed_at
+    ) {
       return fail("Pick a published weekend session.");
     }
     if (session.course_id !== featured) {

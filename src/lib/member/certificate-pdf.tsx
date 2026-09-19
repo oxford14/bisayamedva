@@ -5,19 +5,19 @@ import { flushSync } from "react-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import { certificatesCopy } from "@/content/site";
 import {
+  CERTIFICATE_COLORS,
+  CERTIFICATE_RENDER_SCALE,
+  CERTIFICATE_TEMPLATE_SRC,
+  certificateCompletionParagraph,
+  certificateLayout,
+  fillCentered,
+  wrapText,
+} from "@/lib/member/certificate-layout";
+import {
   formatCertificateDate,
   type MemberCertificate,
 } from "@/lib/member/certificate-shared";
 import { getCertificateVerifyUrl } from "@/lib/payments/pay-url";
-
-const SHEET_W = 1100;
-const SHEET_H = 850;
-const SCALE = 2;
-const BG = "#f5f6f0";
-const NAVY = "#5b6d49";
-const INK = "#2f3826";
-const MUTED = "#66705a";
-const BACKGROUND_SRC = "/images/brand/certificate-seal-v3.webp";
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -35,41 +35,6 @@ function cssFont(variable: string, fallback: string) {
   return value ? `${value}, ${fallback}` : fallback;
 }
 
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-) {
-  if (ctx.measureText(text).width <= maxWidth) return [text];
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (ctx.measureText(next).width <= maxWidth) {
-      line = next;
-    } else {
-      if (line) lines.push(line);
-      line = word;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
-
-function fillCentered(
-  ctx: CanvasRenderingContext2D,
-  lines: string[],
-  x: number,
-  y: number,
-  lineHeight: number,
-) {
-  lines.forEach((line, index) => {
-    ctx.fillText(line, x, y + index * lineHeight);
-  });
-  return lines.length * lineHeight;
-}
-
 function qrDataUrl(value: string, size: number) {
   const host = document.createElement("div");
   host.style.cssText =
@@ -84,8 +49,8 @@ function qrDataUrl(value: string, size: number) {
           size={size}
           level="M"
           bgColor="#FFFFFF"
-          fgColor="#3F4A32"
-          includeMargin
+          fgColor="#2D4A22"
+          includeMargin={false}
         />,
       );
     });
@@ -98,6 +63,15 @@ function qrDataUrl(value: string, size: number) {
   }
 }
 
+async function loadOptionalImage(src: string | null | undefined) {
+  if (!src) return null;
+  try {
+    return await loadImage(src);
+  } catch {
+    return null;
+  }
+}
+
 async function renderCertificateCanvas(
   certificate: MemberCertificate,
   studentName: string,
@@ -106,113 +80,156 @@ async function renderCertificateCanvas(
     document.fonts.ready,
     new Promise<void>((resolve) => window.setTimeout(resolve, 1500)),
   ]);
-  const [background, qrImage] = await Promise.all([
-    loadImage(BACKGROUND_SRC),
+
+  const background = await loadImage(CERTIFICATE_TEMPLATE_SRC);
+  const sheetW = background.naturalWidth;
+  const sheetH = background.naturalHeight;
+  const L = certificateLayout(sheetW, sheetH);
+  const qrRenderSize = Math.max(256, Math.round(L.qrSize * 2));
+
+  const [qrImage, signatureImage] = await Promise.all([
     loadImage(
-      qrDataUrl(getCertificateVerifyUrl(certificate.certificateId), 128),
+      qrDataUrl(getCertificateVerifyUrl(certificate.certificateId), qrRenderSize),
     ),
+    loadOptionalImage(certificatesCopy.signatureImageSrc),
   ]);
 
   const canvas = document.createElement("canvas");
-  canvas.width = SHEET_W * SCALE;
-  canvas.height = SHEET_H * SCALE;
+  canvas.width = sheetW * CERTIFICATE_RENDER_SCALE;
+  canvas.height = sheetH * CERTIFICATE_RENDER_SCALE;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas is not available.");
 
-  ctx.scale(SCALE, SCALE);
-  ctx.fillStyle = BG;
-  ctx.fillRect(0, 0, SHEET_W, SHEET_H);
-  ctx.drawImage(background, 0, 0, SHEET_W, SHEET_H);
+  ctx.scale(CERTIFICATE_RENDER_SCALE, CERTIFICATE_RENDER_SCALE);
+  ctx.drawImage(background, 0, 0, sheetW, sheetH);
 
   const display = cssFont("--font-fraunces", "Georgia, serif");
   const sans = cssFont("--font-plus-jakarta", "system-ui, sans-serif");
-  const padL = 72;
-  const padR = 210;
-  const contentW = SHEET_W - padL - padR;
-  const cx = padL + contentW / 2;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  ctx.fillStyle = NAVY;
-  ctx.font = `600 13px ${sans}`;
-  ctx.letterSpacing = "0.22em";
-  ctx.fillText("BISAYA MEDVA", cx, 78);
-  ctx.letterSpacing = "0px";
+  ctx.fillStyle = CERTIFICATE_COLORS.muted;
+  ctx.font = `400 ${L.introFontSize}px ${sans}`;
+  ctx.fillText(certificatesCopy.certifies, L.cx, L.introY);
 
-  ctx.fillStyle = INK;
-  ctx.font = `600 42px ${display}`;
-  ctx.fillText("Certificate of Completion", cx, 128);
+  ctx.fillStyle = CERTIFICATE_COLORS.navy;
+  ctx.font = `600 ${L.nameFontSize}px ${display}`;
+  fillCentered(
+    ctx,
+    wrapText(ctx, studentName, L.contentMaxW),
+    L.cx,
+    L.nameY,
+    L.nameLineHeight,
+  );
 
-  ctx.fillStyle = MUTED;
-  ctx.font = `400 16px ${sans}`;
-  ctx.fillText(certificatesCopy.certifies, cx, 250);
+  const programTitle =
+    certificate.title || certificatesCopy.certificateProgramLine;
+  const completionText = certificateCompletionParagraph(
+    programTitle,
+    certificate.slug,
+  );
+  ctx.fillStyle = CERTIFICATE_COLORS.muted;
+  ctx.font = `400 ${L.bodyFontSize}px ${sans}`;
+  const bodyLines = wrapText(ctx, completionText, L.contentMaxW);
+  fillCentered(ctx, bodyLines, L.cx, L.bodyY, L.bodyLineHeight);
 
-  ctx.fillStyle = NAVY;
-  ctx.font = `600 42px ${display}`;
-  fillCentered(ctx, wrapText(ctx, studentName, contentW), cx, 300, 48);
-
-  ctx.fillStyle = MUTED;
-  ctx.font = `400 16px ${sans}`;
-  ctx.fillText(certificatesCopy.completed, cx, 368);
-
-  ctx.fillStyle = INK;
-  ctx.font = `600 28px ${display}`;
-  const titleLines = wrapText(ctx, certificate.title, contentW);
-  fillCentered(ctx, titleLines, cx, 408, 34);
-
-  let afterTitle = 408 + titleLines.length * 34;
-  if (certificate.subtitle) {
-    ctx.fillStyle = MUTED;
-    ctx.font = `400 15px ${sans}`;
-    afterTitle += 8;
-    fillCentered(ctx, wrapText(ctx, certificate.subtitle, contentW), cx, afterTitle, 20);
-    afterTitle += 24;
-  }
-
-  const metaY = Math.max(afterTitle + 36, 500);
-  const col = contentW / 4;
   ctx.textAlign = "left";
-  ctx.fillStyle = "rgba(91, 109, 73, 0.7)";
-  ctx.font = `600 10px ${sans}`;
-  ctx.letterSpacing = "0.14em";
-  ctx.fillText(certificatesCopy.dateLabel.toUpperCase(), cx - col * 1.4, metaY);
-  ctx.fillText(certificatesCopy.idLabel.toUpperCase(), cx + col * 0.2, metaY);
+  const metaLeftX = L.cx - L.metaColGap;
+  const metaRightX = L.cx + L.metaColGap * 0.15;
+  ctx.fillStyle = `${CERTIFICATE_COLORS.navy}B3`;
+  ctx.font = `600 ${L.metaLabelFontSize}px ${sans}`;
+  ctx.letterSpacing = "0.12em";
+  ctx.fillText(certificatesCopy.dateLabel.toUpperCase(), metaLeftX, L.metaY);
+  ctx.fillText(certificatesCopy.idLabel.toUpperCase(), metaRightX, L.metaY);
   ctx.letterSpacing = "0px";
-  ctx.fillStyle = INK;
-  ctx.font = `500 15px ${sans}`;
-  ctx.fillText(formatCertificateDate(certificate.completedAt), cx - col * 1.4, metaY + 22);
-  ctx.fillText(certificate.certificateId, cx + col * 0.2, metaY + 22);
+  ctx.fillStyle = CERTIFICATE_COLORS.ink;
+  ctx.font = `500 ${L.metaValueFontSize}px ${sans}`;
+  ctx.fillText(
+    formatCertificateDate(certificate.completedAt),
+    metaLeftX,
+    L.metaY + L.metaValueFontSize * 1.5,
+  );
+  ctx.fillText(
+    certificate.certificateId,
+    metaRightX,
+    L.metaY + L.metaValueFontSize * 1.5,
+  );
+
+  const qrDrawSize = L.qrSize;
+  ctx.drawImage(qrImage, L.qrX, L.qrY, qrDrawSize, qrDrawSize);
+
+  const qrLabelCenterX = L.qrX + qrDrawSize / 2;
+  const qrLabelTopY = L.qrY + qrDrawSize + 1;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = CERTIFICATE_COLORS.muted;
+  ctx.font = `500 ${L.qrLabelFontSize}px ${sans}`;
+  const qrLabelLines = wrapText(
+    ctx,
+    certificatesCopy.scanPromptShort,
+    L.qrLabelMaxW,
+  );
+  qrLabelLines.forEach((line, index) => {
+    ctx.fillText(
+      line,
+      qrLabelCenterX,
+      qrLabelTopY + index * L.qrLabelFontSize,
+    );
+  });
+  ctx.textBaseline = "middle";
 
   ctx.textAlign = "center";
-  ctx.strokeStyle = "rgba(91, 109, 73, 0.3)";
-  ctx.beginPath();
-  ctx.moveTo(cx - 72, metaY + 70);
-  ctx.lineTo(cx + 72, metaY + 70);
-  ctx.stroke();
-  ctx.fillStyle = INK;
-  ctx.font = `600 18px ${display}`;
-  ctx.fillText(certificatesCopy.signatoryName, cx, metaY + 94);
-  ctx.fillStyle = MUTED;
-  ctx.font = `500 11px ${sans}`;
-  ctx.fillText(certificatesCopy.signatoryTitle, cx, metaY + 114);
+  if (signatureImage) {
+    const nameY = L.signatureBaseY;
+    ctx.fillStyle = CERTIFICATE_COLORS.ink;
+    ctx.font = `600 ${L.signatoryNameFontSize}px ${display}`;
+    ctx.fillText(certificatesCopy.signatoryName, L.signatureCenterX, nameY);
 
-  const qrSize = 88;
-  const qrX = cx - qrSize / 2;
-  const qrY = 668;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12);
-  ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+    const sigW = L.signatureImageW;
+    const sigH =
+      (signatureImage.naturalHeight / signatureImage.naturalWidth) * sigW;
+    const drawH = Math.min(sigH, L.signatureImageH);
+    const drawW =
+      (signatureImage.naturalWidth / signatureImage.naturalHeight) * drawH;
+    const sigBottom = nameY - L.signatoryNameFontSize * 0.55 - L.signatureGapAboveName;
+    ctx.drawImage(
+      signatureImage,
+      L.signatureCenterX - drawW / 2,
+      sigBottom - drawH,
+      drawW,
+      drawH,
+    );
 
-  ctx.fillStyle = INK;
-  ctx.font = `500 11px ${sans}`;
-  ctx.fillText(certificatesCopy.scanPrompt, cx, qrY + qrSize + 18);
-  ctx.fillStyle = NAVY;
-  ctx.font = `600 12px ${sans}`;
-  ctx.letterSpacing = "0.2em";
-  ctx.fillText(certificatesCopy.issued.toUpperCase(), cx, 828);
-  ctx.letterSpacing = "0px";
+    ctx.fillStyle = CERTIFICATE_COLORS.muted;
+    ctx.font = `500 ${L.signatoryTitleFontSize}px ${sans}`;
+    ctx.fillText(
+      certificatesCopy.signatoryTitle,
+      L.signatureCenterX,
+      nameY + L.signatoryNameFontSize * 1.05,
+    );
+  } else {
+    ctx.strokeStyle = `${CERTIFICATE_COLORS.navy}4D`;
+    ctx.beginPath();
+    ctx.moveTo(L.signatureCenterX - L.signatureLineW / 2, L.signatureBaseY);
+    ctx.lineTo(L.signatureCenterX + L.signatureLineW / 2, L.signatureBaseY);
+    ctx.stroke();
+    ctx.fillStyle = CERTIFICATE_COLORS.ink;
+    ctx.font = `600 ${L.signatoryNameFontSize}px ${display}`;
+    ctx.fillText(
+      certificatesCopy.signatoryName,
+      L.signatureCenterX,
+      L.signatureBaseY + L.signatoryNameFontSize * 1.1,
+    );
+    ctx.fillStyle = CERTIFICATE_COLORS.muted;
+    ctx.font = `500 ${L.signatoryTitleFontSize}px ${sans}`;
+    ctx.fillText(
+      certificatesCopy.signatoryTitle,
+      L.signatureCenterX,
+      L.signatureBaseY + L.signatoryNameFontSize * 2.2,
+    );
+  }
 
-  return canvas;
+  return { canvas, sheetW, sheetH };
 }
 
 export function certificatePdfFilename(certificateId: string) {
@@ -223,20 +240,23 @@ export async function buildCertificatePdfBlob(
   certificate: MemberCertificate,
   studentName: string,
 ) {
-  const canvas = await Promise.race([
+  const rendered = await Promise.race([
     renderCertificateCanvas(certificate, studentName),
-    new Promise<HTMLCanvasElement>((_, reject) =>
+    new Promise<never>((_, reject) =>
       window.setTimeout(() => reject(new Error("PDF render timed out.")), 20000),
     ),
   ]);
+  const { canvas, sheetW, sheetH } = rendered;
   const { jsPDF } = await import("jspdf");
   const image = canvas.toDataURL("image/jpeg", 0.95);
+  const widthIn = 11;
+  const heightIn = (sheetH / sheetW) * widthIn;
   const pdf = new jsPDF({
-    orientation: "landscape",
+    orientation: widthIn >= heightIn ? "landscape" : "portrait",
     unit: "in",
-    format: [11, 8.5],
+    format: [widthIn, heightIn],
   });
-  pdf.addImage(image, "JPEG", 0, 0, 11, 8.5);
+  pdf.addImage(image, "JPEG", 0, 0, widthIn, heightIn);
   return pdf.output("blob");
 }
 

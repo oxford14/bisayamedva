@@ -6,16 +6,18 @@ import {
   MemberPageHeader,
 } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
-import { certificatesCopy, certificatesEnabled } from "@/content/site";
+import { certificatesCopy } from "@/content/site";
 import {
   formatCertificateDate,
   getMemberCertificates,
 } from "@/lib/member/certificates";
+import { canGenerateCertificates } from "@/lib/member/certificate-shared";
 import { getStudentProfile } from "@/lib/supabase/auth";
 
 export default async function MemberCertificatesPage() {
   const profile = await getStudentProfile();
-  const certificates = await getMemberCertificates(profile.id);
+  const certificates = await getMemberCertificates(profile.id, profile.email);
+  const generationEnabled = canGenerateCertificates(profile.email);
 
   return (
     <div>
@@ -24,15 +26,15 @@ export default async function MemberCertificatesPage() {
         description={certificatesCopy.description}
       />
 
-      {!certificatesEnabled || certificates.length === 0 ? (
+      {!generationEnabled || certificates.length === 0 ? (
         <MemberEmptyState
           title={
-            certificatesEnabled
+            generationEnabled
               ? certificatesCopy.emptyTitle
               : certificatesCopy.unavailableTitle
           }
           body={
-            certificatesEnabled
+            generationEnabled
               ? certificatesCopy.emptyBody
               : certificatesCopy.unavailableBody
           }

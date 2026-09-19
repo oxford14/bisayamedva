@@ -195,16 +195,16 @@ export function MemberInboxBell({
   }
 
   function toggleInboxOpen() {
-    setOpen((wasOpen) => {
-      if (wasOpen) return false;
-
-      setSnapshot((prev) => (prev ? markAllInboxReadLocal(prev) : prev));
-      void (async () => {
-        await markMemberInboxSeenInbox();
-        await refreshInbox();
-      })();
-      return true;
-    });
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setSnapshot((prev) => (prev ? markAllInboxReadLocal(prev) : prev));
+    setOpen(true);
+    void (async () => {
+      await markMemberInboxSeenInbox();
+      await refreshInbox();
+    })();
   }
 
   return (

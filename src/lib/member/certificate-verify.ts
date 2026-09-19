@@ -35,17 +35,20 @@ export async function getPublicCertificateByCode(
   code: string,
 ): Promise<PublicCertificate | null> {
   const normalized = normalizeCertificateCode(code);
-  const prefix = parseCertificateCode(code);
-  if (!normalized || !prefix) return null;
+  if (!normalized) return null;
 
   const admin = createServiceClient();
-  const { data: rows } = await admin
+  const { data: rows, error } = await admin
     .from("enrollments")
     .select(
       "id, status, student_id, course_id, courses(id, title, subtitle, slug)",
     )
-    .like("id", `${prefix}-%`)
     .in("status", ["ACTIVE", "COMPLETED"]);
+
+  if (error) {
+    console.error("getPublicCertificateByCode", error.message);
+    return null;
+  }
 
   const enrollment = (rows ?? []).find(
     (row) => certificateCode(row.id as string) === normalized,

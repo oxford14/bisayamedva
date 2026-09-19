@@ -25,6 +25,7 @@ export default async function MemberCourseModulesPage({ params }: Props) {
     profile.id,
     slug,
     profile.role,
+    profile.email,
   );
 
   if (!course || !access.enrolled) {

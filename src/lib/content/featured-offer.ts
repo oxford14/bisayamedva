@@ -106,6 +106,7 @@ export async function getFeaturedOffer(): Promise<FeaturedOffer> {
             .select("*")
             .eq("id", sessionId)
             .eq("status", "PUBLISHED")
+            .is("completed_at", null)
             .maybeSingle()
         : Promise.resolve({ data: null }),
     ]);

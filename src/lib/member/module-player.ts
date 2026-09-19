@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { hasModuleCertificateBypass } from "@/lib/member/certificate-shared";
 import { isAdminRole, type UserRole } from "@/lib/supabase/auth";
 import { modulesCopy } from "@/content/site";
 import { isVideoMime } from "@/lib/modules/storage";
@@ -97,11 +98,13 @@ export async function getCoursePlayerState(
   studentId: string,
   slug: string,
   role?: UserRole | null,
+  email?: string | null,
 ): Promise<CoursePlayerState> {
   const { course, access, modules } = await getStudentCourseModules(
     studentId,
     slug,
     role,
+    email,
   );
   const todayGoal = modulesCopy.todayGoal;
   if (!course) {
@@ -118,8 +121,9 @@ export async function getCoursePlayerState(
 
   const admin = createServiceClient();
   const moduleIds = modules.map((item) => item.id);
-  const staff = isAdminRole(role);
-  const courseOpen = canOpenCourseModules(access);
+  const bypass = hasModuleCertificateBypass(email);
+  const staff = isAdminRole(role) || bypass;
+  const courseOpen = canOpenCourseModules(access) || bypass;
 
   const [{ data: fileRows }, { data: questionRows }, { data: completions }, { data: attempts }] =
     await Promise.all([
@@ -202,7 +206,7 @@ export async function getCoursePlayerState(
         itemId: file.id as string,
         title: fileTitle(file.file_name as string),
         label: isVideoMime(file.mime_type as string) ? "Video" : "Reading",
-        complete: staff ? false : done.has(`FILE:${file.id}`),
+        complete: bypass ? true : staff ? false : done.has(`FILE:${file.id}`),
         locked: false,
         href: itemHref(course.slug, lesson.id, key),
       });
@@ -215,7 +219,7 @@ export async function getCoursePlayerState(
         itemId: lesson.id,
         title: modulesCopy.quizTitle,
         label: "Quiz",
-        complete: staff ? false : done.has(`QUIZ:${lesson.id}`),
+        complete: bypass ? true : staff ? false : done.has(`QUIZ:${lesson.id}`),
         locked: false,
         href: itemHref(course.slug, lesson.id, quizItemKey()),
       });
@@ -238,7 +242,15 @@ export async function getCoursePlayerState(
   const submission = hipaaRequired
     ? await fetchHipaaSubmission(admin, studentId, course.id)
     : null;
-  const hipaa = hipaaGateFromSubmission(hipaaRequired, submission);
+  let hipaa = hipaaGateFromSubmission(hipaaRequired, submission);
+  if (bypass && hipaa.required) {
+    hipaa = {
+      ...hipaa,
+      approved: true,
+      submitted: true,
+      rejected: false,
+    };
+  }
 
   injectHipaaIntoPlayerOutline({
     courseSlug: course.slug,
@@ -253,6 +265,14 @@ export async function getCoursePlayerState(
   } else {
     applySequentialLocks(flat, courseOpen);
     syncOutlineLocks(outline);
+  }
+
+  if (bypass) {
+    for (const item of flat) {
+      item.locked = false;
+      item.complete = true;
+    }
+    for (const lesson of outline) lesson.locked = false;
   }
 
   return { course, access, outline, flat, todayDone, todayGoal, hipaa };
@@ -275,8 +295,9 @@ export async function getPlayerItemView(
   moduleId: string,
   itemKey: string,
   role?: UserRole | null,
+  email?: string | null,
 ): Promise<PlayerItemView> {
-  const state = await getCoursePlayerState(studentId, slug, role);
+  const state = await getCoursePlayerState(studentId, slug, role, email);
   const parsed = parseItemKey(itemKey);
   const active =
     parsed &&
@@ -385,6 +406,7 @@ export async function authorizePlayerFile(
   studentId: string,
   fileId: string,
   role?: UserRole | null,
+  email?: string | null,
 ): Promise<AuthorizedModuleFile | null> {
   const admin = createServiceClient();
   const { data: fileRow } = await admin
@@ -408,7 +430,12 @@ export async function authorizePlayerFile(
     .maybeSingle();
   if (!course?.slug) return null;
 
-  const state = await getCoursePlayerState(studentId, course.slug as string, role);
+  const state = await getCoursePlayerState(
+    studentId,
+    course.slug as string,
+    role,
+    email,
+  );
   const item = state.flat.find(
     (entry) => entry.kind === "FILE" && entry.itemId === fileId,
   );

@@ -6,23 +6,25 @@ import { CertificatePrintButton } from "@/components/member/certificate-print-bu
 import { ModulePdfViewer } from "@/components/member/module-pdf-viewer";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Button } from "@/components/ui/button";
-import { certificatesCopy, certificatesEnabled, modulesCopy } from "@/content/site";
+import { certificatesCopy, modulesCopy } from "@/content/site";
 import { buildCertificatePdfBlob } from "@/lib/member/certificate-pdf";
 import type { MemberCertificate } from "@/lib/member/certificate-shared";
 
 export function CertificateViewer({
   certificate,
   studentName,
+  generationEnabled = false,
 }: {
   certificate: MemberCertificate;
   studentName: string;
+  generationEnabled?: boolean;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!certificatesEnabled) return;
+    if (!generationEnabled) return;
     let url: string | null = null;
     let cancelled = false;
     setSrc(null);
@@ -40,9 +42,9 @@ export function CertificateViewer({
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [certificate, studentName]);
+  }, [certificate, studentName, generationEnabled]);
 
-  if (!certificatesEnabled) {
+  if (!generationEnabled) {
     return (
       <div
         className="flex flex-1 flex-col justify-center rounded-2xl border border-border bg-white p-6"
@@ -78,6 +80,7 @@ export function CertificateViewer({
         <CertificatePrintButton
           certificate={certificate}
           studentName={studentName}
+          generationEnabled={generationEnabled}
           compact
         />
       </div>

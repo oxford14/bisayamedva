@@ -115,6 +115,7 @@ async function loadPublishedOffer(slug: string, sessionId: string) {
     .eq("id", sessionId)
     .eq("course_id", course.id)
     .eq("status", "PUBLISHED")
+    .is("completed_at", null)
     .gt("starts_at", nowIso)
     .maybeSingle();
 

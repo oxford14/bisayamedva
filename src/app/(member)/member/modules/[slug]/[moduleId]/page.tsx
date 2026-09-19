@@ -16,7 +16,12 @@ type Props = {
 export default async function MemberModuleRedirectPage({ params }: Props) {
   const { slug, moduleId } = await params;
   const profile = await getStudentProfile();
-  const state = await getCoursePlayerState(profile.id, slug, profile.role);
+  const state = await getCoursePlayerState(
+    profile.id,
+    slug,
+    profile.role,
+    profile.email,
+  );
 
   if (!state.course) {
     return (

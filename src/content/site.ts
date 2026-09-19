@@ -521,6 +521,11 @@ export const inboxCopy = {
 /** Set true when client PDF certificate generation is ready for students. */
 export const certificatesEnabled = false;
 
+/** When certificatesEnabled is false, only these emails may generate/view PDF certificates. */
+export const certificateGenerationAllowlistEmails = [
+  "neilandrewfuerzas@gmail.com",
+] as const;
+
 export const certificatesCopy = {
   nav: "Certificates",
   title: "Certificates",
@@ -538,11 +543,21 @@ export const certificatesCopy = {
   issued: "Issued by Bisaya MedVA",
   certifies: "This certifies that",
   completed: "has completed",
+  completedLead: "has successfully completed the",
+  certificateProgramLine: "Medical VA Masterclass",
+  certificateBody:
+    "demonstrating foundational knowledge in the U.S. medical office environment, communication and documentation standards, front desk patient management, basic EHR and practice software concepts, daily Medical VA front desk workflow, and HIPAA essentials for Medical VAs.",
+  certificateBodyBySlug: {
+    "medical-va-masterclass":
+      "demonstrating foundational knowledge in the U.S. medical office environment, communication and documentation standards, front desk patient management, basic EHR and practice software concepts, daily Medical VA front desk workflow, and HIPAA essentials for Medical VAs.",
+  },
+  signatureImageSrc: "/images/brand/certificate-signature-joy.png",
   dateLabel: "Date completed",
   idLabel: "Certificate ID",
   signatoryName: trainer.name,
   signatoryTitle: "Medical VA Coach",
   scanPrompt: "Scan this code to verify this certificate is authentic.",
+  scanPromptShort: "Scan to verify",
   scanNote:
     "This check confirms Bisaya MedVA issued it, not an edited copy.",
   authenticating: "Authenticating Certificate",
@@ -555,6 +570,9 @@ export const certificatesCopy = {
   unavailableTitle: "Certificate generation is currently unavailable",
   unavailableBody:
     "Naka-pass na ka sa last quiz. Imong certificate dili pa ma-generate for now — i-release namo ni later.",
+  verifyTestLead:
+    "PDF generation off pa, pero pwede nimo i-test ang public verify link:",
+  verifyTestOpen: "Open verify page",
   hipaaBlockedTitle: "HIPAA certificate review pending",
   hipaaBlockedBody:
     "Finish external HIPAA training, upload your certificate, then wait for admin approval before you generate your BisayaMedVA course certificate.",

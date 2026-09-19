@@ -82,6 +82,7 @@ export default async function SessionsPage() {
       capacity: session.capacity,
       meeting_url: session.meeting_url,
       status: session.status,
+      completed_at: (session.completed_at as string | null) ?? null,
       courseTitle: course?.title ?? "—",
       enrolled: rosters[session.id]?.length ?? 0,
     };

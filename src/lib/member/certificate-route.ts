@@ -1,5 +1,8 @@
-import { certificatesEnabled, certificatesCopy } from "@/content/site";
-import { courseCertificateHref } from "@/lib/member/certificate-shared";
+import { certificatesCopy } from "@/content/site";
+import {
+  canGenerateCertificates,
+  courseCertificateHref,
+} from "@/lib/member/certificate-shared";
 import {
   courseReadyForCertificate,
   hipaaStepHref,
@@ -20,11 +23,12 @@ export function resolveAfterLastItem(input: {
   hipaa: HipaaGateState;
   nextHref: string | null;
   isLast: boolean;
+  email?: string | null;
 }): CertificateContinue {
   if (!input.isLast) {
     return { kind: "next", href: input.nextHref };
   }
-  if (!certificatesEnabled) {
+  if (!canGenerateCertificates(input.email)) {
     return { kind: "unavailable" };
   }
   if (courseReadyForCertificate(input.flat, input.hipaa)) {

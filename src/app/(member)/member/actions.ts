@@ -460,14 +460,15 @@ export async function assignEnrollmentSession(
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, course_id, status, starts_at, capacity")
+    .select("id, course_id, status, starts_at, capacity, completed_at")
     .eq("id", sessionId)
     .maybeSingle();
 
   if (
     !session ||
     session.course_id !== enrollment.course_id ||
-    session.status !== "PUBLISHED"
+    session.status !== "PUBLISHED" ||
+    session.completed_at
   ) {
     return { ok: false, error: "That schedule is not available for this course." };
   }

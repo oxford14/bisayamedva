@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import { List } from "lucide-react";
 import {
+  completeSession,
   deleteSession,
+  reopenSession,
   restoreSession,
   upsertSession,
 } from "@/app/(admin)/admin/actions";
@@ -40,6 +42,7 @@ export type SessionManagerRow = {
   capacity: number;
   meeting_url: string | null;
   status: string;
+  completed_at: string | null;
   courseTitle: string;
   enrolled: number;
 };
@@ -55,7 +58,12 @@ type FormState = {
   status: string;
 };
 
-type SessionTab = "active" | "deleted";
+type SessionTab = "active" | "completed" | "deleted";
+
+function sessionDisplayStatus(session: SessionManagerRow) {
+  if (session.completed_at) return "COMPLETED";
+  return session.status;
+}
 
 const DEFAULT_DURATION_MINUTES = "120";
 
@@ -129,10 +137,28 @@ export function SessionManager({
   const activeSessions = useMemo(
     () =>
       sessions
-        .filter((session) => session.status !== "ARCHIVED")
+        .filter(
+          (session) =>
+            session.status !== "ARCHIVED" && !session.completed_at,
+        )
         .sort(
           (a, b) =>
             new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+        ),
+    [sessions],
+  );
+
+  const completedSessions = useMemo(
+    () =>
+      sessions
+        .filter(
+          (session) =>
+            session.status !== "ARCHIVED" && Boolean(session.completed_at),
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.completed_at ?? b.starts_at).getTime() -
+            new Date(a.completed_at ?? a.starts_at).getTime(),
         ),
     [sessions],
   );
@@ -148,7 +174,12 @@ export function SessionManager({
     [sessions],
   );
 
-  const visibleSessions = tab === "active" ? activeSessions : deletedSessions;
+  const visibleSessions =
+    tab === "active"
+      ? activeSessions
+      : tab === "completed"
+        ? completedSessions
+        : deletedSessions;
 
   function resetForm() {
     setForm(emptyForm(defaultCourseId));
@@ -234,6 +265,48 @@ export function SessionManager({
           : "Session moved to Deleted.",
       );
       setTab("deleted");
+      router.refresh();
+    });
+  }
+
+  function finishSession(session: SessionManagerRow) {
+    const confirmed = window.confirm(
+      `Mark "${session.title}" as completed?\n\nEnrolled students stay ACTIVE — this session will be hidden from new sign-ups.`,
+    );
+    if (!confirmed) return;
+
+    setFormError("");
+    setFormSuccess("");
+    const formData = new FormData();
+    formData.set("id", session.id);
+
+    startTransition(async () => {
+      const result = await completeSession(formData);
+      if (!result.ok) {
+        setFormError(result.error);
+        return;
+      }
+      if (form.id === session.id) resetForm();
+      setFormSuccess("Session marked completed.");
+      setTab("completed");
+      router.refresh();
+    });
+  }
+
+  function uncompleteSession(session: SessionManagerRow) {
+    setFormError("");
+    setFormSuccess("");
+    const formData = new FormData();
+    formData.set("id", session.id);
+
+    startTransition(async () => {
+      const result = await reopenSession(formData);
+      if (!result.ok) {
+        setFormError(result.error);
+        return;
+      }
+      setFormSuccess("Session reopened on Active list.");
+      setTab("active");
       router.refresh();
     });
   }
@@ -413,6 +486,20 @@ export function SessionManager({
           <button
             type="button"
             role="tab"
+            aria-selected={tab === "completed"}
+            className={cn(
+              "rounded-lg px-3.5 py-2 text-sm font-medium transition",
+              tab === "completed"
+                ? "bg-white text-ink shadow-sm"
+                : "text-muted hover:text-ink",
+            )}
+            onClick={() => setTab("completed")}
+          >
+            Completed ({completedSessions.length})
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={tab === "deleted"}
             className={cn(
               "rounded-lg px-3.5 py-2 text-sm font-medium transition",
@@ -429,12 +516,18 @@ export function SessionManager({
         {visibleSessions.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-cream/60 px-6 py-12 text-center">
             <p className="font-semibold text-ink">
-              {tab === "active" ? "No sessions yet" : "No deleted sessions"}
+              {tab === "active"
+                ? "No sessions yet"
+                : tab === "completed"
+                  ? "No completed sessions"
+                  : "No deleted sessions"}
             </p>
             <p className="mt-2 text-sm text-muted">
               {tab === "active"
                 ? "Create a published session so students can enroll."
-                : "Deleted schedules will show here so you can restore them."}
+                : tab === "completed"
+                  ? "Finished live cohorts show here — enrollments stay active."
+                  : "Deleted schedules will show here so you can restore them."}
             </p>
           </div>
         ) : (
@@ -507,7 +600,7 @@ export function SessionManager({
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={session.status} />
+                        <StatusBadge status={sessionDisplayStatus(session)} />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
@@ -520,6 +613,44 @@ export function SessionManager({
                                 onClick={() => startEdit(session)}
                               >
                                 Edit
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="accent"
+                                size="sm"
+                                disabled={pending}
+                                onClick={() => finishSession(session)}
+                              >
+                                Mark completed
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                disabled={pending}
+                                onClick={() => removeSession(session)}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          ) : tab === "completed" ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => startEdit(session)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                disabled={pending}
+                                onClick={() => uncompleteSession(session)}
+                              >
+                                Reopen
                               </Button>
                               <Button
                                 type="button"

@@ -5,7 +5,9 @@ import { ModulePlayerOutline } from "@/components/member/module-player-outline";
 import { MemberEmptyState, MemberPageHeader } from "@/components/member/ui";
 import { Button } from "@/components/ui/button";
 import { hipaaCopy, modulesCopy } from "@/content/site";
+import { courseCertificateHref } from "@/lib/member/certificate-shared";
 import {
+  courseReadyForCertificate,
   courseRequiresHipaaGate,
   HIPAA_GATE_MODULE_ID,
   hipaaItemKey,
@@ -24,7 +26,12 @@ export default async function MemberHipaaCertificatePage({ params }: Props) {
   if (!courseRequiresHipaaGate(slug)) notFound();
 
   const profile = await getStudentProfile();
-  const state = await getCoursePlayerState(profile.id, slug, profile.role);
+  const state = await getCoursePlayerState(
+    profile.id,
+    slug,
+    profile.role,
+    profile.email,
+  );
 
   if (!state.course) {
     return (
@@ -69,6 +76,12 @@ export default async function MemberHipaaCertificatePage({ params }: Props) {
   const nextHref =
     hipaaIndex >= 0 ? (state.flat[hipaaIndex + 1]?.href ?? null) : null;
   const closeHref = `/member/modules/${slug}`;
+  const courseCertificateUrl = courseReadyForCertificate(
+    state.flat,
+    state.hipaa,
+  )
+    ? courseCertificateHref(slug)
+    : null;
 
   return (
     <div className="-mx-4 -mt-6 flex min-h-[calc(100dvh-8.5rem)] flex-col bg-cream sm:-mx-6 lg:-mx-8 lg:-mt-8 lg:min-h-[calc(100dvh-4.5rem)] lg:flex-row">
@@ -97,6 +110,7 @@ export default async function MemberHipaaCertificatePage({ params }: Props) {
           courseSlug={slug}
           gate={state.hipaa}
           nextHref={nextHref}
+          courseCertificateHref={courseCertificateUrl}
         />
       </section>
     </div>

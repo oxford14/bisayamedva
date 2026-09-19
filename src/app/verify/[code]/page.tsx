@@ -45,9 +45,11 @@ export default async function CertificateVerifyPage({ params }: Props) {
               <p className="mt-6 font-display text-2xl font-semibold text-ink">
                 {certificate.studentName}
               </p>
-              <p className="mt-1 text-sm text-muted">{certificatesCopy.completed}</p>
-              <p className="mt-1 font-display text-xl font-semibold text-ink">
-                {certificate.title}
+              <p className="mt-1 text-sm text-muted">
+                {certificatesCopy.completedLead}{" "}
+                <span className="font-semibold text-ink">
+                  {certificate.title || certificatesCopy.certificateProgramLine}
+                </span>
               </p>
               {certificate.subtitle ? (
                 <p className="mt-1 text-sm text-muted">{certificate.subtitle}</p>

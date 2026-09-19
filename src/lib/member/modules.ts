@@ -6,6 +6,7 @@ import {
   type MemberEnrollment,
   type MemberSession,
 } from "@/lib/member/data";
+import { hasModuleCertificateBypass } from "@/lib/member/certificate-shared";
 import { modulesUnlockedForEnrollment } from "@/lib/member/module-access-shared";
 import { moduleFileHref } from "@/lib/member/module-player-shared";
 import {
@@ -246,26 +247,40 @@ export async function getEnrolledModuleCourses(
   });
 }
 
+async function loadCourseBySlug(slug: string) {
+  const admin = createServiceClient();
+  const { data: course } = await admin
+    .from("courses")
+    .select("id, slug, title, subtitle")
+    .eq("slug", slug)
+    .neq("status", "ARCHIVED")
+    .maybeSingle();
+  if (!course?.id || !course.slug) return null;
+  return {
+    id: course.id as string,
+    slug: course.slug as string,
+    title: course.title as string,
+    subtitle: (course.subtitle as string | null) ?? null,
+  };
+}
+
 export async function getStudentCourseModules(
   studentId: string,
   slug: string,
   role?: UserRole | null,
+  email?: string | null,
 ) {
+  const bypass = hasModuleCertificateBypass(email);
   if (isAdminRole(role)) {
-    const admin = createServiceClient();
-    const { data: course } = await admin
-      .from("courses")
-      .select("id, slug, title, subtitle")
-      .eq("slug", slug)
-      .neq("status", "ARCHIVED")
-      .maybeSingle();
-    if (!course?.id || !course.slug) {
+    const course = await loadCourseBySlug(slug);
+    if (!course) {
       return {
         course: null as null,
         access: staffModuleAccess(),
         modules: [] as StudentModuleListItem[],
       };
     }
+    const admin = createServiceClient();
     const { data, error } = await admin
       .from("course_modules")
       .select("id, title, description, sort_order, status")
@@ -276,13 +291,41 @@ export async function getStudentCourseModules(
       console.error("getStudentCourseModules", error.message);
     }
     return {
-      course: {
-        id: course.id as string,
-        slug: course.slug as string,
-        title: course.title as string,
-        subtitle: (course.subtitle as string | null) ?? null,
-      },
+      course,
       access: staffModuleAccess(),
+      modules: mapModuleRows(data),
+    };
+  }
+
+  if (bypass) {
+    const course = await loadCourseBySlug(slug);
+    if (!course) {
+      return {
+        course: null as null,
+        access: courseModuleAccess([], ""),
+        modules: [] as StudentModuleListItem[],
+      };
+    }
+    const enrollments = await getMemberEnrollments(studentId);
+    const access = courseModuleAccess(enrollments, course.id);
+    const admin = createServiceClient();
+    const { data, error } = await admin
+      .from("course_modules")
+      .select("id, title, description, sort_order, status")
+      .eq("course_id", course.id)
+      .eq("status", "PUBLISHED")
+      .order("sort_order", { ascending: true });
+    if (error) {
+      console.error("getStudentCourseModules", error.message);
+    }
+    return {
+      course,
+      access: {
+        ...access,
+        enrolled: true,
+        unlocked: true,
+        staffPreview: false,
+      },
       modules: mapModuleRows(data),
     };
   }

@@ -22,6 +22,7 @@ export default async function MemberModuleItemPage({ params }: Props) {
     moduleId,
     itemKey,
     profile.role,
+    profile.email,
   );
 
   if (!view.course) {

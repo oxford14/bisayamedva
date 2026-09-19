@@ -1,3 +1,27 @@
+import {
+  certificateGenerationAllowlistEmails,
+  certificatesEnabled,
+} from "@/content/site";
+
+export function isCertificateAllowlistedEmail(email?: string | null) {
+  const normalized = email?.trim().toLowerCase() ?? "";
+  if (!normalized) return false;
+  return certificateGenerationAllowlistEmails.some(
+    (allowed) => allowed.toLowerCase() === normalized,
+  );
+}
+
+/** Global flag, or allowlisted email when certificates are still gated. */
+export function canGenerateCertificates(email?: string | null) {
+  if (certificatesEnabled) return true;
+  return isCertificateAllowlistedEmail(email);
+}
+
+/** Full course unlock + completion bypass for certificate testing (allowlist only). */
+export function hasModuleCertificateBypass(email?: string | null) {
+  return isCertificateAllowlistedEmail(email);
+}
+
 export type MemberCertificate = {
   enrollmentId: string;
   courseId: string;

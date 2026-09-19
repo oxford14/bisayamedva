@@ -14,6 +14,7 @@ import {
   courseRequiresHipaaGate,
   hipaaStepHref,
 } from "@/lib/member/hipaa-gate";
+import { hasModuleCertificateBypass } from "@/lib/member/certificate-shared";
 import { getCoursePlayerState } from "@/lib/member/module-player";
 import { revalidateCertificatePaths } from "@/lib/member/certificates";
 import { createServiceClient } from "@/lib/supabase/admin";
@@ -32,11 +33,17 @@ function mapUploadError(message: string) {
   return message;
 }
 
-async function requireUnlockedHipaaStep(studentId: string, slug: string, role: string) {
+async function requireUnlockedHipaaStep(
+  studentId: string,
+  slug: string,
+  role: string,
+  email?: string | null,
+) {
   const state = await getCoursePlayerState(
     studentId,
     slug,
     isAdminRole(role) ? role : "STUDENT",
+    email,
   );
   if (!state.course || !courseRequiresHipaaGate(slug)) {
     return { ok: false as const, error: "HIPAA step not available for this course." };
@@ -45,7 +52,11 @@ async function requireUnlockedHipaaStep(studentId: string, slug: string, role: s
   if (!hipaaItem) {
     return { ok: false as const, error: "Finish Module 8 una before HIPAA upload." };
   }
-  if (hipaaItem.locked && !isAdminRole(role)) {
+  if (
+    hipaaItem.locked &&
+    !isAdminRole(role) &&
+    !hasModuleCertificateBypass(email)
+  ) {
     return {
       ok: false as const,
       error: "Locked pa ni. Finish Module 8 una.",
@@ -68,6 +79,7 @@ export async function prepareHipaaCertificateUpload(input: {
     profile.id,
     input.courseSlug,
     profile.role,
+    profile.email,
   );
   if (!opened.ok) return opened;
 
@@ -108,6 +120,7 @@ export async function confirmHipaaCertificateUpload(input: {
     profile.id,
     input.courseSlug,
     profile.role,
+    profile.email,
   );
   if (!opened.ok) return opened;
 

@@ -23,6 +23,7 @@ import {
   revalidateCertificatePaths,
 } from "@/lib/member/certificates";
 import { getMemberEnrollments } from "@/lib/member/data";
+import { hasModuleCertificateBypass } from "@/lib/member/certificate-shared";
 import {
   resolveAfterLastItem,
   type CertificateContinue,
@@ -60,16 +61,20 @@ async function finishItemAndMaybeCertify(input: {
   courseId: string;
   slug: string;
   role: UserRole;
+  email: string;
   staff: boolean;
   current: { kind: "FILE" | "QUIZ"; moduleId: string; itemId: string };
 }) {
   const enrollment = await ensureCourseEnrollment(input.studentId, input.courseId);
   await recordItemCompletions(input.studentId, [input.current]);
 
+  const playerRole =
+    input.staff && isAdminRole(input.role) ? "STUDENT" : input.role;
   const outlineState = await getCoursePlayerState(
     input.studentId,
     input.slug,
-    input.staff ? "STUDENT" : input.role,
+    playerRole,
+    input.email,
   );
   const currentIndex = outlineState.flat.findIndex(
     (entry) =>
@@ -85,7 +90,8 @@ async function finishItemAndMaybeCertify(input: {
   const nextState = await getCoursePlayerState(
     input.studentId,
     input.slug,
-    input.staff ? "STUDENT" : input.role,
+    playerRole,
+    input.email,
   );
   if (enrollment && (isLast || courseItemsComplete(nextState))) {
     await maybeCompleteEnrollment(input.studentId, input.courseId, nextState);
@@ -101,6 +107,7 @@ async function finishItemAndMaybeCertify(input: {
         hipaa: nextState.hipaa,
         nextHref,
         isLast: true,
+        email: input.email,
       })
     : null;
 
@@ -125,11 +132,12 @@ async function loadCourseSlug(courseId: string) {
 async function requireOpenItem(
   studentId: string,
   role: UserRole,
+  email: string | null | undefined,
   slug: string,
   moduleId: string,
   itemKey: string,
 ) {
-  const state = await getCoursePlayerState(studentId, slug, role);
+  const state = await getCoursePlayerState(studentId, slug, role, email);
   const item = state.flat.find(
     (entry) => entry.moduleId === moduleId && entry.key === itemKey,
   );
@@ -163,11 +171,13 @@ export async function completeModuleFile(
   const slug = await loadCourseSlug(lesson.course_id as string);
   if (!slug) return { ok: false, error: "Course not found." };
 
+  const bypass = hasModuleCertificateBypass(profile.email);
   const staff = isAdminRole(profile.role);
-  if (!staff) {
+  if (!staff && !bypass) {
     const opened = await requireOpenItem(
       profile.id,
       profile.role,
+      profile.email,
       slug,
       moduleId,
       fileItemKey(fileId),
@@ -180,6 +190,7 @@ export async function completeModuleFile(
     courseId: lesson.course_id as string,
     slug,
     role: profile.role,
+    email: profile.email,
     staff,
     current: { kind: "FILE", moduleId, itemId: fileId },
   });
@@ -210,6 +221,7 @@ export async function submitModuleQuiz(
     .eq("id", moduleId)
     .maybeSingle();
 
+  const bypass = hasModuleCertificateBypass(profile.email);
   const staff = isAdminRole(profile.role);
   if (
     !lesson ||
@@ -221,7 +233,7 @@ export async function submitModuleQuiz(
   const slug = await loadCourseSlug(lesson.course_id as string);
   if (!slug) return { ok: false, error: "Course not found." };
 
-  if (!staff) {
+  if (!staff && !bypass) {
     const enrollments = await getMemberEnrollments(profile.id);
     const access = courseModuleAccess(enrollments, lesson.course_id as string);
     if (!canOpenCourseModules(access) || !access.enrollmentId) {
@@ -233,6 +245,7 @@ export async function submitModuleQuiz(
     const opened = await requireOpenItem(
       profile.id,
       profile.role,
+      profile.email,
       slug,
       moduleId,
       quizItemKey(),
@@ -292,6 +305,7 @@ export async function submitModuleQuiz(
       courseId: lesson.course_id as string,
       slug,
       role: profile.role,
+      email: profile.email,
       staff,
       current: { kind: "QUIZ", moduleId, itemId: moduleId },
     });

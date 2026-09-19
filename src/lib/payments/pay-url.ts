@@ -12,6 +12,9 @@ export function getPaymentPayUrl(paymentId: string, origin = getAppOrigin()) {
   return `${origin.replace(/\/$/, "")}/pay/${paymentId}`;
 }
 
-export function getCertificateVerifyUrl(certificateId: string) {
-  return `${site.url.replace(/\/$/, "")}/verify/${encodeURIComponent(certificateId)}`;
+export function getCertificateVerifyUrl(
+  certificateId: string,
+  origin = getAppOrigin(),
+) {
+  return `${origin.replace(/\/$/, "")}/verify/${encodeURIComponent(certificateId)}`;
 }

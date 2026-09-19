@@ -11,7 +11,7 @@ import {
 } from "@/app/(member)/member/hipaa-actions";
 import { HipaaCertificateViewTrigger } from "@/components/hipaa/hipaa-certificate-view-trigger";
 import { Button } from "@/components/ui/button";
-import { hipaaCopy } from "@/content/site";
+import { hipaaCopy, modulesCopy } from "@/content/site";
 import { HipaaTrainingEmbed } from "@/components/member/hipaa-training-embed";
 import { optimizeCertificateImage } from "@/lib/hipaa/optimize-certificate-image";
 import {
@@ -27,9 +27,15 @@ type Props = {
   courseSlug: string;
   gate: HipaaGateState;
   nextHref: string | null;
+  courseCertificateHref?: string | null;
 };
 
-export function HipaaCertificateStep({ courseSlug, gate, nextHref }: Props) {
+export function HipaaCertificateStep({
+  courseSlug,
+  gate,
+  nextHref,
+  courseCertificateHref = null,
+}: Props) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");
@@ -136,20 +142,29 @@ export function HipaaCertificateStep({ courseSlug, gate, nextHref }: Props) {
         >
           <p className="text-sm font-semibold text-ink">{hipaaCopy.approvedTitle}</p>
           <p className="mt-1 text-sm text-muted">{hipaaCopy.approvedBody}</p>
-          {hasStoredUpload ? (
-            <div className="mt-3">
-              <HipaaCertificateViewTrigger
-                fetchAsset={async () => {
-                  const result = await getOwnHipaaCertificateViewUrl(courseSlug);
-                  if (!result.ok) return result;
-                  return {
-                    ok: true as const,
-                    url: result.url,
-                    mimeType: result.mimeType,
-                    fileName: result.fileName,
-                  };
-                }}
-              />
+          {courseCertificateHref || hasStoredUpload ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {courseCertificateHref ? (
+                <Button asChild variant="accent">
+                  <Link href={courseCertificateHref}>
+                    {modulesCopy.viewCertificate}
+                  </Link>
+                </Button>
+              ) : null}
+              {hasStoredUpload ? (
+                <HipaaCertificateViewTrigger
+                  fetchAsset={async () => {
+                    const result = await getOwnHipaaCertificateViewUrl(courseSlug);
+                    if (!result.ok) return result;
+                    return {
+                      ok: true as const,
+                      url: result.url,
+                      mimeType: result.mimeType,
+                      fileName: result.fileName,
+                    };
+                  }}
+                />
+              ) : null}
             </div>
           ) : null}
         </div>

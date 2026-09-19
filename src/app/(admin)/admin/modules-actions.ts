@@ -322,3 +322,54 @@ export async function deleteModuleQuestion(formData: FormData) {
   else revalidateModules();
   return ok();
 }
+
+export async function moveCourseModuleOrder(
+  moduleId: string,
+  direction: "up" | "down",
+) {
+  await requireAdmin();
+  const idParsed = uuid.safeParse(moduleId);
+  if (!idParsed.success) return fail("Invalid module.");
+
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .from("course_modules")
+    .select("id, course_id")
+    .eq("id", idParsed.data)
+    .maybeSingle();
+  if (!target) return fail("Module not found.");
+
+  const { data: siblings, error: listError } = await supabase
+    .from("course_modules")
+    .select("id, title, sort_order")
+    .eq("course_id", target.course_id)
+    .order("sort_order", { ascending: true })
+    .order("title", { ascending: true });
+  if (listError) return fail(listError.message);
+  if (!siblings?.length) return ok();
+
+  const index = siblings.findIndex((row) => row.id === target.id);
+  if (index < 0) return fail("Module not found in course.");
+
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= siblings.length) return ok();
+
+  const ordered = [...siblings];
+  const tmp = ordered[index]!;
+  ordered[index] = ordered[swapIndex]!;
+  ordered[swapIndex] = tmp;
+
+  const updates = await Promise.all(
+    ordered.map((row, sortOrder) =>
+      supabase
+        .from("course_modules")
+        .update({ sort_order: sortOrder })
+        .eq("id", row.id),
+    ),
+  );
+  const updateError = updates.find((result) => result.error)?.error;
+  if (updateError) return fail(updateError.message);
+
+  revalidateModules();
+  return ok();
+}

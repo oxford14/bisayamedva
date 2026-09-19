@@ -1,5 +1,9 @@
 import { createServiceClient } from "@/lib/supabase/admin";
 import {
+  courseRequiresHipaaGate,
+  fetchHipaaSubmission,
+} from "@/lib/member/hipaa-gate";
+import {
   buildDoneItemKeys,
   type AttemptRow,
   type CompletionRow,
@@ -16,6 +20,11 @@ export async function getCertificateCourseCompletion(
   courseId: string,
 ): Promise<CertificateCompletionResult> {
   const admin = createServiceClient();
+  const { data: courseRow } = await admin
+    .from("courses")
+    .select("slug")
+    .eq("id", courseId)
+    .maybeSingle();
   const { data: modules } = await admin
     .from("course_modules")
     .select("id")
@@ -73,7 +82,14 @@ export async function getCertificateCourseCompletion(
     return { complete: false, completedAt: new Date().toISOString() };
   }
 
-  const complete = required.every((key) => done.has(key));
+  let complete = required.every((key) => done.has(key));
+  if (
+    complete &&
+    courseRequiresHipaaGate(courseRow?.slug as string | undefined)
+  ) {
+    const hipaa = await fetchHipaaSubmission(admin, studentId, courseId);
+    complete = hipaa?.status === "APPROVED";
+  }
   const completionTimes = [
     ...(completions ?? []).map((row) => row.completed_at as string),
     ...(attempts ?? [])

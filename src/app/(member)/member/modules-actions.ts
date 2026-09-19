@@ -24,6 +24,10 @@ import {
 } from "@/lib/member/certificates";
 import { getMemberEnrollments } from "@/lib/member/data";
 import {
+  resolveAfterLastItem,
+  type CertificateContinue,
+} from "@/lib/member/certificate-route";
+import {
   buildQuizReview,
   mapQuizReviewQuestions,
   type StudentQuizReviewItem,
@@ -38,12 +42,13 @@ export type QuizSubmitResult =
       total: number;
       passed: boolean;
       nextHref: string | null;
+      afterLast?: CertificateContinue | null;
       review: StudentQuizReviewItem[];
     }
   | { ok: false; error: string };
 
 export type CompleteItemResult =
-  | { ok: true; nextHref: string | null }
+  | { ok: true; nextHref: string | null; afterLast?: CertificateContinue | null }
   | { ok: false; error: string };
 
 function afterItemHref(nextHref: string | undefined) {
@@ -86,11 +91,20 @@ async function finishItemAndMaybeCertify(input: {
     await maybeCompleteEnrollment(input.studentId, input.courseId, nextState);
   }
 
-  return {
-    nextHref: afterItemHref(
-      currentIndex >= 0 ? nextState.flat[currentIndex + 1]?.href : undefined,
-    ),
-  };
+  const nextHref = afterItemHref(
+    currentIndex >= 0 ? nextState.flat[currentIndex + 1]?.href : undefined,
+  );
+  const afterLast = isLast
+    ? resolveAfterLastItem({
+        courseSlug: input.slug,
+        flat: nextState.flat,
+        hipaa: nextState.hipaa,
+        nextHref,
+        isLast: true,
+      })
+    : null;
+
+  return { nextHref, afterLast };
 }
 
 function revalidatePlayer(slug: string | null | undefined, moduleId: string) {
@@ -172,9 +186,11 @@ export async function completeModuleFile(
 
   revalidatePlayer(slug, moduleId);
   revalidateCertificatePaths(slug);
+  revalidatePath(`/member/modules/${slug}/hipaa`);
   return {
     ok: true,
     nextHref: finished.nextHref,
+    afterLast: finished.afterLast,
   };
 }
 
@@ -269,6 +285,7 @@ export async function submitModuleQuiz(
   if (error) return { ok: false, error: error.message };
 
   let nextHref: string | null = null;
+  let afterLast: CertificateContinue | null = null;
   if (passed) {
     const finished = await finishItemAndMaybeCertify({
       studentId: profile.id,
@@ -279,16 +296,19 @@ export async function submitModuleQuiz(
       current: { kind: "QUIZ", moduleId, itemId: moduleId },
     });
     nextHref = finished.nextHref;
+    afterLast = finished.afterLast;
   }
 
   revalidatePlayer(slug, moduleId);
   revalidateCertificatePaths(slug);
+  revalidatePath(`/member/modules/${slug}/hipaa`);
   return {
     ok: true,
     score,
     total: reviewQuestions.length,
     passed,
     nextHref,
+    afterLast,
     review,
   };
 }

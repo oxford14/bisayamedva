@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getMemberEnrollments } from "@/lib/member/data";
+import { courseReadyForCertificate } from "@/lib/member/hipaa-gate";
 import {
   getCoursePlayerState,
   type CoursePlayerState,
@@ -25,7 +26,7 @@ export function courseItemsComplete(state: CoursePlayerState) {
   return Boolean(
     state.course &&
       state.flat.length > 0 &&
-      state.flat.every((item) => item.complete),
+      courseReadyForCertificate(state.flat, state.hipaa),
   );
 }
 

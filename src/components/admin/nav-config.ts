@@ -13,6 +13,7 @@ import {
   TicketPercent,
   Megaphone,
   GraduationCap,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -72,6 +73,12 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/progress",
     label: "Progress",
     icon: GraduationCap,
+    section: "manage",
+  },
+  {
+    href: "/admin/hipaa-certificates",
+    label: "HIPAA reviews",
+    icon: ShieldCheck,
     section: "manage",
   },
   {

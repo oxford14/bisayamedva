@@ -1,16 +1,62 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
-  AdminPageHeader,
-  AdminTable,
-  EmptyState,
-  StatusBadge,
-} from "@/components/admin/ui";
+  AdminModulesTable,
+  type AdminModuleRow,
+} from "@/components/admin/admin-modules-table";
+import { AdminPageHeader, EmptyState } from "@/components/admin/ui";
 import { ModuleCreateForm } from "@/components/admin/module-create-form";
 
 type Props = {
   searchParams: Promise<{ course?: string }>;
 };
+
+type ModuleQueryRow = {
+  id: string;
+  title: string;
+  status: string;
+  sort_order: number;
+  course_id: string;
+  courses: { title: string; slug: string } | { title: string; slug: string }[] | null;
+  course_module_files: { id: string }[] | null;
+  course_module_quiz_questions: { id: string }[] | null;
+};
+
+function toAdminRow(row: ModuleQueryRow): AdminModuleRow {
+  const course = Array.isArray(row.courses) ? row.courses[0] : row.courses;
+  return {
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    sortOrder: Number(row.sort_order ?? 0),
+    courseId: row.course_id,
+    courseTitle: course?.title ?? "",
+    fileCount: Array.isArray(row.course_module_files)
+      ? row.course_module_files.length
+      : 0,
+    questionCount: Array.isArray(row.course_module_quiz_questions)
+      ? row.course_module_quiz_questions.length
+      : 0,
+  };
+}
+
+function sortModulesForDisplay(rows: AdminModuleRow[], courseFilter: boolean) {
+  const sorted = [...rows];
+  if (courseFilter) {
+    sorted.sort(
+      (a, b) =>
+        a.sortOrder - b.sortOrder || a.title.localeCompare(b.title),
+    );
+  } else {
+    sorted.sort(
+      (a, b) =>
+        a.courseTitle.localeCompare(b.courseTitle) ||
+        a.sortOrder - b.sortOrder ||
+        a.title.localeCompare(b.title),
+    );
+  }
+  return sorted;
+}
 
 export default async function AdminModulesPage({ searchParams }: Props) {
   const { course: courseId } = await searchParams;
@@ -32,6 +78,11 @@ export default async function AdminModulesPage({ searchParams }: Props) {
       .neq("status", "ARCHIVED")
       .order("title"),
   ]);
+
+  const moduleRows = sortModulesForDisplay(
+    (modules ?? []).map((row) => toAdminRow(row as ModuleQueryRow)),
+    Boolean(courseId),
+  );
 
   return (
     <div>
@@ -67,45 +118,13 @@ export default async function AdminModulesPage({ searchParams }: Props) {
       </div>
 
       <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
-        {(modules ?? []).length === 0 ? (
+        {moduleRows.length === 0 ? (
           <EmptyState
             title="No modules"
             body="Create a module, then upload files and add a quiz."
           />
         ) : (
-          <AdminTable headers={["Module", "Course", "Status", "Files", "Quiz", ""]}>
-            {(modules ?? []).map((row) => {
-              const course = Array.isArray(row.courses) ? row.courses[0] : row.courses;
-              const fileCount = Array.isArray(row.course_module_files)
-                ? row.course_module_files.length
-                : 0;
-              const questionCount = Array.isArray(row.course_module_quiz_questions)
-                ? row.course_module_quiz_questions.length
-                : 0;
-              return (
-                <tr key={row.id}>
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{row.title}</div>
-                    <div className="text-xs text-muted">Sort {row.sort_order}</div>
-                  </td>
-                  <td className="px-4 py-3">{course?.title ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td className="px-4 py-3">{fileCount}</td>
-                  <td className="px-4 py-3">{questionCount}</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/modules/${row.id}`}
-                      className="text-sm font-semibold text-navy hover:underline"
-                    >
-                      Edit
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </AdminTable>
+          <AdminModulesTable modules={moduleRows} />
         )}
 
         <div className="rounded-2xl border border-border bg-white p-5">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Check, Flag, Lock, X } from "lucide-react";
-import { modulesCopy } from "@/content/site";
+import { hipaaCopy, modulesCopy } from "@/content/site";
 import { ModuleArt } from "@/components/member/module-art";
 import { cn } from "@/lib/utils";
 import type {
@@ -210,7 +210,9 @@ function OutlineRow({
             ? modulesCopy.readingLabel
             : item.label === "Video"
               ? modulesCopy.videoLabel
-              : modulesCopy.quizLabel}
+              : item.label === "Certificate"
+                ? hipaaCopy.outlineModuleTitle
+                : modulesCopy.quizLabel}
         </span>
       </span>
     </>

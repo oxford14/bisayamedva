@@ -16,6 +16,16 @@ import {
   toStudentQuizAttempt,
 } from "@/lib/member/quiz-review";
 import {
+  applySequentialLocks,
+  courseRequiresHipaaGate,
+  emptyHipaaGateState,
+  fetchHipaaSubmission,
+  hipaaGateFromSubmission,
+  injectHipaaIntoPlayerOutline,
+  syncOutlineLocks,
+  type HipaaGateState,
+} from "@/lib/member/hipaa-gate";
+import {
   fileItemKey,
   fileTitle,
   itemHref,
@@ -57,6 +67,7 @@ export type CoursePlayerState = {
   flat: PlayerOutlineItem[];
   todayDone: number;
   todayGoal: number;
+  hipaa: HipaaGateState;
 };
 
 export type PlayerItemView = CoursePlayerState & {
@@ -101,6 +112,7 @@ export async function getCoursePlayerState(
       flat: [],
       todayDone: 0,
       todayGoal,
+      hipaa: emptyHipaaGateState(false),
     };
   }
 
@@ -222,21 +234,28 @@ export async function getCoursePlayerState(
     flat.push(...items);
   }
 
-  if (!staff && courseOpen) {
-    let previousComplete = true;
-    for (const item of flat) {
-      item.locked = !previousComplete;
-      if (!item.complete) previousComplete = false;
-    }
-  } else if (!courseOpen) {
-    for (const item of flat) item.locked = true;
+  const hipaaRequired = courseRequiresHipaaGate(course.slug);
+  const submission = hipaaRequired
+    ? await fetchHipaaSubmission(admin, studentId, course.id)
+    : null;
+  const hipaa = hipaaGateFromSubmission(hipaaRequired, submission);
+
+  injectHipaaIntoPlayerOutline({
+    courseSlug: course.slug,
+    outline,
+    flat,
+    gate: hipaa,
+  });
+
+  if (staff) {
+    for (const item of flat) item.locked = false;
+    for (const lesson of outline) lesson.locked = false;
+  } else {
+    applySequentialLocks(flat, courseOpen);
+    syncOutlineLocks(outline);
   }
 
-  for (const lesson of outline) {
-    lesson.locked = lesson.items[0]?.locked === true;
-  }
-
-  return { course, access, outline, flat, todayDone, todayGoal };
+  return { course, access, outline, flat, todayDone, todayGoal, hipaa };
 }
 
 export function isModuleLocked(state: CoursePlayerState, moduleId: string) {

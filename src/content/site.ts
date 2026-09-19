@@ -555,6 +555,64 @@ export const certificatesCopy = {
   unavailableTitle: "Certificate generation is currently unavailable",
   unavailableBody:
     "Naka-pass na ka sa last quiz. Imong certificate dili pa ma-generate for now — i-release namo ni later.",
+  hipaaBlockedTitle: "HIPAA certificate review pending",
+  hipaaBlockedBody:
+    "Finish external HIPAA training, upload your certificate, then wait for admin approval before you generate your BisayaMedVA course certificate.",
+  hipaaBlockedUploadCta: "Go to HIPAA upload",
+  hipaaBlockedPendingBody:
+    "Under review na ang imong HIPAA certificate. Mo-notify mi when approved — you can keep studying other modules.",
+} as const;
+
+export const hipaaCopy = {
+  outlineModuleTitle: "External HIPAA certificate",
+  stepTitle: "External HIPAA certificate",
+  stepLead:
+    "Dili mi mo-issue ug HIPAA certificate — complete ang free training sa partner site, then upload ang imong certificate diri for admin review.",
+  openTraining: "Open HIPAA training",
+  iframeHint:
+    "Ang embed sometimes dili mo-scroll sa Module 1 — use Module 1 sa new tab for training. If blank ang frame, open directly:",
+  openModule1Link: "HIPAA Module 1 (new tab)",
+  uploadLabel: "Upload your HIPAA certificate",
+  uploadHint: "PDF or clear photo (JPG, PNG, WebP). Max 10MB.",
+  uploadCta: "Upload certificate",
+  optimizing: "Optimizing photo…",
+  uploading: "Uploading…",
+  uploadStorageError:
+    "Upload storage wala pa ready — contact support or try again later. (Admin: apply HIPAA migration sa Supabase.)",
+  uploadSuccess: "Uploaded — under admin review na.",
+  viewUpload: "View your upload",
+  viewerTitle: "HIPAA certificate",
+  viewerLoading: "Loading file…",
+  viewerClose: "Close",
+  viewerZoomIn: "Zoom in",
+  viewerZoomOut: "Zoom out",
+  viewerResetZoom: "Reset",
+  viewerReplace: "Replace file",
+  viewerDelete: "Delete upload",
+  viewerDeleting: "Deleting…",
+  viewerDeleteConfirm:
+    "Delete ang imong upload? Pwede ka mag-upload og bag-o after.",
+  pendingTitle: "Under admin review",
+  pendingBody:
+    "Salamat — naa na ang imong file. Continue sa other modules while we verify.",
+  approvedTitle: "HIPAA certificate approved",
+  approvedBody:
+    "Approved na — pwede na nimo i-generate ang BisayaMedVA course certificate when you finish all modules.",
+  rejectedTitle: "Please upload again",
+  nextItem: "Continue course",
+  adminNav: "HIPAA reviews",
+  adminTitle: "HIPAA certificate reviews",
+  adminDescription:
+    "Review external HIPAA certificates uploaded by Medical VA Masterclass students. Staff can test without enrolling — upload from Member → Medical VA Masterclass → External HIPAA certificate.",
+  adminEmpty: "No HIPAA uploads yet.",
+  adminLoadErrorTitle: "Could not load HIPAA reviews",
+  adminLoadErrorBody:
+    "Something went wrong loading submissions. Check server logs or try again later.",
+  adminStaffPreviewBadge: "Staff preview (not enrolled)",
+  adminViewFile: "View file",
+  adminApprove: "Approve",
+  adminReject: "Reject",
+  adminReviewNotePlaceholder: "Note to student (optional)",
 } as const;
 
 export const practiceCopy = {

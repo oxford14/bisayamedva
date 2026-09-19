@@ -3,9 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { submitModuleQuiz } from "@/app/(member)/member/modules-actions";
-import { certificatesCopy, certificatesEnabled, modulesCopy } from "@/content/site";
+import { certificatesCopy, modulesCopy } from "@/content/site";
 import { Button } from "@/components/ui/button";
-import { courseCertificateHref } from "@/lib/member/certificate-shared";
+import {
+  certificateBlockedCopy,
+  type CertificateContinue,
+} from "@/lib/member/certificate-route";
 import { quizPassed } from "@/lib/member/module-player-shared";
 import type { StudentQuizAttempt, StudentQuizQuestion } from "@/lib/member/modules";
 
@@ -32,6 +35,7 @@ export function ModuleQuiz({
   const [pending, startTransition] = useTransition();
   const [retaking, setRetaking] = useState(!latestAttempt);
   const [continueHref, setContinueHref] = useState<string | null>(nextHref ?? null);
+  const [afterLast, setAfterLast] = useState<CertificateContinue | null>(null);
 
   if (questions.length === 0) {
     return <p className="text-sm text-muted">{modulesCopy.noQuiz}</p>;
@@ -83,6 +87,7 @@ export function ModuleQuiz({
                 review: submitted.review,
               });
               setContinueHref(submitted.nextHref);
+              setAfterLast(submitted.afterLast ?? null);
               setRetaking(false);
             });
           }}
@@ -166,7 +171,7 @@ export function ModuleQuiz({
               ))}
             </ol>
           ) : null}
-          {passed && isLast && !certificatesEnabled ? (
+          {passed && isLast && afterLast?.kind === "unavailable" ? (
             <div
               className="rounded-xl border border-border bg-cream/50 px-4 py-3"
               role="status"
@@ -177,6 +182,22 @@ export function ModuleQuiz({
               <p className="mt-1 text-sm text-muted">
                 {certificatesCopy.unavailableBody}
               </p>
+            </div>
+          ) : null}
+          {passed && isLast && afterLast?.kind === "hipaa_pending" ? (
+            <div
+              className="rounded-xl border border-border bg-cream/50 px-4 py-3"
+              role="status"
+            >
+              {(() => {
+                const copy = certificateBlockedCopy("hipaa_pending");
+                return copy ? (
+                  <>
+                    <p className="text-sm font-semibold text-ink">{copy.title}</p>
+                    <p className="mt-1 text-sm text-muted">{copy.body}</p>
+                  </>
+                ) : null;
+              })()}
             </div>
           ) : null}
           <div className="flex flex-wrap gap-2">
@@ -193,23 +214,32 @@ export function ModuleQuiz({
             </Button>
             {passed &&
             (isLast
-              ? certificatesEnabled && courseSlug
+              ? afterLast &&
+                afterLast.kind !== "hipaa_pending" &&
+                afterLast.kind !== "unavailable"
               : continueHref) ? (
               <Button
                 type="button"
                 variant="accent"
                 disabled={pending}
                 onClick={() => {
-                  if (isLast && courseSlug) {
-                    router.push(courseCertificateHref(courseSlug));
-                    return;
+                  if (isLast && afterLast) {
+                    if (
+                      afterLast.kind === "certificate" ||
+                      afterLast.kind === "hipaa_upload"
+                    ) {
+                      router.push(afterLast.href);
+                      return;
+                    }
                   }
                   if (continueHref) router.push(continueHref);
                 }}
               >
-                {isLast
-                  ? modulesCopy.viewCertificate
-                  : `${modulesCopy.nextItem} →`}
+                {isLast && afterLast?.kind === "hipaa_upload"
+                  ? certificatesCopy.hipaaBlockedUploadCta
+                  : isLast
+                    ? modulesCopy.viewCertificate
+                    : `${modulesCopy.nextItem} →`}
               </Button>
             ) : null}
           </div>

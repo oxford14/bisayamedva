@@ -1,7 +1,7 @@
 export const QUIZ_PASS_RATIO = 0.7;
 
-export type PlayerItemKind = "FILE" | "QUIZ";
-export type PlayerItemLabel = "Reading" | "Video" | "Quiz";
+export type PlayerItemKind = "FILE" | "QUIZ" | "HIPAA";
+export type PlayerItemLabel = "Reading" | "Video" | "Quiz" | "Certificate";
 
 export type PlayerOutlineItem = {
   key: string;

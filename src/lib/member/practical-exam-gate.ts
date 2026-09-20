@@ -1,4 +1,5 @@
 import { practicalExamCopy } from "@/content/site";
+import { isAdminRole, isStudentRole } from "@/lib/supabase/roles";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   practicalItemKey,
@@ -16,9 +17,11 @@ export function isPracticalExamModule(title: string, courseSlug: string | null |
   return courseHasPracticalExam(courseSlug) && /\bModule 7\b/i.test(title);
 }
 
-/** Module 7 / Practical Exam — SUPER_ADMIN preview until public launch. */
+/** Module 7 / Practical Exam — enrolled students + staff preview roles. */
 export function canAccessModule7Practical(role: string | null | undefined) {
-  return role === "SUPER_ADMIN";
+  return (
+    role === "SUPER_ADMIN" || isStudentRole(role) || isAdminRole(role)
+  );
 }
 
 export function buildPracticalOutlineItem(

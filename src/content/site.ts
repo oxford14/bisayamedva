@@ -311,7 +311,7 @@ export const practicalExamCopy = {
   selectOption: "Choose the best action",
   practicalLabel: "Practical Exam",
   superAdminOnly:
-    "Module 7 Practical Exam is in preview — SUPER_ADMIN access only for now.",
+    "You don't have access to the Practical Exam for this course.",
 } as const;
 
 export const notIncluded = {
@@ -691,8 +691,8 @@ export const inboxCopy = {
   newBadge: "New",
 } as const;
 
-/** Set true when client PDF certificate generation is ready for students. */
-export const certificatesEnabled = false;
+/** When true, any enrolled student who meets course + HIPAA requirements may generate PDF certificates. */
+export const certificatesEnabled = true;
 
 /** When certificatesEnabled is false, only these emails may generate/view PDF certificates. */
 export const certificateGenerationAllowlistEmails = [

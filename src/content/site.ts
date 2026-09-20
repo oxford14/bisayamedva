@@ -838,9 +838,17 @@ export const practiceCopy = {
   schedulingEmptyList: "No appointments yet.",
   schedulingNoPatients:
     "Mark at least one patient as registered sa registration sim una.",
+  schedulingNoPatientsAddHint:
+    "Or open Book appointment and pick Add patient… sa dropdown.",
   schedulingSave: "Save appointment",
   schedulingDeleteConfirm: "Delete this practice appointment?",
   schedulingPatient: "Patient",
+  schedulingAddPatient: "Add patient…",
+  schedulingAddPatientTitle: "Quick add patient",
+  schedulingAddPatientHint:
+    "Fake patient lang — saved sa imong browser. Open Patient registration later if you want full intake.",
+  schedulingAddPatientSave: "Save patient",
+  schedulingAddPatientCancel: "Cancel",
   schedulingProvider: "Provider",
   schedulingVisitType: "Visit type",
   schedulingLocation: "Location",

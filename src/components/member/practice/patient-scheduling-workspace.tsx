@@ -27,7 +27,12 @@ export function PatientSchedulingWorkspace({
 }: {
   ownerUserId: string;
 }) {
-  const { patients, loading: patientsLoading } = usePracticePatients(ownerUserId);
+  const {
+    patients,
+    loading: patientsLoading,
+    savePatient,
+    createPatient,
+  } = usePracticePatients(ownerUserId);
   const {
     appointments,
     loading: appointmentsLoading,
@@ -59,7 +64,6 @@ export function PatientSchedulingWorkspace({
   }, [anchorDate, view]);
 
   function openNewAt(startsAt: string, provider?: string) {
-    if (registeredPatients.length === 0) return;
     const empty = createEmptyAppointment(registeredPatients[0]?.id ?? "");
     empty.startsAt = startsAt;
     if (provider && PRACTICE_PROVIDERS.includes(provider as (typeof PRACTICE_PROVIDERS)[number])) {
@@ -76,7 +80,6 @@ export function PatientSchedulingWorkspace({
         <Button
           type="button"
           variant="accent"
-          disabled={registeredPatients.length === 0}
           onClick={() => openNewAt(new Date().toISOString(), providerFilter)}
         >
           {practiceCopy.schedulingNew}
@@ -90,7 +93,9 @@ export function PatientSchedulingWorkspace({
       </div>
 
       {registeredPatients.length === 0 && !patientsLoading ? (
-        <p className="text-sm text-amber-900/80">{practiceCopy.schedulingNoPatients}</p>
+        <p className="text-sm text-amber-900/80">
+          {practiceCopy.schedulingNoPatients} {practiceCopy.schedulingNoPatientsAddHint}
+        </p>
       ) : null}
 
       {error ? (
@@ -160,6 +165,10 @@ export function PatientSchedulingWorkspace({
         open={sheetAppointment !== null}
         appointment={sheetAppointment}
         registeredPatients={registeredPatients}
+        createPatient={createPatient}
+        onSavePatient={async (patient) => {
+          await savePatient(patient);
+        }}
         onClose={() => setSheetAppointment(null)}
         onSave={async (next) => {
           await saveAppointment(next);

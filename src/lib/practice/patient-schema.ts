@@ -62,6 +62,25 @@ export const practicePatientRegisteredSchema = practicePatientDraftSchema.extend
 
 export type PracticePatientFormValues = z.infer<typeof practicePatientDraftSchema>;
 
+export const practicePatientSchedulingQuickSchema = z.object({
+  legalFirstName: z.string().trim().min(1, "Legal first name is required."),
+  legalMiddleName: z.string().trim(),
+  legalLastName: z.string().trim().min(1, "Legal last name is required."),
+  dateOfBirth: z.string().min(1, "Date of birth is required."),
+  sexAtBirth: z.string().trim().min(1, "Sex at birth is required."),
+  phone: z.string().trim().min(10, "Phone number is required."),
+});
+
+export type PracticePatientSchedulingQuickValues = z.infer<
+  typeof practicePatientSchedulingQuickSchema
+>;
+
+export function validatePracticePatientSchedulingQuick(
+  values: PracticePatientSchedulingQuickValues,
+) {
+  return practicePatientSchedulingQuickSchema.safeParse(values);
+}
+
 export function validatePracticePatient(
   values: PracticePatientFormValues,
   status: "draft" | "registered",

@@ -22,6 +22,10 @@ import type {
   PracticePatient,
 } from "@/lib/practice/types";
 import { cn } from "@/lib/utils";
+import {
+  SCHEDULING_ADD_PATIENT_VALUE,
+  SchedulingAddPatientPanel,
+} from "@/components/member/practice/scheduling/scheduling-add-patient-panel";
 
 const selectClass =
   "h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm text-ink";
@@ -96,6 +100,8 @@ function AppointmentSheetPanel({
   titleId,
   appointment,
   registeredPatients,
+  createPatient,
+  onSavePatient,
   onClose,
   onSave,
   onDelete,
@@ -103,6 +109,8 @@ function AppointmentSheetPanel({
   titleId: string;
   appointment: PracticeAppointment;
   registeredPatients: PracticePatient[];
+  createPatient: () => PracticePatient;
+  onSavePatient: (patient: PracticePatient) => Promise<void>;
   onClose: () => void;
   onSave: (next: PracticeAppointment) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -111,17 +119,20 @@ function AppointmentSheetPanel({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
+  const [addPatientOpen, setAddPatientOpen] = useState(false);
 
   useEffect(() => {
     setDraft(appointment);
     setFieldErrors({});
     setMessage("");
+    setAddPatientOpen(false);
   }, [appointment]);
 
   const formValues = appointmentToForm(draft);
   const isBlock = draft.kind === "block";
 
   function setKind(kind: PracticeAppointmentKind) {
+    setAddPatientOpen(false);
     setDraft((prev) =>
       kind === "block"
         ? {
@@ -215,20 +226,50 @@ function AppointmentSheetPanel({
           }}
         >
           {!isBlock ? (
-            <Field label={practiceCopy.schedulingPatient} error={fieldErrors.patientId}>
-              <select
-                className={selectClass}
-                value={formValues.kind === "appointment" ? formValues.patientId : ""}
-                onChange={(e) => updateForm({ patientId: e.target.value })}
-              >
-                <option value="">Select patient</option>
-                {registeredPatients.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.legalLastName}, {p.legalFirstName}
+            <div className="space-y-3">
+              <Field label={practiceCopy.schedulingPatient} error={fieldErrors.patientId}>
+                <select
+                  className={selectClass}
+                  value={
+                    addPatientOpen
+                      ? SCHEDULING_ADD_PATIENT_VALUE
+                      : formValues.kind === "appointment"
+                        ? formValues.patientId
+                        : ""
+                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === SCHEDULING_ADD_PATIENT_VALUE) {
+                      setAddPatientOpen(true);
+                      return;
+                    }
+                    setAddPatientOpen(false);
+                    updateForm({ patientId: value });
+                  }}
+                >
+                  <option value="">Select patient</option>
+                  {registeredPatients.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.legalLastName}, {p.legalFirstName}
+                    </option>
+                  ))}
+                  <option value={SCHEDULING_ADD_PATIENT_VALUE}>
+                    {practiceCopy.schedulingAddPatient}
                   </option>
-                ))}
-              </select>
-            </Field>
+                </select>
+              </Field>
+              {addPatientOpen ? (
+                <SchedulingAddPatientPanel
+                  createPatient={createPatient}
+                  onSavePatient={onSavePatient}
+                  onCancel={() => setAddPatientOpen(false)}
+                  onSaved={(patientId) => {
+                    setAddPatientOpen(false);
+                    updateForm({ patientId });
+                  }}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           <Field label={practiceCopy.schedulingProvider} error={fieldErrors.providerName}>
@@ -424,6 +465,8 @@ export function AppointmentSheet({
   open,
   appointment,
   registeredPatients,
+  createPatient,
+  onSavePatient,
   onClose,
   onSave,
   onDelete,
@@ -431,6 +474,8 @@ export function AppointmentSheet({
   open: boolean;
   appointment: PracticeAppointment | null;
   registeredPatients: PracticePatient[];
+  createPatient: () => PracticePatient;
+  onSavePatient: (patient: PracticePatient) => Promise<void>;
   onClose: () => void;
   onSave: (next: PracticeAppointment) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -472,6 +517,8 @@ export function AppointmentSheet({
             titleId={titleId}
             appointment={appointment}
             registeredPatients={registeredPatients}
+            createPatient={createPatient}
+            onSavePatient={onSavePatient}
             onClose={onClose}
             onSave={onSave}
             onDelete={onDelete}
@@ -488,6 +535,8 @@ export function AppointmentSheet({
           titleId={titleId}
           appointment={appointment}
           registeredPatients={registeredPatients}
+          createPatient={createPatient}
+          onSavePatient={onSavePatient}
           onClose={onClose}
           onSave={onSave}
           onDelete={onDelete}

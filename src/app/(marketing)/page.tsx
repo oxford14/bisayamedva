@@ -5,6 +5,7 @@ import { Hero } from "@/components/marketing/hero";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { MeetTrainer } from "@/components/marketing/meet-trainer";
 import { NotIncluded } from "@/components/marketing/not-included";
+import { PlatformFeatures } from "@/components/marketing/platform-features";
 import { Pricing } from "@/components/marketing/pricing";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { WeekendTraining } from "@/components/marketing/weekend-training";
@@ -27,6 +28,7 @@ export default async function HomePage() {
       <TrustStrip />
       <WhyBilling />
       <Curriculum />
+      <PlatformFeatures />
       <NotIncluded />
       <WhoFor />
       <MeetTrainer />

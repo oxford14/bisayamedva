@@ -141,6 +141,62 @@ export const curriculum = {
   ],
 } as const;
 
+export const platformFeatures = {
+  eyebrow: "INSIDE YOUR STUDENT ACCOUNT",
+  title: "Practice, call handling, and verified certificates.",
+  intro:
+    "After you enroll, naa kay interactive tools sa member area — simulation lang, fake patients only, para ma-practice nimo ang Medical VA workflow before real clinic work.",
+  enrollmentNote: "Available after enrollment and course access.",
+  cta: { href: "/register", label: "Register to unlock" },
+  items: [
+    {
+      id: "practiceLab",
+      title: "Interactive Practice Lab",
+      body:
+        "Run front-desk drills sa imong browser — patient registration and scheduling workflows with demo data only.",
+      bullets: [
+        "US-style intake fields — demographics, Insurance, emergency contact",
+        "Scheduling grid — providers, visit types, and appointment status",
+        "Data stays sa imong device; cleared on logout",
+      ],
+      image: {
+        src: "/images/marketing/feature-practice-lab.svg",
+        alt: "Practice Lab hub showing patient registration and scheduling simulation tiles.",
+      },
+    },
+    {
+      id: "mockCall",
+      title: "Mock Call",
+      body:
+        "Practice professional phone handling — learn the Medical VA call flow, then run guided scenarios with simulated caller lines.",
+      bullets: [
+        "Eight-step flow — opening to closing with example scripts",
+        "Learn tab una, then Practice with mic-friendly drills",
+        "Simulation only — no real Patient PHI",
+      ],
+      image: {
+        src: "/images/marketing/feature-mock-call.svg",
+        alt: "Mock Call practice screen with phone handling and call-flow steps.",
+      },
+    },
+    {
+      id: "certificateVerify",
+      title: "Certificate authentication",
+      body:
+        "When you finish the course, makakuha ka og certificate of completion with a QR code employers or clients can scan to verify.",
+      bullets: [
+        "Unique certificate ID on every completion",
+        "Public verify page confirms Bisaya MedVA issued it",
+        "Helps show proof without edited screenshots",
+      ],
+      image: {
+        src: "/images/marketing/feature-certificate-verify.svg",
+        alt: "Course certificate with QR code and authentic verification check screen.",
+      },
+    },
+  ],
+} as const;
+
 export const notIncluded = {
   eyebrow: "UPSKILL TOPICS",
   title: "Want to go deeper?",

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" fill="none">
+  <rect width="1200" height="900" fill="#F5F6F0"/>
+  <rect x="80" y="100" width="520" height="700" rx="24" fill="#FFFFFF" stroke="#2D4A22" stroke-opacity="0.2"/>
+  <text x="120" y="160" fill="#2D4A22" font-family="Georgia,serif" font-size="22" font-weight="600">Certificate of Completion</text>
+  <rect x="120" y="200" width="440" height="8" rx="4" fill="#5B6D49" fill-opacity="0.2"/>
+  <text x="120" y="260" fill="#5A664F" font-family="system-ui,sans-serif" font-size="14">This certifies that</text>
+  <text x="120" y="310" fill="#2D4A22" font-family="Georgia,serif" font-size="26" font-weight="600">Medical VA Masterclass</text>
+  <rect x="120" y="620" width="100" height="100" fill="#FFFFFF" stroke="#5B6D49" stroke-opacity="0.25"/>
+  <rect x="130" y="630" width="80" height="80" fill="#2D4A22" fill-opacity="0.15"/>
+  <text x="120" y="748" fill="#5A664F" font-family="system-ui,sans-serif" font-size="12">Scan to verify</text>
+  <rect x="680" y="180" width="440" height="520" rx="28" fill="#FFFFFF" stroke="#5B6D49" stroke-opacity="0.15"/>
+  <circle cx="900" cy="280" r="48" fill="#9FD4C4" fill-opacity="0.4"/>
+  <path d="M885 280l12 12 24-24" stroke="#2D4A22" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="720" y="360" fill="#2D4A22" font-family="system-ui,sans-serif" font-size="26" font-weight="700">Certificate is authentic</text>
+  <text x="720" y="400" fill="#5A664F" font-family="system-ui,sans-serif" font-size="15">Bisaya MedVA issued this completion.</text>
+  <text x="720" y="460" fill="#5A664F" font-family="system-ui,sans-serif" font-size="12" font-weight="600" letter-spacing="0.12em">CERTIFICATE ID</text>
+  <text x="720" y="492" fill="#2F3826" font-family="ui-monospace,monospace" font-size="18">BMVA-84F0351B</text>
+  <rect x="720" y="540" width="360" height="44" rx="22" fill="#2D4A22"/>
+  <text x="800" y="570" fill="#F5F6F0" font-family="system-ui,sans-serif" font-size="15" font-weight="600">Verify at bisayamedva.com</text>
+</svg>

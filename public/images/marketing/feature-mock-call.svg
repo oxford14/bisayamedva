@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" fill="none">
+  <rect width="1200" height="900" fill="#F5F6F0"/>
+  <rect x="80" y="72" width="1040" height="756" rx="32" fill="#FFFFFF" stroke="#5B6D49" stroke-opacity="0.15"/>
+  <text x="120" y="140" fill="#2D4A22" font-family="system-ui,sans-serif" font-size="28" font-weight="700">Mock Call</text>
+  <rect x="120" y="168" width="96" height="36" rx="18" fill="#2D4A22"/>
+  <text x="148" y="192" fill="#F5F6F0" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Learn</text>
+  <rect x="228" y="168" width="110" height="36" rx="18" fill="#9FD4C4" fill-opacity="0.5"/>
+  <text x="252" y="192" fill="#2D4A22" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Practice</text>
+  <rect x="350" y="168" width="96" height="36" rx="18" fill="#F5F6F0" stroke="#5B6D49" stroke-opacity="0.2"/>
+  <text x="374" y="192" fill="#5A664F" font-family="system-ui,sans-serif" font-size="14">History</text>
+  <circle cx="600" cy="400" r="120" fill="#9FD4C4" fill-opacity="0.35"/>
+  <path d="M560 400h80M600 360v80" stroke="#2D4A22" stroke-width="8" stroke-linecap="round"/>
+  <rect x="480" y="520" width="240" height="48" rx="24" fill="#2D4A22"/>
+  <text x="540" y="552" fill="#F5F6F0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Start scenario</text>
+  <rect x="120" y="260" width="280" height="420" rx="20" fill="#F5F6F0"/>
+  <text x="148" y="300" fill="#2D4A22" font-family="system-ui,sans-serif" font-size="16" font-weight="700">Call flow</text>
+  <circle cx="148" cy="340" r="10" fill="#2D4A22"/>
+  <text x="172" y="346" fill="#2F3826" font-family="system-ui,sans-serif" font-size="15">Opening</text>
+  <circle cx="148" cy="388" r="10" fill="#2D4A22" fill-opacity="0.7"/>
+  <text x="172" y="394" fill="#2F3826" font-family="system-ui,sans-serif" font-size="15">Verify caller</text>
+  <circle cx="148" cy="436" r="10" fill="#2D4A22" fill-opacity="0.5"/>
+  <text x="172" y="442" fill="#2F3826" font-family="system-ui,sans-serif" font-size="15">Document &amp; close</text>
+  <rect x="800" y="260" width="280" height="200" rx="16" fill="#FFFFFF" stroke="#5B6D49" stroke-opacity="0.15"/>
+  <text x="828" y="300" fill="#5A664F" font-family="system-ui,sans-serif" font-size="13">Simulated caller</text>
+  <text x="828" y="340" fill="#2F3826" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Hi, I need to schedule...</text>
+  <text x="828" y="420" fill="#5A664F" font-family="system-ui,sans-serif" font-size="13">AI-guided lines - mic practice</text>
+</svg>

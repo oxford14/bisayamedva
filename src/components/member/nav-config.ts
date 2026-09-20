@@ -1,6 +1,7 @@
 import {
   Award,
   BookOpen,
+  Briefcase,
   CalendarDays,
   ClipboardList,
   Gift,
@@ -35,6 +36,12 @@ export const memberNav: MemberNavItem[] = [
     mobilePrimary: true,
   },
   {
+    href: "/member/schedule",
+    label: "Schedule",
+    icon: CalendarDays,
+    mobilePrimary: true,
+  },
+  {
     href: "/member/modules",
     label: "Modules",
     icon: Layers,
@@ -45,10 +52,9 @@ export const memberNav: MemberNavItem[] = [
     icon: Award,
   },
   {
-    href: "/member/schedule",
-    label: "Schedule",
-    icon: CalendarDays,
-    mobilePrimary: true,
+    href: "/member/portfolio",
+    label: "Portfolio",
+    icon: Briefcase,
   },
   {
     href: "/member/wallet",

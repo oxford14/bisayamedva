@@ -197,6 +197,54 @@ export const platformFeatures = {
   ],
 } as const;
 
+export const portfolioCopy = {
+  pageTitle: "Portfolio Builder",
+  pageDescription:
+    "Build imong Medical VA portfolio — drag blocks, add photos, then share a public link when ready.",
+  gateTitle: "Portfolio Builder is for enrolled students",
+  gateBody:
+    "Enroll sa usa ka session una para ma-create nimo ang imong portfolio ug public link.",
+  gateCta: "Browse courses",
+  templateIntro:
+    "Pick a starter layout. You can edit everything after — drag to reorder, add blocks, or reset from another template.",
+  useTemplate: "Use this template",
+  addBlock: "Add block",
+  urlSlug: "Public URL slug",
+  publicToggle: "Show portfolio publicly",
+  privateNote: "Private ra for now — turn on Public when ready to share.",
+  preview: "Preview",
+  copyLink: "Copy link",
+  saving: "Saving…",
+  saved: "Saved",
+  saveError: "Could not save — check your connection.",
+  unsaved: "Editing…",
+  resetTemplate: "Reset from template",
+  resetConfirm:
+    "This replaces all blocks with the template defaults. Continue?",
+  deleteBlockConfirm: "Remove this block?",
+  dividerHint: "Visual spacer between sections.",
+  canvasHint: "Tap a section to select · double-click or Edit to open settings · drag the handle to reorder.",
+  canvasEmpty: "Add blocks from the sidebar (or Add on mobile) to start your layout.",
+  dragHint: "Drag to reorder",
+  editBlock: "Edit block",
+  canvasUploadHint: "Tap Edit to upload",
+  imageOptimizing: "Optimizing photo…",
+  canvasNamePlaceholder: "Your name",
+  canvasHeadlinePlaceholder: "Medical VA · your headline",
+  canvasAboutPlaceholder: "Write a short intro employers can scan fast.",
+  canvasEditSkillsHint: "Open Edit to add skill tags",
+  canvasEditListHint: "Open Edit to add experience or certificates",
+  canvasEditLinksHint: "Open Edit to add contact links",
+  canvasImageEmpty: "Image block",
+  mobileToolbarLabel: "Portfolio editor tools",
+  mobileAdd: "Add",
+  mobileEdit: "Edit",
+  mobilePublic: "Public",
+  mobileMore: "More",
+  backToHome: "Back to Home",
+  mobileHome: "Home",
+} as const;
+
 export const notIncluded = {
   eyebrow: "UPSKILL TOPICS",
   title: "Want to go deeper?",
@@ -629,6 +677,14 @@ export const certificatesCopy = {
   verifyTestLead:
     "PDF generation off pa, pero pwede nimo i-test ang public verify link:",
   verifyTestOpen: "Open verify page",
+  verifyPortfolioLead:
+    "Gusto nimo tan-awon ang ilang Medical VA portfolio? Open lang ang public link below.",
+  verifyPortfolioCta: "View student portfolio",
+  verifyHipaaApprovedLead:
+    "External HIPAA certificate — approved na sa Bisaya MedVA admin review.",
+  verifyHipaaViewCta: "View HIPAA certificate",
+  verifyHipaaViewError:
+    "Dili namo ma-open ang HIPAA certificate right now. Try again later.",
   hipaaBlockedTitle: "HIPAA certificate review pending",
   hipaaBlockedBody:
     "Finish external HIPAA training, upload your certificate, then wait for admin approval before you generate your BisayaMedVA course certificate.",

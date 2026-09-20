@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { CertificateVerifyExtras } from "@/components/member/certificate-verify-extras";
 import { CertificateVerifyReveal } from "@/components/member/certificate-verify-reveal";
 import { certificatesCopy } from "@/content/site";
 import { formatCertificateDate } from "@/lib/member/certificate-shared";
-import { getPublicCertificateByCode } from "@/lib/member/certificate-verify";
+import { getPublicCertificateVerifyContext } from "@/lib/member/certificate-verify";
 
 type Props = {
   params: Promise<{ code: string }>;
 };
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Certificate verification",
@@ -16,7 +19,7 @@ export const metadata: Metadata = {
 
 export default async function CertificateVerifyPage({ params }: Props) {
   const { code } = await params;
-  const certificate = await getPublicCertificateByCode(code);
+  const certificate = await getPublicCertificateVerifyContext(code);
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-cream px-4 py-12">
@@ -72,6 +75,11 @@ export default async function CertificateVerifyPage({ params }: Props) {
                   </dd>
                 </div>
               </dl>
+              <CertificateVerifyExtras
+                verifyCode={code}
+                publicPortfolioSlug={certificate.publicPortfolioSlug}
+                hipaaApproved={certificate.hipaaApproved}
+              />
             </>
           ) : (
             <>

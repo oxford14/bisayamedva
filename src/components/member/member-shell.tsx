@@ -32,6 +32,7 @@ export function MemberShell({
   const primaryMobile = memberNavItems.filter((item) => item.mobilePrimary);
   const moreMobile = memberNavItems.filter((item) => !item.mobilePrimary);
   const moreSheetOpen = moreOpen && moreOpenedAt === pathname;
+  const isPortfolioEditor = pathname === "/member/portfolio";
 
   useEffect(() => {
     setMoreOpen(false);
@@ -166,12 +167,20 @@ export function MemberShell({
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:py-8 lg:pb-8 print:p-0">
+          <main
+            className={cn(
+              "flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 print:p-0",
+              isPortfolioEditor
+                ? "pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-8"
+                : "pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8",
+            )}
+          >
             {children}
           </main>
         </div>
       </div>
 
+      {!isPortfolioEditor ? (
       <nav
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-cream/95 backdrop-blur-md print:hidden lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -217,6 +226,7 @@ export function MemberShell({
           </li>
         </ul>
       </nav>
+      ) : null}
 
       {moreSheetOpen ? (
         <div

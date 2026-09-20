@@ -59,27 +59,47 @@ export async function createPortfolioFromTemplate(
   }
 
   const baseSlug = suggestSlugFromName(gate.profile.full_name);
-  const slug = await allocateUniqueSlug(baseSlug, gate.profile.id);
   const { blocks, themeId } = buildBlocksFromTemplate(templateId, {
     fullName: gate.profile.full_name,
     occupation: gate.profile.occupation,
   });
 
   const supabase = await createClient();
-  const { error } = await supabase.from("student_portfolios").insert({
-    student_id: gate.profile.id,
-    slug,
-    template_id: templateId,
-    theme_id: themeId,
-    blocks,
-  });
+  let slug = await allocateUniqueSlug(baseSlug, gate.profile.id);
 
-  if (error) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { error } = await supabase.from("student_portfolios").insert({
+      student_id: gate.profile.id,
+      slug,
+      template_id: templateId,
+      theme_id: themeId,
+      blocks,
+    });
+
+    if (!error) {
+      revalidatePortfolio(slug);
+      return { ok: true, message: "Portfolio created.", slug };
+    }
+
+    if (error.code === "23505") {
+      const ownAgain = await fetchOwnPortfolio(gate.profile.id);
+      if (ownAgain) {
+        return {
+          ok: false,
+          message: "You already have a portfolio. Open the editor.",
+        };
+      }
+      slug = await allocateUniqueSlug(baseSlug, gate.profile.id);
+      continue;
+    }
+
     return { ok: false, message: error.message ?? "Could not create portfolio." };
   }
 
-  revalidatePortfolio(slug);
-  return { ok: true, message: "Portfolio created.", slug };
+  return {
+    ok: false,
+    message: "Could not pick a unique URL slug. Try again or contact support.",
+  };
 }
 
 export async function applyPortfolioTemplate(

@@ -1,6 +1,7 @@
 import { createPortfolioSignedUrl } from "@/lib/member/portfolio/storage";
 import { parsePortfolioBlocks } from "@/lib/member/portfolio/schema";
 import type { PortfolioBlock, PortfolioRow } from "@/lib/member/portfolio/types";
+import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function fetchOwnPortfolio(
@@ -57,8 +58,9 @@ export async function buildImagePreviewUrls(
   return map;
 }
 
+/** Global slug check (bypasses RLS — students only see their own row). */
 export async function isSlugTaken(slug: string, excludeStudentId?: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   let query = supabase
     .from("student_portfolios")
     .select("student_id")
@@ -67,7 +69,11 @@ export async function isSlugTaken(slug: string, excludeStudentId?: string) {
   if (excludeStudentId) {
     query = query.neq("student_id", excludeStudentId);
   }
-  const { data } = await query.maybeSingle();
+  const { data, error } = await query.maybeSingle();
+  if (error) {
+    console.error("isSlugTaken", error.message);
+    return true;
+  }
   return Boolean(data);
 }
 

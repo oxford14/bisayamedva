@@ -84,7 +84,8 @@ export async function recordItemCompletions(
   items: Pick<PlayerOutlineItem, "kind" | "moduleId" | "itemId">[],
 ) {
   const qualifying = items.filter(
-    (item) => item.kind === "FILE" || item.kind === "QUIZ",
+    (item) =>
+      item.kind === "FILE" || item.kind === "QUIZ" || item.kind === "PRACTICAL",
   );
   if (qualifying.length === 0) return;
   const admin = createServiceClient();

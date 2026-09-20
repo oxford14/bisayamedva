@@ -1,7 +1,7 @@
 export const QUIZ_PASS_RATIO = 0.7;
 
-export type PlayerItemKind = "FILE" | "QUIZ" | "HIPAA";
-export type PlayerItemLabel = "Reading" | "Video" | "Quiz" | "Certificate";
+export type PlayerItemKind = "FILE" | "QUIZ" | "HIPAA" | "PRACTICAL";
+export type PlayerItemLabel = "Reading" | "Video" | "Quiz" | "Certificate" | "Practical";
 
 export type PlayerOutlineItem = {
   key: string;
@@ -32,10 +32,15 @@ export function quizItemKey() {
   return "quiz";
 }
 
+export function practicalItemKey() {
+  return "practical";
+}
+
 export function parseItemKey(
   key: string,
-): { kind: "FILE"; id: string } | { kind: "QUIZ" } | null {
+): { kind: "FILE"; id: string } | { kind: "QUIZ" } | { kind: "PRACTICAL" } | null {
   if (key === "quiz") return { kind: "QUIZ" };
+  if (key === "practical") return { kind: "PRACTICAL" };
   if (key.startsWith("file-")) {
     const id = key.slice(5);
     return id ? { kind: "FILE", id } : null;

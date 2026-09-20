@@ -27,16 +27,24 @@ import {
   type HipaaGateState,
 } from "@/lib/member/hipaa-gate";
 import {
+  buildPracticalOutlineItem,
+  canAccessModule7Practical,
+  fetchLatestPracticalAttempt,
+  isPracticalExamModule,
+} from "@/lib/member/practical-exam-gate";
+import {
   fileItemKey,
   fileTitle,
   itemHref,
   moduleFileHref,
   parseItemKey,
+  practicalItemKey,
   quizItemKey,
   quizPassed,
   type PlayerOutlineItem,
   type PlayerOutlineModule,
 } from "@/lib/member/module-player-shared";
+import type { PracticalExamAttemptSummary } from "@/lib/practice/practical-exam/types";
 
 export {
   QUIZ_PASS_RATIO,
@@ -46,6 +54,7 @@ export {
   itemHref,
   moduleFileHref,
   parseItemKey,
+  practicalItemKey,
   quizItemKey,
   quizPassed,
 } from "@/lib/member/module-player-shared";
@@ -77,6 +86,7 @@ export type PlayerItemView = CoursePlayerState & {
   file: StudentModuleFile | null;
   quiz: StudentQuizQuestion[];
   latestAttempt: StudentQuizAttempt | null;
+  practicalAttempt: PracticalExamAttemptSummary | null;
 };
 
 function startOfPhtDay(now = new Date()) {
@@ -125,7 +135,11 @@ export async function getCoursePlayerState(
   const staff = isAdminRole(role) || bypass;
   const courseOpen = canOpenCourseModules(access) || bypass;
 
-  const [{ data: fileRows }, { data: questionRows }, { data: completions }, { data: attempts }] =
+  const practicalModuleIds = modules
+    .filter((m) => isPracticalExamModule(m.title, course.slug))
+    .map((m) => m.id);
+
+  const [{ data: fileRows }, { data: questionRows }, { data: completions }, { data: attempts }, { data: practicalRows }] =
     await Promise.all([
       moduleIds.length
         ? admin
@@ -154,6 +168,14 @@ export async function getCoursePlayerState(
             .select("module_id, score, total")
             .eq("student_id", studentId)
             .in("module_id", moduleIds),
+      staff || !practicalModuleIds.length
+        ? Promise.resolve({ data: [] as never[] })
+        : admin
+            .from("practical_exam_attempts")
+            .select("module_id, passed, score, max_score, critical_error, section_scores, submitted_at")
+            .eq("student_id", studentId)
+            .in("module_id", practicalModuleIds)
+            .order("submitted_at", { ascending: false }),
     ]);
 
   type OutlineFileRow = {
@@ -182,6 +204,14 @@ export async function getCoursePlayerState(
       done.add(`QUIZ:${attempt.module_id}`);
     }
   }
+  const practicalPassed = new Map<string, boolean>();
+  for (const row of practicalRows ?? []) {
+    const mid = row.module_id as string;
+    if (!practicalPassed.has(mid)) {
+      practicalPassed.set(mid, Boolean(row.passed));
+      if (row.passed) done.add(`PRACTICAL:${mid}`);
+    }
+  }
 
   const phtStart = startOfPhtDay();
   const todayDone = (completions ?? []).filter((row) => {
@@ -193,6 +223,12 @@ export async function getCoursePlayerState(
   const flat: PlayerOutlineItem[] = [];
 
   for (const lesson of modules) {
+    if (
+      isPracticalExamModule(lesson.title, course.slug) &&
+      !canAccessModule7Practical(role)
+    ) {
+      continue;
+    }
     const items: PlayerOutlineItem[] = [];
     const files = (filesByModule.get(lesson.id) ?? []).slice().sort(
       (a, b) => Number(a.sort_order) - Number(b.sort_order),
@@ -223,6 +259,15 @@ export async function getCoursePlayerState(
         locked: false,
         href: itemHref(course.slug, lesson.id, quizItemKey()),
       });
+    }
+    if (
+      isPracticalExamModule(lesson.title, course.slug) &&
+      canAccessModule7Practical(role)
+    ) {
+      const passed = bypass ? true : practicalPassed.get(lesson.id) ?? false;
+      items.push(
+        buildPracticalOutlineItem(course.slug, lesson.id, staff ? false : passed),
+      );
     }
     outline.push({
       id: lesson.id,
@@ -305,7 +350,9 @@ export async function getPlayerItemView(
       (item) =>
         item.moduleId === moduleId &&
         item.key === itemKey &&
-        (parsed.kind === "QUIZ" || item.itemId === parsed.id),
+        (parsed.kind === "QUIZ" ||
+          parsed.kind === "PRACTICAL" ||
+          item.itemId === parsed.id),
     );
 
   const activeIndex = active
@@ -322,6 +369,7 @@ export async function getPlayerItemView(
     file: null,
     quiz: [],
     latestAttempt: null,
+    practicalAttempt: null,
   };
 
   if (!state.course || !active || active.locked) {
@@ -329,6 +377,15 @@ export async function getPlayerItemView(
   }
 
   const admin = createServiceClient();
+  if (active.kind === "PRACTICAL") {
+    const attempt = await fetchLatestPracticalAttempt(
+      admin,
+      studentId,
+      moduleId,
+    );
+    return { ...empty, practicalAttempt: attempt };
+  }
+
   if (active.kind === "FILE") {
     const { data: fileRow } = await admin
       .from("course_module_files")

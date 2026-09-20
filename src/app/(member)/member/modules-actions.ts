@@ -63,7 +63,7 @@ async function finishItemAndMaybeCertify(input: {
   role: UserRole;
   email: string;
   staff: boolean;
-  current: { kind: "FILE" | "QUIZ"; moduleId: string; itemId: string };
+  current: { kind: "FILE" | "QUIZ" | "PRACTICAL"; moduleId: string; itemId: string };
 }) {
   const enrollment = await ensureCourseEnrollment(input.studentId, input.courseId);
   await recordItemCompletions(input.studentId, [input.current]);

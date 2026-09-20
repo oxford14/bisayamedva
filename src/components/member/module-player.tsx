@@ -6,7 +6,9 @@ import { ModuleArt } from "@/components/member/module-art";
 import { ModulePlayerNext } from "@/components/member/module-player-next";
 import { ModulePlayerOutline } from "@/components/member/module-player-outline";
 import { ModulePlayerViewer } from "@/components/member/module-player-viewer";
+import { ModulePracticalExam } from "@/components/member/practical-exam/module-practical-exam";
 import { ModuleQuiz } from "@/components/member/module-quiz";
+import { practicalExamCopy } from "@/content/site";
 import type { PlayerItemView } from "@/lib/member/module-player";
 
 export function ModulePlayer({ view }: { view: PlayerItemView }) {
@@ -60,7 +62,9 @@ export function ModulePlayer({ view }: { view: PlayerItemView }) {
                   ? modulesCopy.readingLabel
                   : view.active.label === "Video"
                     ? modulesCopy.videoLabel
-                    : modulesCopy.quizLabel}
+                    : view.active.label === "Practical"
+                      ? practicalExamCopy.practicalLabel
+                      : modulesCopy.quizLabel}
               </p>
               <h1 className="mt-1 font-display text-2xl font-semibold text-ink">
                 {view.active.title}
@@ -81,6 +85,13 @@ export function ModulePlayer({ view }: { view: PlayerItemView }) {
                   nextHref={isLast ? null : continueHref}
                   isLast={isLast}
                   courseSlug={view.course.slug}
+                />
+              ) : view.active.kind === "PRACTICAL" ? (
+                <ModulePracticalExam
+                  courseSlug={view.course.slug}
+                  moduleId={view.active.moduleId}
+                  latestAttempt={view.practicalAttempt}
+                  nextHref={isLast ? null : continueHref}
                 />
               ) : (
                 <p className="text-sm text-muted">{modulesCopy.noFiles}</p>

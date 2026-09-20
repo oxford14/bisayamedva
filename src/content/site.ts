@@ -245,6 +245,75 @@ export const portfolioCopy = {
   mobileHome: "Home",
 } as const;
 
+export const practicalExamCopy = {
+  outlineItemTitle: "Practical Exam",
+  pageTitle: "Module 7 Practical Exam",
+  introTitle: "Practical Training — from learning to doing",
+  introLead:
+    "Modules 1–6 taught the role, the office, communication, patients, EHR, and prioritization. Karon, practice nato ang work — fictional patients and scenarios lang sa Practice Lab rules.",
+  rulesTitle: "Before you start",
+  rules: [
+    "Fictional information only — do not enter real patient data.",
+    "Read the whole scenario before you click.",
+    "Don't guess clinical or medication answers — know your role.",
+    "Accuracy over speed; double-check before you save.",
+    "Mistakes are okay here — learn before real patients.",
+  ] as const,
+  startExam: "Start Practical Exam",
+  stepRegistration: "Patient Registration",
+  stepScheduling: "Appointment Scheduling",
+  stepCalls: "Mock call decisions",
+  stepScenarios: "Administrative scenarios",
+  stepPriority: "Prioritization",
+  stepComms: "Client communication",
+  stepMistake: "Mistake handling",
+  stepReview: "Review & submit",
+  scenarioCardTitle: "Case information",
+  registrationHint:
+    "Enter the patient exactly as shown. Think like a real Medical VA — accurate, nothing invented.",
+  schedulingHint:
+    "Book Maria Santos for a follow-up with Dr. James Miller — morning of Sep 22, 2026 if available.",
+  callMedPrompt:
+    'Caller: "I\'ve been having pain since yesterday. Should I take another dose of my medication?"',
+  callUpsetPrompt:
+    'Caller: "I\'ve already called three times and nobody has called me back! This is ridiculous!"',
+  priorityHint: "Order tasks A–F for 9:00 AM, then explain why (one short paragraph).",
+  commDelayPrompt:
+    'You told your client "I\'ll have this done by 2 PM." At 1 PM you need another hour. Write the message.',
+  commUnclearPrompt:
+    'Client: "Please update the patient\'s information." — but no details. Write your reply.',
+  commUnavailablePrompt:
+    "You need your client's answer; they are with patients. What do you do while waiting?",
+  submitExam: "Submit for grading",
+  submitting: "Grading…",
+  submitError: "Could not save your exam — try again.",
+  submitIncomplete: "Complete all sections before you submit.",
+  scoreLabel: "Your score",
+  passTitle: "Passed — Practical Exam",
+  passBody:
+    "You demonstrated basic Medical VA front-desk workflow at the level we expect before Module 8.",
+  failTitle: "Practical Review Required",
+  failBody:
+    "Score below 80 or a critical safety issue — review the feedback and retake the sections you missed.",
+  criticalBanner:
+    "Critical error flagged — even with a high score, you need review before moving on.",
+  retake: "Retake exam",
+  continueNext: "Continue to next lesson",
+  sectionRegistration: "Registration",
+  sectionScheduling: "Scheduling",
+  sectionCalls: "Calls",
+  sectionScenarios: "Scenarios",
+  sectionPriority: "Priority",
+  sectionComms: "Client comms",
+  sectionMistake: "Mistakes",
+  moveUp: "Move up",
+  moveDown: "Move down",
+  selectOption: "Choose the best action",
+  practicalLabel: "Practical Exam",
+  superAdminOnly:
+    "Module 7 Practical Exam is in preview — SUPER_ADMIN access only for now.",
+} as const;
+
 export const notIncluded = {
   eyebrow: "UPSKILL TOPICS",
   title: "Want to go deeper?",

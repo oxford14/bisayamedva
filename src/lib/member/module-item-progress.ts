@@ -13,9 +13,16 @@ export type AttemptRow = {
   submitted_at?: string;
 };
 
+export type PracticalAttemptRow = {
+  module_id: string;
+  passed: boolean;
+  submitted_at?: string;
+};
+
 export function buildDoneItemKeys(
   completions: CompletionRow[],
   attempts: AttemptRow[],
+  practicalAttempts: PracticalAttemptRow[] = [],
 ): Set<string> {
   const done = new Set(
     completions.map((row) => `${row.item_kind}:${row.item_id}`),
@@ -23,6 +30,11 @@ export function buildDoneItemKeys(
   for (const attempt of attempts) {
     if (quizPassed(Number(attempt.score), Number(attempt.total))) {
       done.add(`QUIZ:${attempt.module_id}`);
+    }
+  }
+  for (const attempt of practicalAttempts) {
+    if (attempt.passed) {
+      done.add(`PRACTICAL:${attempt.module_id}`);
     }
   }
   return done;

@@ -4,7 +4,7 @@
 create table if not exists public.live_session_schedule (
   id boolean primary key default true check (id),
   title text not null default 'Weekend Live Session',
-  weekday smallint not null default 6 check (weekday between 0 and 6),
+  weekday smallint not null default 0 check (weekday between 0 and 6),
   start_time time not null default '19:00',
   end_time time not null default '21:00',
   timezone text not null default 'Asia/Manila',

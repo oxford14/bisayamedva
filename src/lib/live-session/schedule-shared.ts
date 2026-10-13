@@ -26,7 +26,7 @@ export type PublicLiveSessionSchedule = Omit<LiveSessionSchedule, "meeting_url">
 
 export const DEFAULT_LIVE_SESSION_SCHEDULE: LiveSessionSchedule = {
   title: "Weekend Live Session",
-  weekday: 6,
+  weekday: 0,
   start_time: "19:00",
   end_time: "21:00",
   timezone: APP_TIMEZONE,

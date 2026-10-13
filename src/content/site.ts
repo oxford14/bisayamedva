@@ -203,7 +203,7 @@ export const portfolioCopy = {
     "Build imong Medical VA portfolio — drag blocks, add photos, then share a public link when ready.",
   gateTitle: "Portfolio Builder is for enrolled students",
   gateBody:
-    "Enroll sa usa ka session una para ma-create nimo ang imong portfolio ug public link.",
+    "Enroll and pay for a course una para ma-create nimo ang imong portfolio ug public link.",
   gateCta: "Browse courses",
   templateIntro:
     "Pick a starter layout. You can edit everything after — drag to reorder, add blocks, or reset from another template.",
@@ -389,17 +389,17 @@ export const howItWorks = {
     {
       n: "01",
       title: "Register",
-      body: "Create your Bisaya MedVA account and enroll in the Featured Course.",
+      body: "Create your free Bisaya MedVA account — libre ang weekend live session.",
     },
     {
       n: "02",
       title: "Pay",
-      body: `Complete the one-time ₱${site.featuredCourse.price} ${site.featuredCourse.name} payment through PayMongo.`,
+      body: `When ready, enroll sa ${site.featuredCourse.name} (₱${site.featuredCourse.price}) — top up your Wallet with PayMongo, then pay from My Courses.`,
     },
     {
       n: "03",
       title: "Attend",
-      body: "After you pay, pick a weekend session sa student Schedule — wala na'y extra bayad — then join the online training.",
+      body: "Open Schedule for the recurring weekend live session — same link every week, wala'y extra bayad for the live call.",
     },
     {
       n: "04",
@@ -439,7 +439,7 @@ export const faqs = [
   },
   {
     q: "Kanus-a ang training?",
-    a: "Every weekend. The exact day and time can change, so the next open session is shown on this page. Timezone is Asia/Manila.",
+    a: "Recurring every weekend — usually Sunday (admin can change the day). Day, time, and next slot show on this page and sa student Schedule. Timezone is Asia/Manila.",
   },
   {
     q: `Naa ba Insurance Verification, Claims, or Denials sa ₱${site.featuredCourse.price} ${site.featuredCourse.name}?`,
@@ -451,7 +451,7 @@ export const faqs = [
   },
   {
     q: "Online ba ni?",
-    a: "Yes. Weekend training is online. The meeting link is shared before the session.",
+    a: "Yes. Weekend training is online. Logged-in students see the meeting link on Schedule — same recurring link each week.",
   },
   {
     q: `Maka-job ready ba ko after ₱${site.featuredCourse.price}?`,
@@ -459,13 +459,13 @@ export const faqs = [
   },
   {
     q: "Unsaon pagbayad?",
-    a: `Payment is ₱${site.featuredCourse.price} through PayMongo after you create your account. Pick your weekend session after payment sa student Schedule.`,
+    a: `Course payment is ₱${site.featuredCourse.price}: top up your Wallet with PayMongo QR, then enroll sa My Courses. The weekend live session is free — no need to wait for admin to open a session.`,
   },
 ] as const;
 
 export const finalCta = {
   title: "Ready na ka mo-start?",
-  body: "Enroll in the Featured Course, pay once, then pick your weekend session sa student app.",
+  body: "Create a free account, join the recurring live session on Schedule, and enroll in the Featured Course when you are ready.",
   cta: { href: "/register", label: "Register" },
 } as const;
 

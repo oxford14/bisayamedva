@@ -450,25 +450,32 @@ export async function saveContentSettings(formData: FormData) {
     return failValidation(live.error, "Check the live session fields.");
   }
 
-  const { error: settingError } = await supabase.from("site_settings").upsert({
-    key: "featured_course_id",
-    value: featured || null,
-  });
+  const { error: settingError } = await supabase.from("site_settings").upsert(
+    {
+      key: "featured_course_id",
+      value: featured || null,
+    },
+    { onConflict: "key" },
+  );
   if (settingError) return fail(settingError.message);
 
-  const { error: scheduleError } = await supabase
+  const admin = createServiceClient();
+  const { error: scheduleError } = await admin
     .from("live_session_schedule")
-    .upsert({
-      id: true,
-      title: live.data.title,
-      weekday: live.data.weekday,
-      start_time: live.data.start_time,
-      end_time: live.data.end_time,
-      meeting_url: live.data.meeting_url || null,
-      is_active: live.data.is_active,
-      updated_at: new Date().toISOString(),
-      updated_by: profile.id,
-    });
+    .upsert(
+      {
+        id: true,
+        title: live.data.title,
+        weekday: live.data.weekday,
+        start_time: live.data.start_time,
+        end_time: live.data.end_time,
+        meeting_url: live.data.meeting_url || null,
+        is_active: live.data.is_active,
+        updated_at: new Date().toISOString(),
+        updated_by: profile.id,
+      },
+      { onConflict: "id" },
+    );
   if (scheduleError) return fail(scheduleError.message);
 
   revalidatePath("/admin/content");

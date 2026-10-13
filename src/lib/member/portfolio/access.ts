@@ -3,7 +3,7 @@ import { getCurrentProfile } from "@/lib/supabase/auth";
 import { isAdminRole } from "@/lib/supabase/roles";
 
 export const PORTFOLIO_ENROLL_MESSAGE =
-  "Enroll sa usa ka session una para ma-open ang Portfolio Builder.";
+  "Enroll and pay for a course una para ma-open ang Portfolio Builder.";
 
 export async function requirePortfolioStudent() {
   const profile = await getCurrentProfile();

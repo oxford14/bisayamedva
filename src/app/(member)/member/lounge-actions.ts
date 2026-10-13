@@ -60,7 +60,7 @@ async function requireLoungeStudent() {
       error: {
         ok: false as const,
         message:
-          "Enroll sa usa ka session una para maka-join sa Student Lounge.",
+          "Enroll and pay for a course una para maka-join sa Student Lounge.",
       },
     };
   }

@@ -6,7 +6,7 @@ export function LoungeGate() {
   return (
     <MemberEmptyState
       title="Student Lounge is for enrolled students"
-      body="Enroll sa usa ka session una para maka-join sa Lounge — ask questions, share wins, and connect with co-students."
+      body="Enroll and pay for a course una para maka-join sa Lounge — ask questions, share wins, and connect with co-students."
       action={
         <Button variant="accent" asChild>
           <Link href="/member/course">Browse courses</Link>

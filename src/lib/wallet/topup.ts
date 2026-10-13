@@ -188,11 +188,10 @@ export async function activateWalletTopup(input: {
   }
 
   let enrolled = false;
-  if (topup.intent_session_id && topup.intent_course_id) {
+  if (topup.intent_course_id) {
     const result = await enrollWithWallet({
       studentId: topup.student_id,
       courseId: topup.intent_course_id,
-      sessionId: topup.intent_session_id,
       enrollmentId: topup.intent_enrollment_id,
     });
     enrolled = result.ok;

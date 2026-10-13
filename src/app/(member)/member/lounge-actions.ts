@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
-import { canAccessStudentLounge } from "@/lib/member/data";
+import { hasPaidCourseAccess } from "@/lib/member/data";
 import {
   LOUNGE_IMAGE_BUCKET,
   LOUNGE_IMAGE_MAX_BYTES,
@@ -53,7 +53,7 @@ async function requireLoungeStudent() {
   if (isAdminRole(profile.role)) {
     return { profile: { id: profile.id, role: profile.role }, error: null };
   }
-  const allowed = await canAccessStudentLounge(profile.id, profile.role);
+  const allowed = await hasPaidCourseAccess(profile.id, profile.role);
   if (!allowed) {
     return {
       profile: null as null,

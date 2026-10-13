@@ -1,4 +1,3 @@
-import { isSessionStartPast } from "@/lib/member/enrollment-shared";
 import { bindPromoToPayment } from "@/lib/promo/codes";
 import { creditReferralReward } from "@/lib/referrals/reward";
 import { createServiceClient } from "@/lib/supabase/admin";
@@ -20,14 +19,12 @@ export type EnrollWithWalletResult =
 export async function enrollWithWallet(input: {
   studentId: string;
   courseId: string;
-  sessionId: string;
   enrollmentId?: string | null;
   amountPesos?: number;
   promoId?: string | null;
   originalAmount?: number;
 }): Promise<EnrollWithWalletResult> {
   const admin = createServiceClient();
-  const nowIso = new Date().toISOString();
 
   const { data: course } = await admin
     .from("courses")
@@ -40,33 +37,15 @@ export async function enrollWithWallet(input: {
     return { ok: false, error: "Course is not available for enrollment." };
   }
 
-  const { data: session } = await admin
-    .from("sessions")
-    .select("id, course_id, status, starts_at, title")
-    .eq("id", input.sessionId)
-    .eq("course_id", course.id)
-    .eq("status", "PUBLISHED")
-    .is("completed_at", null)
-    .gt("starts_at", nowIso)
-    .maybeSingle();
-
-  if (!session) {
-    return {
-      ok: false,
-      error: "That schedule is not open anymore. Pick another open schedule.",
-    };
-  }
-
   const listPrice = Number(course.price);
   let price = input.amountPesos;
 
-  let enrollment: { id: string; status: string; session_id: string | null } | null =
-    null;
+  let enrollment: { id: string; status: string } | null = null;
 
   if (input.enrollmentId) {
     const { data } = await admin
       .from("enrollments")
-      .select("id, status, session_id")
+      .select("id, status")
       .eq("id", input.enrollmentId)
       .eq("student_id", input.studentId)
       .maybeSingle();
@@ -74,37 +53,19 @@ export async function enrollWithWallet(input: {
   }
 
   if (!enrollment) {
+    // One enrollment row per (student, course): reuse it, even if cancelled.
     const { data: existing } = await admin
       .from("enrollments")
-      .select("id, status, session_id")
+      .select("id, status")
       .eq("student_id", input.studentId)
       .eq("course_id", course.id)
-      .neq("status", "CANCELLED")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     enrollment = existing;
   }
 
-  let assignedStartsAt: string | null = null;
-  if (enrollment?.session_id) {
-    const { data: assignedSession } = await admin
-      .from("sessions")
-      .select("starts_at")
-      .eq("id", enrollment.session_id)
-      .maybeSingle();
-    assignedStartsAt = (assignedSession?.starts_at as string | null) ?? null;
-  }
-
-  const needsPaidReenroll =
-    Boolean(enrollment?.session_id) &&
-    enrollment!.session_id !== session.id &&
-    isSessionStartPast(assignedStartsAt);
-
-  if (
-    (enrollment?.status === "ACTIVE" || enrollment?.status === "COMPLETED") &&
-    !needsPaidReenroll
-  ) {
+  if (enrollment?.status === "ACTIVE" || enrollment?.status === "COMPLETED") {
     await creditReferralReward(enrollment.id);
     return {
       ok: true,
@@ -114,7 +75,7 @@ export async function enrollWithWallet(input: {
     };
   }
 
-  if (enrollment && !needsPaidReenroll) {
+  if (enrollment && enrollment.status !== "CANCELLED") {
     const { data: paidPayment } = await admin
       .from("payments")
       .select("id")
@@ -138,10 +99,10 @@ export async function enrollWithWallet(input: {
       .insert({
         student_id: input.studentId,
         course_id: course.id,
-        session_id: session.id,
+        session_id: null,
         status: "PENDING_PAYMENT",
       })
-      .select("id, status, session_id")
+      .select("id, status")
       .single();
     if (error || !created) {
       return {
@@ -150,20 +111,20 @@ export async function enrollWithWallet(input: {
       };
     }
     enrollment = created;
-  } else if (enrollment.session_id !== session.id) {
-    const { data: updated, error } = await admin
+  } else if (enrollment.status === "CANCELLED") {
+    const { data: reopened, error } = await admin
       .from("enrollments")
-      .update({ session_id: session.id, status: "PENDING_PAYMENT" })
+      .update({ status: "PENDING_PAYMENT" })
       .eq("id", enrollment.id)
-      .select("id, status, session_id")
+      .select("id, status")
       .single();
-    if (error || !updated) {
+    if (error || !reopened) {
       return {
         ok: false,
-        error: error?.message ?? "Could not update enrollment session.",
+        error: error?.message ?? "Could not reopen enrollment.",
       };
     }
-    enrollment = updated;
+    enrollment = reopened;
   }
 
   if (price == null && enrollment) {
@@ -210,7 +171,7 @@ export async function enrollWithWallet(input: {
       type: "ENROLL_SPEND",
       referenceType: "enrollment",
       referenceId: enrollment.id,
-      note: `${course.title} · ${session.title}`,
+      note: course.title,
     });
 
     if (!debit.ok) {
@@ -229,7 +190,7 @@ export async function enrollWithWallet(input: {
 
   const { error: activateError } = await admin
     .from("enrollments")
-    .update({ status: "ACTIVE", session_id: session.id })
+    .update({ status: "ACTIVE" })
     .eq("id", enrollment.id);
 
   if (activateError) {

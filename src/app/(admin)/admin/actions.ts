@@ -403,15 +403,29 @@ export async function updatePaymentStatus(formData: FormData) {
   return ok();
 }
 
-export async function saveContentSettings(formData: FormData) {
-  await requireAdmin();
-  const featured = String(formData.get("featured_course_id") ?? "").trim();
-  const nextSession = String(formData.get("next_session_id") ?? "").trim();
-  const supabase = await createClient();
+const liveSessionSchema = z
+  .object({
+    title: z.string().trim().min(1, "Add a session title."),
+    weekday: z.coerce.number().int().min(0).max(6),
+    start_time: z.string().regex(/^\d{2}:\d{2}$/, "Pick a start time."),
+    end_time: z.string().regex(/^\d{2}:\d{2}$/, "Pick an end time."),
+    meeting_url: z
+      .string()
+      .trim()
+      .refine((value) => !value || /^https?:\/\/\S+$/i.test(value), {
+        message: "Meeting URL must start with https://",
+      }),
+    is_active: z.boolean(),
+  })
+  .refine((value) => value.end_time > value.start_time, {
+    message: "End time must be after start time.",
+    path: ["end_time"],
+  });
 
-  if (nextSession && !featured) {
-    return fail("Pick a featured course first.");
-  }
+export async function saveContentSettings(formData: FormData) {
+  const profile = await requireAdmin();
+  const featured = String(formData.get("featured_course_id") ?? "").trim();
+  const supabase = await createClient();
 
   if (featured) {
     const { data: course } = await supabase
@@ -424,40 +438,44 @@ export async function saveContentSettings(formData: FormData) {
     }
   }
 
-  if (nextSession) {
-    const { data: session } = await supabase
-      .from("sessions")
-      .select("id, status, course_id, completed_at")
-      .eq("id", nextSession)
-      .maybeSingle();
-    if (
-      !session ||
-      session.status !== "PUBLISHED" ||
-      session.completed_at
-    ) {
-      return fail("Pick a published weekend session.");
-    }
-    if (session.course_id !== featured) {
-      return fail("That session does not belong to the featured course.");
-    }
+  const live = liveSessionSchema.safeParse({
+    title: formData.get("live_title") ?? "",
+    weekday: formData.get("live_weekday") ?? "",
+    start_time: formData.get("live_start_time") ?? "",
+    end_time: formData.get("live_end_time") ?? "",
+    meeting_url: formData.get("live_meeting_url") ?? "",
+    is_active: formData.get("live_is_active") === "on",
+  });
+  if (!live.success) {
+    return failValidation(live.error, "Check the live session fields.");
   }
 
-  const rows = [
-    { key: "featured_course_id", value: featured || null },
-    { key: "next_session_id", value: nextSession || null },
-  ];
+  const { error: settingError } = await supabase.from("site_settings").upsert({
+    key: "featured_course_id",
+    value: featured || null,
+  });
+  if (settingError) return fail(settingError.message);
 
-  for (const row of rows) {
-    const { error } = await supabase.from("site_settings").upsert({
-      key: row.key,
-      value: row.value,
+  const { error: scheduleError } = await supabase
+    .from("live_session_schedule")
+    .upsert({
+      id: true,
+      title: live.data.title,
+      weekday: live.data.weekday,
+      start_time: live.data.start_time,
+      end_time: live.data.end_time,
+      meeting_url: live.data.meeting_url || null,
+      is_active: live.data.is_active,
+      updated_at: new Date().toISOString(),
+      updated_by: profile.id,
     });
-    if (error) return fail(error.message);
-  }
+  if (scheduleError) return fail(scheduleError.message);
 
   revalidatePath("/admin/content");
   revalidatePath("/");
   revalidatePath("/register");
+  revalidatePath("/member");
+  revalidatePath("/member/schedule");
   return ok();
 }
 

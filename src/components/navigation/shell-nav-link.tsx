@@ -8,6 +8,7 @@ type ShellNavLinkProps = {
   href: string;
   className?: string;
   onClick?: () => void;
+  "aria-label"?: string;
   children: React.ReactNode;
 };
 
@@ -15,12 +16,14 @@ export function ShellNavLink({
   href,
   className,
   onClick,
+  "aria-label": ariaLabel,
   children,
 }: ShellNavLinkProps) {
   return (
     <Link
       href={href}
       onClick={onClick}
+      aria-label={ariaLabel}
       className={cn(className, "group/nav")}
     >
       <ShellNavLinkPending>{children}</ShellNavLinkPending>

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import { Video } from "lucide-react";
 import {
   foundationCourses,
@@ -10,19 +9,16 @@ import {
 } from "@/content/courses";
 import { certificatesCopy, certificatesEnabled, site } from "@/content/site";
 import { Button } from "@/components/ui/button";
-import { EnrollScheduleModal } from "@/components/member/enroll-schedule-modal";
 import { MemberStatusBadge } from "@/components/member/ui";
 import { cn, formatPeso } from "@/lib/utils";
-import {
-  requiresPaidReenrollment,
-  type MemberEnrollment,
-} from "@/lib/member/enrollment-shared";
-import type { OpenFutureSession } from "@/lib/member/open-sessions-shared";
+import type { MemberEnrollment } from "@/lib/member/enrollment-shared";
 
 function primaryOwned(enrollments: MemberEnrollment[]) {
   const priority = ["ACTIVE", "PENDING_PAYMENT", "COMPLETED", "CANCELLED"];
   return (
-    [...enrollments].sort((a, b) => {
+    enrollments
+      .filter((e) => e.status === "ACTIVE" || e.status === "COMPLETED")
+      .sort((a, b) => {
       const ai = priority.indexOf(a.status);
       const bi = priority.indexOf(b.status);
       if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
@@ -42,13 +38,14 @@ function enrollmentForCourse(
   );
 }
 
+/** Paid once = owned. Pending or cancelled enrollments can enroll again. */
 function isOwnedEnrollment(enrollment: MemberEnrollment | undefined) {
   if (!enrollment) return false;
-  return (
-    enrollment.status === "ACTIVE" ||
-    enrollment.status === "COMPLETED" ||
-    enrollment.status === "PENDING_PAYMENT"
-  );
+  return enrollment.status === "ACTIVE" || enrollment.status === "COMPLETED";
+}
+
+function checkoutHref(course: CatalogCourse) {
+  return `/member/checkout/${course.slug}`;
 }
 
 function CourseThumb({
@@ -83,13 +80,9 @@ function CourseThumb({
 function CourseCard({
   course,
   enrollment,
-  sessions,
-  onEnroll,
 }: {
   course: CatalogCourse;
   enrollment?: MemberEnrollment;
-  sessions: OpenFutureSession[];
-  onEnroll: (course: CatalogCourse, sessions: OpenFutureSession[]) => void;
 }) {
   const owned = isOwnedEnrollment(enrollment);
   const accent = course.courseType === "FOUNDATION" ? "foundation" : "upskill";
@@ -139,49 +132,28 @@ function CourseCard({
                 {formatPeso(course.price)}
               </p>
               {owned ? (
-                enrollment && requiresPaidReenrollment(enrollment) ? (
-                  <Button
-                    variant="accent"
-                    className="w-full"
-                    type="button"
-                    onClick={() => onEnroll(course, sessions)}
-                  >
-                    {`Enroll · ${formatPeso(course.price)}`}
-                  </Button>
-                ) : (
-                  <Button variant="secondary" className="w-full" asChild>
-                    {enrollment?.status === "COMPLETED" ? (
-                      <Link
-                        href={
-                          certificatesEnabled
-                            ? `/member/certificates/${course.slug}`
-                            : "/member/modules"
-                        }
-                      >
-                        {certificatesEnabled
-                          ? certificatesCopy.view
-                          : certificatesCopy.emptyCta}
-                      </Link>
-                    ) : (
-                      <Link href="/member/schedule">
-                        {enrollment &&
-                        !enrollment.session &&
-                        (enrollment.status === "ACTIVE" ||
-                          enrollment.payment?.status === "PAID")
-                          ? "Choose schedule"
-                          : "View schedule"}
-                      </Link>
-                    )}
-                  </Button>
-                )
+                <Button variant="secondary" className="w-full" asChild>
+                  {enrollment?.status === "COMPLETED" ? (
+                    <Link
+                      href={
+                        certificatesEnabled
+                          ? `/member/certificates/${course.slug}`
+                          : "/member/modules"
+                      }
+                    >
+                      {certificatesEnabled
+                        ? certificatesCopy.view
+                        : certificatesCopy.emptyCta}
+                    </Link>
+                  ) : (
+                    <Link href="/member/modules">Open modules</Link>
+                  )}
+                </Button>
               ) : (
-                <Button
-                  variant="accent"
-                  className="w-full"
-                  type="button"
-                  onClick={() => onEnroll(course, sessions)}
-                >
-                  {`Enroll · ${formatPeso(course.price)}`}
+                <Button variant="accent" className="w-full" asChild>
+                  <Link href={checkoutHref(course)}>
+                    {`Enroll · ${formatPeso(course.price)}`}
+                  </Link>
                 </Button>
               )}
             </>
@@ -194,36 +166,10 @@ function CourseCard({
 
 export function MemberCourseCatalog({
   enrollments,
-  openSessions,
 }: {
   enrollments: MemberEnrollment[];
-  openSessions: OpenFutureSession[];
 }) {
   const primary = primaryOwned(enrollments);
-  const [modalCourse, setModalCourse] = useState<CatalogCourse | null>(null);
-  const [modalSessions, setModalSessions] = useState<OpenFutureSession[]>([]);
-
-  const sessionsBySlug = useMemo(() => {
-    const map = new Map<string, OpenFutureSession[]>();
-    for (const session of openSessions) {
-      const slug = session.course.slug;
-      if (!slug) continue;
-      const list = map.get(slug) ?? [];
-      list.push(session);
-      map.set(slug, list);
-    }
-    return map;
-  }, [openSessions]);
-
-  function openEnroll(course: CatalogCourse, sessions: OpenFutureSession[]) {
-    setModalCourse(course);
-    setModalSessions(sessions);
-  }
-
-  function closeEnroll() {
-    setModalCourse(null);
-    setModalSessions([]);
-  }
 
   return (
     <div className="space-y-10">
@@ -249,14 +195,14 @@ export function MemberCourseCatalog({
                   {primary.course?.title ?? site.featuredCourse.name}
                 </h3>
                 <p className="mt-1 text-sm text-muted">
-                  {primary.session?.title ?? "Session TBA"}
+                  Modules, Practice Lab, and certificate unlocked
                 </p>
               </div>
               <MemberStatusBadge status={primary.status} />
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               <Button variant="accent" asChild>
-                <Link href="/member/schedule">Open schedule</Link>
+                <Link href="/member/modules">Open modules</Link>
               </Button>
               <Button variant="secondary" asChild>
                 <Link href="/member/wallet">Open wallet</Link>
@@ -283,8 +229,6 @@ export function MemberCourseCatalog({
               key={course.id}
               course={course}
               enrollment={enrollmentForCourse(enrollments, course)}
-              sessions={sessionsBySlug.get(course.slug) ?? []}
-              onEnroll={openEnroll}
             />
           ))}
         </div>
@@ -305,23 +249,10 @@ export function MemberCourseCatalog({
               key={course.id}
               course={course}
               enrollment={enrollmentForCourse(enrollments, course)}
-              sessions={sessionsBySlug.get(course.slug) ?? []}
-              onEnroll={openEnroll}
             />
           ))}
         </div>
       </section>
-
-      {modalCourse ? (
-        <EnrollScheduleModal
-          open
-          courseTitle={modalCourse.title}
-          courseSlug={modalCourse.slug}
-          coursePrice={modalCourse.price}
-          sessions={modalSessions}
-          onClose={closeEnroll}
-        />
-      ) : null}
     </div>
   );
 }

@@ -2,21 +2,21 @@ import { PatientRegistrationWorkspace } from "@/components/member/practice/patie
 import { PracticeGate } from "@/components/member/practice/practice-gate";
 import { MemberPageHeader } from "@/components/member/ui";
 import { practiceCopy } from "@/content/site";
-import { canAccessPracticeLab } from "@/lib/member/practice-access";
+import { getPracticeLabAccess } from "@/lib/member/practice-access-server";
 import { getStudentProfile } from "@/lib/supabase/auth";
 
 export default async function MemberPracticeRegistrationPage() {
   const profile = await getStudentProfile();
-  const allowed = canAccessPracticeLab(profile.role);
+  const access = await getPracticeLabAccess(profile);
 
-  if (!allowed) {
+  if (access !== "allowed") {
     return (
       <div>
         <MemberPageHeader
           title={practiceCopy.registrationTitle}
           description={practiceCopy.registrationDescription}
         />
-        <PracticeGate previewOnly />
+        <PracticeGate previewOnly={access === "staff-preview"} />
       </div>
     );
   }

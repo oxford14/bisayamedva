@@ -239,7 +239,7 @@ export async function submitModuleQuiz(
     if (!canOpenCourseModules(access) || !access.enrollmentId) {
       return {
         ok: false,
-        error: "Locked pa ni. Open ni during your scheduled Zoom and after.",
+        error: "Locked pa ni. Enroll in the course to unlock modules and your certificate.",
       };
     }
     const opened = await requireOpenItem(

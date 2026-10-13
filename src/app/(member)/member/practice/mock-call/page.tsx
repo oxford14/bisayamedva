@@ -2,21 +2,21 @@ import { MockCallWorkspace } from "@/components/member/practice/mock-call-worksp
 import { PracticeGate } from "@/components/member/practice/practice-gate";
 import { MemberPageHeader } from "@/components/member/ui";
 import { practiceCopy } from "@/content/site";
-import { canAccessPracticeLab } from "@/lib/member/practice-access";
+import { getPracticeLabAccess } from "@/lib/member/practice-access-server";
 import { getStudentProfile } from "@/lib/supabase/auth";
 
 export default async function MemberPracticeMockCallPage() {
   const profile = await getStudentProfile();
-  const allowed = canAccessPracticeLab(profile.role);
+  const access = await getPracticeLabAccess(profile);
 
-  if (!allowed) {
+  if (access !== "allowed") {
     return (
       <div>
         <MemberPageHeader
           title={practiceCopy.mockCallTitle}
           description={practiceCopy.mockCallDescription}
         />
-        <PracticeGate previewOnly />
+        <PracticeGate previewOnly={access === "staff-preview"} />
       </div>
     );
   }

@@ -164,7 +164,7 @@ export default async function AdminModuleEditPage({ params }: Props) {
           <section className="rounded-2xl border border-border bg-white p-5">
             <h2 className="font-semibold">Lesson files</h2>
             <p className="mt-1 text-sm text-muted">
-              Upload PDFs, videos, or documents. Students get signed links after Zoom start.
+              Upload PDFs, videos, or documents. Students get signed links once their course is paid.
             </p>
             <div className="mt-4">
               <ModuleFilesEditor moduleId={module.id} files={files} />

@@ -8,7 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const offer = await getFeaturedOffer();
   return {
     title: "Register",
-    description: `Register for ${offer.course.name} — ${formatPeso(offer.course.price)} one-time weekend training.`,
+    description: `Create a free Bisaya MedVA account and join the weekend live session. ${offer.course.name} (${formatPeso(offer.course.price)}) optional.`,
   };
 }
 
@@ -22,7 +22,11 @@ export default async function RegisterPage({
   const refCode = params.ref?.trim() || undefined;
   return (
     <AuthShell image="hero">
-      <RegisterFlow course={offer.course} refCode={refCode} />
+      <RegisterFlow
+        course={offer.course}
+        session={offer.session}
+        refCode={refCode}
+      />
     </AuthShell>
   );
 }

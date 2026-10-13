@@ -11,20 +11,28 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   enrollmentNextAction,
-  formatSessionWhen,
   getMemberEnrollments,
   pickPrimaryEnrollment,
 } from "@/lib/member/data";
+import { formatOpenSessionWhen } from "@/lib/member/open-sessions-shared";
+import {
+  getLiveSessionSchedule,
+  liveSessionAsSession,
+} from "@/lib/live-session/schedule";
 import { getStudentProfile } from "@/lib/supabase/auth";
 import { formatPeso } from "@/lib/utils";
 
 export default async function MemberHomePage() {
   const profile = await getStudentProfile();
-  const [enrollments, homeAnnouncements] = await Promise.all([
+  const [enrollments, homeAnnouncements, schedule] = await Promise.all([
     getMemberEnrollments(profile.id),
     listPublishedAnnouncementsForUser(profile.id, 2),
+    getLiveSessionSchedule(),
   ]);
-  const primary = pickPrimaryEnrollment(enrollments);
+  const liveSession = liveSessionAsSession(schedule);
+  const primary = pickPrimaryEnrollment(
+    enrollments.filter((enrollment) => enrollment.status !== "CANCELLED"),
+  );
   const next = enrollmentNextAction(primary);
   const firstName =
     profile.full_name.split(/\s+/).filter(Boolean)[0] ?? "ka";
@@ -57,11 +65,11 @@ export default async function MemberHomePage() {
       {!primary ? (
         <div className="mt-6">
           <MemberEmptyState
-            title="No training yet"
-            body="Once you are enrolled, you will see your course, weekend schedule, and payment status here."
+            title="Get the full course + certificate"
+            body="Free ang weekend live session. Enroll in a course para ma-unlock ang modules, Practice Lab, Student Lounge, ug imong certificate."
             action={
               <Button variant="secondary" asChild>
-                <Link href="/register">Register for training</Link>
+                <Link href="/member/course">Browse courses</Link>
               </Button>
             }
           />
@@ -97,16 +105,18 @@ export default async function MemberHomePage() {
               </p>
             </div>
             <p className="mt-3 font-semibold text-ink">
-              {primary.session?.title ?? "Weekend session"}
+              {liveSession.title}
             </p>
             <p className="mt-1 text-sm text-muted">
-              {formatSessionWhen(primary.session)}
+              {schedule.is_active
+                ? formatOpenSessionWhen(liveSession)
+                : "Schedule coming soon"}
             </p>
             <Link
               href="/member/schedule"
               className="mt-4 inline-flex text-sm font-medium text-teal hover:text-navy"
             >
-              {primary.session ? "View schedule" : "Choose schedule"}
+              View schedule
             </Link>
           </MemberCard>
 

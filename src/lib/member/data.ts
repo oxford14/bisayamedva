@@ -138,44 +138,36 @@ export function formatSessionWhen(session: MemberSession | null) {
   );
 }
 
+const joinLiveSessionAction = {
+  title: "Join the free weekend live session",
+  body: "Libre ang live session para sa tanan students. Open your Schedule for the day, time, and meeting link.",
+  href: "/member/schedule",
+  cta: "View live session",
+};
+
 export function enrollmentNextAction(enrollment: MemberEnrollment | null) {
-  if (!enrollment) {
-    return {
-      title: "Wala pa kay enrollment",
-      body: "Register for Medical Billing training para maka-start. Admin can also enroll you once your account is ready.",
-      href: "/register",
-      cta: "Go to register",
-    };
+  if (!enrollment || enrollment.status === "CANCELLED") {
+    return joinLiveSessionAction;
   }
 
-  if (enrollment.status === "PENDING_PAYMENT" || enrollment.payment?.status === "PENDING") {
-    const payHref = enrollment.payment
-      ? `/pay/${enrollment.payment.id}`
-      : "/member/payments";
+  if (
+    enrollment.status === "PENDING_PAYMENT" &&
+    enrollment.payment?.status === "PENDING"
+  ) {
     return {
       title: "Pending pa ang payment",
-      body: enrollment.payment
-        ? `Bayad ang ${formatPeso(Number(enrollment.payment.amount))} para ma-activate ang imong seat.`
-        : "Complete your payment para ma-activate ang imong training seat.",
-      href: payHref,
+      body: `Bayad ang ${formatPeso(Number(enrollment.payment.amount))} para ma-unlock ang course ug certificate.`,
+      href: `/pay/${enrollment.payment.id}`,
       cta: "Open payment",
     };
   }
 
   if (enrollment.status === "ACTIVE") {
-    if (!enrollment.session) {
-      return {
-        title: "Pick your weekend session",
-        body: "Naa na ang imong paid course. Choose a date sa Schedule — wala na'y extra bayad.",
-        href: "/member/schedule",
-        cta: "Choose schedule",
-      };
-    }
     return {
-      title: "Ready na imong training",
-      body: "Check your schedule and join the weekend session when it starts.",
-      href: "/member/schedule",
-      cta: "View schedule",
+      title: "Continue your course",
+      body: "Open your modules and finish each lesson para ma-unlock ang certificate. Join the weekend live session too.",
+      href: "/member/modules",
+      cta: "Open modules",
     };
   }
 
@@ -190,24 +182,18 @@ export function enrollmentNextAction(enrollment: MemberEnrollment | null) {
     };
   }
 
-  return {
-    title: "Enrollment cancelled",
-    body: "Kung gusto ka mag-enroll balik, register again or message the team.",
-    href: "/register",
-    cta: "Register again",
-  };
+  return joinLiveSessionAction;
 }
 
-export function canShowMeetingUrl(enrollment: MemberEnrollment) {
-  return (
-    enrollment.status === "ACTIVE" &&
-    Boolean(enrollment.session?.meeting_url) &&
-    (!enrollment.session?.status || enrollment.session.status === "PUBLISHED")
-  );
+function enrollmentPayments(
+  payments: MemberPayment | MemberPayment[] | null | undefined,
+): MemberPayment[] {
+  if (!payments) return [];
+  return Array.isArray(payments) ? payments : [payments];
 }
 
-/** Staff, Active/Completed enrollment, or a PAID payment unlocks Student Lounge. */
-export async function canAccessStudentLounge(
+/** Staff or at least one PAID course payment (Practice Lab, Lounge, portfolio, inbox). */
+export async function hasPaidCourseAccess(
   studentId: string,
   role?: UserRole | string | null,
 ) {
@@ -222,16 +208,14 @@ export async function canAccessStudentLounge(
     .limit(25);
 
   if (error) {
-    console.error("canAccessStudentLounge", error.message);
+    console.error("hasPaidCourseAccess", error.message);
     return false;
   }
 
-  return (data ?? []).some((row) => {
-    if (row.status === "ACTIVE" || row.status === "COMPLETED") return true;
-    const payment = Array.isArray(row.payments)
-      ? row.payments[0]
-      : row.payments;
-    return payment?.status === "PAID";
-  });
+  return (data ?? []).some((row) =>
+    enrollmentPayments(
+      row.payments as MemberPayment | MemberPayment[] | null,
+    ).some((payment) => payment.status === "PAID"),
+  );
 }
 

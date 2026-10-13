@@ -1,6 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { listPublishedAnnouncementsForUser } from "@/lib/member/announcements";
-import { canAccessStudentLounge } from "@/lib/member/data";
+import { hasPaidCourseAccess } from "@/lib/member/data";
 import {
   getLoungeNotifications,
   getUnreadLoungeNotificationCount,
@@ -21,7 +21,7 @@ export async function getMemberInboxSnapshot(
   role: string,
 ): Promise<MemberInboxSnapshot> {
   noStore();
-  const loungeAllowed = await canAccessStudentLounge(userId, role);
+  const loungeAllowed = await hasPaidCourseAccess(userId, role);
 
   const [notifications, loungeUnread, announcements] = await Promise.all([
     loungeAllowed ? getLoungeNotifications(userId, 30) : Promise.resolve([]),

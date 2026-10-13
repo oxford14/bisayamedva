@@ -3,10 +3,9 @@ import { ActionForm } from "@/components/admin/action-form";
 import {
   ContentSettingsFields,
   type ContentCourseOption,
-  type ContentSessionOption,
 } from "@/components/admin/content-settings-fields";
 import { AdminPageHeader } from "@/components/admin/ui";
-import { formatSession } from "@/lib/content/featured-offer";
+import { getLiveSessionSchedule } from "@/lib/live-session/schedule";
 import { createClient } from "@/lib/supabase/server";
 
 function unwrapSetting(value: unknown): string {
@@ -15,34 +14,10 @@ function unwrapSetting(value: unknown): string {
   return String(value).replaceAll('"', "");
 }
 
-function sessionLabel(session: {
-  title: string;
-  starts_at: string;
-  ends_at: string;
-  timezone: string;
-  format: string;
-  status: string;
-}) {
-  const formatted = formatSession({
-    id: "",
-    title: session.title,
-    starts_at: session.starts_at,
-    ends_at: session.ends_at,
-    timezone: session.timezone || "Asia/Manila",
-    format: session.format || "Online",
-    capacity: 0,
-  });
-  const when = `${formatted.day} · ${formatted.dateLabel} · ${formatted.startTime}–${formatted.endTime} ${formatted.timezoneLabel}`;
-  return session.status === "PUBLISHED"
-    ? when
-    : `${when} (${session.status})`;
-}
-
 export default async function ContentPage() {
   const supabase = await createClient();
-  const now = new Date().toISOString();
 
-  const [{ data: settings }, { data: publishedCourses }, { data: upcomingSessions }] =
+  const [{ data: settings }, { data: publishedCourses }, schedule] =
     await Promise.all([
       supabase.from("site_settings").select("key, value"),
       supabase
@@ -50,20 +25,13 @@ export default async function ContentPage() {
         .select("id, title")
         .eq("status", "PUBLISHED")
         .order("sort_order"),
-      supabase
-        .from("sessions")
-        .select("id, title, status, starts_at, ends_at, timezone, format, course_id")
-        .eq("status", "PUBLISHED")
-        .is("completed_at", null)
-        .gte("starts_at", now)
-        .order("starts_at", { ascending: true }),
+      getLiveSessionSchedule(),
     ]);
 
   const map = Object.fromEntries(
     (settings ?? []).map((row) => [row.key, row.value]),
   );
   const featured = unwrapSetting(map.featured_course_id);
-  const nextSession = unwrapSetting(map.next_session_id);
 
   const courses: ContentCourseOption[] = [...(publishedCourses ?? [])];
   if (featured && !courses.some((course) => course.id === featured)) {
@@ -75,36 +43,19 @@ export default async function ContentPage() {
     if (currentCourse) courses.unshift(currentCourse);
   }
 
-  const sessionRows = [...(upcomingSessions ?? [])];
-  if (nextSession && !sessionRows.some((session) => session.id === nextSession)) {
-    const { data: currentSession } = await supabase
-      .from("sessions")
-      .select("id, title, status, starts_at, ends_at, timezone, format, course_id")
-      .eq("id", nextSession)
-      .maybeSingle();
-    if (currentSession) sessionRows.unshift(currentSession);
-  }
-
-  const sessions: ContentSessionOption[] = sessionRows.map((session) => ({
-    id: session.id,
-    courseId: session.course_id,
-    label: sessionLabel(session),
-  }));
-
   return (
     <div>
       <AdminPageHeader
         title="Content"
-        description="Choose which published course and session appear on the public site, including registration."
+        description="Choose the featured course and set the recurring weekend live session shown on the public site and to every student."
       />
 
       <div className="max-w-xl rounded-2xl border border-border bg-white p-5">
         <ActionForm action={saveContentSettings} submitLabel="Save content settings">
           <ContentSettingsFields
             courses={courses}
-            sessions={sessions}
             featuredCourseId={featured}
-            nextSessionId={nextSession}
+            schedule={schedule}
           />
         </ActionForm>
       </div>

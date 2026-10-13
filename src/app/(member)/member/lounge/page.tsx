@@ -1,7 +1,7 @@
 import { LoungeFeed } from "@/components/member/lounge/lounge-feed";
 import { LoungeGate } from "@/components/member/lounge/lounge-gate";
 import { MemberPageHeader } from "@/components/member/ui";
-import { canAccessStudentLounge } from "@/lib/member/data";
+import { hasPaidCourseAccess } from "@/lib/member/data";
 import {
   canModerateLounge,
   canSuperModerateLounge,
@@ -19,7 +19,7 @@ export default async function MemberLoungePage({
   searchParams?: Promise<{ post?: string }>;
 }) {
   const profile = await getStudentProfile();
-  const allowed = await canAccessStudentLounge(profile.id, profile.role);
+  const allowed = await hasPaidCourseAccess(profile.id, profile.role);
   const params = searchParams ? await searchParams : {};
   const highlightPostId = params.post ?? null;
 

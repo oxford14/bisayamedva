@@ -1,4 +1,4 @@
-import { canAccessStudentLounge } from "@/lib/member/data";
+import { hasPaidCourseAccess } from "@/lib/member/data";
 import { getCurrentProfile } from "@/lib/supabase/auth";
 import { isAdminRole } from "@/lib/supabase/roles";
 
@@ -25,7 +25,7 @@ export async function requirePortfolioStudent() {
       error: null,
     };
   }
-  const allowed = await canAccessStudentLounge(profile.id, profile.role);
+  const allowed = await hasPaidCourseAccess(profile.id, profile.role);
   if (!allowed) {
     return {
       profile: null as null,
@@ -49,5 +49,5 @@ export async function canAccessPortfolio(
   role: string | null | undefined,
 ) {
   if (isAdminRole(role)) return true;
-  return canAccessStudentLounge(studentId, role);
+  return hasPaidCourseAccess(studentId, role);
 }

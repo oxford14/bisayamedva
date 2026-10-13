@@ -89,7 +89,7 @@ export const trustItems = [
   { title: "Every weekend", body: "Recurring online training. Day and time set by the coach." },
   { title: "Practical foundation", body: "Front desk and workflow basics from a Medical VA perspective." },
   { title: "Bisaya-English", body: "Natural Cebuano and English. Dili Tagalog. Dili jargon dump." },
-  { title: "One-time fee", body: "Pay once for the introductory Medical VA Masterclass." },
+  { title: "Free to join", body: "Create a free account and join the weekend live session. Pay only for the full course + certificate." },
 ] as const;
 
 export const whyBilling = {
@@ -505,16 +505,20 @@ export const authCopy = {
   register: {
     eyebrow: "MEDICAL BILLING TRAINING",
     title: "Create your Bisaya MedVA account",
-    body: "Dili kinahanglan nga expert ka daan. Fill this in, review the Featured Course, then continue to payment. After you pay, pick your weekend session sa student Schedule.",
+    body: "Dili kinahanglan nga expert ka daan. Create your free account and join our weekend live session — libre. Bayad lang kung gusto nimo ang full course ug certificate.",
     stepAccount: "Your details",
-    stepSession: "Featured Course",
-    stepSummary: "Order summary",
+    stepSession: "Live Session",
+    stepSummary: "Review",
     submitAccount: "Continue to course",
-    submitSession: "Review order",
-    featuredLead: "Kini ang course nga imong i-enroll.",
+    submitSession: "Continue",
+    featuredLead:
+      "Libre ni para sa tanan students — same link every week. Makita nimo ang meeting link sa Schedule after you sign up.",
     featuredAfterPay:
-      "After payment, you can pick a weekend session sa Schedule. Wala na'y extra bayad.",
-    submitPayment: "Proceed to payment",
+      "Gusto nimo ang full course modules ug certificate? Enroll anytime sa My Courses.",
+    submitPayment: "Create free account",
+    freeTotal: "Free",
+    freeNote:
+      "Walay bayad karon. Course + certificate ({price}) optional, enroll later sa My Courses.",
     checkingEmail: "Checking email…",
     emailTaken:
       "Naa na ni nga email. Login to continue — dili ka maka-enroll gamit ang same email.",
@@ -646,25 +650,26 @@ export const withdrawCopy = {
 export const scheduleCopy = {
   title: "Schedule",
   description:
-    "Pick a weekend session for a course you already paid. Wala na'y extra bayad.",
+    "Ang weekend live session libre para sa tanan students. Same link every week.",
   chooseSession: "Choose this session",
   switchSession: "Switch to this date",
   choosing: "Saving…",
   pickTitle: "Pick your weekend session",
   pickBody: "Choose a date for your paid course.",
-  currentSessionLabel: "Your session",
+  currentSessionLabel: "Free live session",
   reenrollBadge: "New cohort",
   reenrollBody:
     "Na-start na imong previous session. Enroll and pay again para maka-join sa ni nga date.",
   reenrollButton: "Enroll · {price}",
   seatedBody:
-    "Ni nga date imong assigned weekend session. Pili og laing open date kung gusto mo mo-switch.",
+    "Recurring every week. Same link — just open it when the session starts.",
+  linkComingSoon: "Meeting link coming soon from the team.",
   emptyTitle: "Wala pa’y open schedule",
   emptyPaidTitle: "Wala pa kay paid course nga need og schedule",
   emptyPaidBody:
     "Enroll and pay a course first. After payment, open dates for that course mo-gawas diri.",
   emptyBody:
-    "Check back later when admin opens the next weekend training date.",
+    "Walay live session karon nga semana. Check back later or watch the announcements.",
   meetingOpenLink: "Open meeting",
   meetingOpenDialogTitle: "Before you join",
   meetingOpenDialogBody:
@@ -889,10 +894,12 @@ export const practiceCopy = {
   resetData: "Reset practice data",
   resetConfirm:
     "I-reset ang tanan demo patients ug appointments sa ni nga browser? Dili ni ma-undo.",
-  gateTitle: "Practice Lab is for enrolled students",
+  gateTitle: "Practice Lab unlocks after course payment",
   gateBody:
-    "Enroll and activate sa course una para ma-open ang practice simulations.",
+    "Free account lang ni — okay ra ang weekend live session. Enroll and pay for a course para ma-open ang Practice Lab simulations.",
   gateCta: "Browse courses",
+  navLockedLabel: "Locked",
+  navLockedHint: "Pay for a course to unlock",
   gatePreviewTitle: "Practice Lab — preview mode",
   gatePreviewBody:
     "Practice Lab is for enrolled students ug SUPER_ADMIN staff preview. Sign in with a student account para ma-open.",

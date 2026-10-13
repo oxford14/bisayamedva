@@ -59,7 +59,7 @@ export function WeekendTraining({
           </p>
           {signedIn ? null : (
             <Button variant="accent" size="lg" className="mt-7" asChild>
-              <Link href="/register">Reserve Your Slot</Link>
+              <Link href="/register">Join Free</Link>
             </Button>
           )}
         </div>

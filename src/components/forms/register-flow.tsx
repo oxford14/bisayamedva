@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { checkRegisterEmail, prepareCheckoutPayment, quoteRegisterPromo } from "@/app/register/actions";
+import { checkRegisterEmail, registerFreeAccount } from "@/app/register/actions";
 import {
   authCopy,
   experienceLevels,
@@ -50,9 +50,11 @@ const emptyAccount: AccountState = {
 
 export function RegisterFlow({
   course,
+  session,
   refCode,
 }: {
   course: FeaturedOffer["course"];
+  session: FeaturedOffer["session"];
   refCode?: string;
 }) {
   const router = useRouter();
@@ -61,16 +63,6 @@ export function RegisterFlow({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
-  const [promoInput, setPromoInput] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<{
-    code: string;
-    discountLabel: string;
-    finalLabel: string;
-    originalLabel: string;
-    finalAmount: number;
-  } | null>(null);
-  const [promoError, setPromoError] = useState("");
-  const [promoPending, startPromoTransition] = useTransition();
   const [enrollPending, startEnrollTransition] = useTransition();
   const [enrollError, setEnrollError] = useState("");
   const [storedRef, setStoredRef] = useState(refCode ?? "");
@@ -97,27 +89,10 @@ export function RegisterFlow({
       messengerName: draft.messengerName ?? "",
       referralSource: draft.referralSource ?? "",
     });
-    if (draft.promoCode) {
-      setPromoInput(draft.promoCode);
-      startPromoTransition(async () => {
-        const result = await quoteRegisterPromo(draft.promoCode!);
-        if (result.ok) {
-          setAppliedPromo({
-            code: result.code,
-            discountLabel: result.discountLabel,
-            finalLabel: result.finalLabel,
-            originalLabel: result.originalLabel,
-            finalAmount: result.finalAmount,
-          });
-        }
-      });
-    }
     setStep(3);
   }, []);
 
   const price = formatPeso(course.price);
-  const displayTotal = appliedPromo?.finalLabel ?? price;
-  const isFreeEnrollment = appliedPromo?.finalAmount === 0;
 
   const steps = useMemo(
     () => [
@@ -427,15 +402,16 @@ export function RegisterFlow({
               {authCopy.register.stepSession}
             </p>
             <h2 className="mt-2 font-display text-2xl font-semibold text-navy">
-              {course.name}
+              {session.label}
             </h2>
-            {course.subtitle ? (
-              <p className="mt-1 text-sm text-muted">{course.subtitle}</p>
-            ) : null}
             <p className="mt-4 font-display text-3xl font-semibold text-navy">
-              {price}
+              {session.day}
             </p>
-            <p className="mt-1 text-sm text-muted">{course.priceLabel}</p>
+            <p className="mt-1 text-sm text-muted">{session.dateLabel}</p>
+            <p className="mt-1 text-sm font-medium text-navy">
+              {session.startTime} – {session.endTime} {session.timezoneLabel}
+            </p>
+            <p className="mt-1 text-sm text-muted uppercase">{session.format}</p>
             <p className="mt-4 text-sm text-navy">{authCopy.register.featuredLead}</p>
             <p className="mt-1 text-sm text-muted">
               {authCopy.register.featuredAfterPay}
@@ -460,7 +436,7 @@ export function RegisterFlow({
       {step === 3 ? (
         <div className="mt-8 space-y-5">
           <div className="rounded-2xl border border-border bg-white p-5">
-            <h2 className="font-semibold text-navy">Order summary</h2>
+            <h2 className="font-semibold text-navy">{authCopy.register.stepSummary}</h2>
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Student</dt>
@@ -473,93 +449,25 @@ export function RegisterFlow({
                 <dd className="text-right text-navy">{account.email}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted">Course</dt>
+                <dt className="text-muted">Live session</dt>
                 <dd className="text-right text-navy">
-                  {course.name}
+                  {session.day}, {session.dateLabel} · {session.startTime}{" "}
+                  {session.timezoneLabel}
                 </dd>
               </div>
             </dl>
 
-            <div className="mt-4 border-t border-border pt-4">
-              <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-                Promo code
-              </p>
-              <div className="mt-2 flex gap-2">
-                <Input
-                  value={promoInput}
-                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                  placeholder="Enter code"
-                  className="flex-1"
-                  disabled={Boolean(appliedPromo)}
-                />
-                {appliedPromo ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setAppliedPromo(null);
-                      setPromoInput("");
-                      setPromoError("");
-                      setEnrollError("");
-                    }}
-                  >
-                    Remove
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={promoPending || !promoInput.trim()}
-                    onClick={() => {
-                      setPromoError("");
-                      startPromoTransition(async () => {
-                        const result = await quoteRegisterPromo(promoInput);
-                        if (!result.ok) {
-                          setAppliedPromo(null);
-                          setPromoError(result.error);
-                          return;
-                        }
-                        setAppliedPromo({
-                          code: result.code,
-                          discountLabel: result.discountLabel,
-                          finalLabel: result.finalLabel,
-                          originalLabel: result.originalLabel,
-                          finalAmount: result.finalAmount,
-                        });
-                      });
-                    }}
-                  >
-                    {promoPending ? "…" : "Apply"}
-                  </Button>
-                )}
-              </div>
-              {promoError ? (
-                <p className="mt-2 text-sm text-destructive" role="alert">
-                  {promoError}
-                </p>
-              ) : null}
-              {appliedPromo ? (
-                <p className="mt-2 text-sm text-navy">
-                  Applied <span className="font-semibold">{appliedPromo.code}</span>{" "}
-                  (−{appliedPromo.discountLabel})
-                </p>
-              ) : null}
-            </div>
-
             <dl className="mt-4 space-y-3 text-sm">
-              {appliedPromo ? (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted">Subtotal</dt>
-                  <dd className="text-right text-muted line-through">
-                    {appliedPromo.originalLabel}
-                  </dd>
-                </div>
-              ) : null}
               <div className="flex justify-between gap-4 border-t border-border pt-3">
                 <dt className="font-semibold text-navy">Total</dt>
-                <dd className="font-display text-2xl text-navy">{displayTotal}</dd>
+                <dd className="font-display text-2xl text-navy">
+                  {authCopy.register.freeTotal}
+                </dd>
               </div>
             </dl>
+            <p className="mt-3 text-sm text-muted">
+              {authCopy.register.freeNote.replace("{price}", price)}
+            </p>
           </div>
           {enrollError ? (
             <p className="text-sm text-destructive" role="alert">
@@ -593,32 +501,24 @@ export function RegisterFlow({
                   experienceLevel: account.experienceLevel || undefined,
                   messengerName: account.messengerName || undefined,
                   referralSource: account.referralSource || undefined,
-                  promoCode: appliedPromo?.code,
                   refCode: storedRef || undefined,
                 };
                 saveRegisterDraft(draft);
 
-                if (isFreeEnrollment) {
-                  startEnrollTransition(async () => {
-                    const result = await prepareCheckoutPayment(draft);
-                    if (!result.ok) {
-                      setEnrollError(result.error);
-                      return;
-                    }
-                    clearRegisterDraft();
-                    router.push("/member");
-                  });
-                  return;
-                }
-
-                router.push("/register/checkout");
+                startEnrollTransition(async () => {
+                  const result = await registerFreeAccount(draft);
+                  if (!result.ok) {
+                    setEnrollError(result.error);
+                    return;
+                  }
+                  clearRegisterDraft();
+                  router.push("/member/schedule");
+                });
               }}
             >
               {enrollPending
-                ? "Completing…"
-                : isFreeEnrollment
-                  ? "Complete enrollment"
-                  : authCopy.register.submitPayment}
+                ? "Creating account…"
+                : authCopy.register.submitPayment}
             </Button>
           </div>
         </div>

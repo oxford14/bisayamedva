@@ -3,10 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { type MemberNavItem } from "@/components/member/nav-config";
-import { getMemberNavForRole } from "@/lib/member/practice-access";
+import { practiceCopy } from "@/content/site";
+import {
+  getMemberNavForRole,
+  isPracticeLabNavLocked,
+} from "@/lib/member/practice-access";
 import { UserMenu } from "@/components/auth/user-menu";
 import { MemberInboxBell } from "@/components/member/member-inbox-bell";
 import { ShellNavLink } from "@/components/navigation/shell-nav-link";
@@ -17,11 +21,24 @@ function firstName(name: string) {
   return name.split(/\s+/).filter(Boolean)[0] ?? "Student";
 }
 
+function practiceNavLocked(
+  item: MemberNavItem,
+  role: string | null | undefined,
+  practiceLabAllowed: boolean,
+) {
+  return (
+    item.href === "/member/practice" &&
+    isPracticeLabNavLocked(role, practiceLabAllowed)
+  );
+}
+
 export function MemberShell({
   profile,
+  practiceLabAllowed = false,
   children,
 }: {
   profile: MemberProfile;
+  practiceLabAllowed?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -97,6 +114,11 @@ export function MemberShell({
             {memberNavItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item);
+              const locked = practiceNavLocked(
+                item,
+                profile.role,
+                practiceLabAllowed,
+              );
               return (
                 <ShellNavLink
                   key={item.href}
@@ -105,20 +127,40 @@ export function MemberShell({
                     "group relative flex items-center gap-3 rounded-2xl px-2.5 py-2.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-200",
                     active
                       ? "bg-navy text-cream shadow-[0_10px_24px_rgba(69,83,56,0.18)]"
-                      : "text-navy/70 hover:bg-white/80 hover:text-navy hover:shadow-[0_6px_16px_rgba(69,83,56,0.06)]",
+                      : locked
+                        ? "text-navy/45 hover:bg-white/60 hover:text-navy/60"
+                        : "text-navy/70 hover:bg-white/80 hover:text-navy hover:shadow-[0_6px_16px_rgba(69,83,56,0.06)]",
                   )}
+                  aria-label={
+                    locked
+                      ? `${item.label} — ${practiceCopy.navLockedHint}`
+                      : undefined
+                  }
                 >
                   <span
                     className={cn(
-                      "flex size-9 items-center justify-center rounded-xl transition-colors",
+                      "relative flex size-9 items-center justify-center rounded-xl transition-colors",
                       active
                         ? "bg-white/15 text-cream"
-                        : "bg-white text-navy/65 group-hover:text-navy",
+                        : locked
+                          ? "bg-white/70 text-navy/40"
+                          : "bg-white text-navy/65 group-hover:text-navy",
                     )}
                   >
                     <Icon className="size-4" aria-hidden />
+                    {locked ? (
+                      <Lock
+                        className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-cream p-0.5 text-navy/55"
+                        aria-hidden
+                      />
+                    ) : null}
                   </span>
                   <span className="flex-1">{item.label}</span>
+                  {locked ? (
+                    <span className="rounded-md bg-sand px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-navy/55 uppercase">
+                      {practiceCopy.navLockedLabel}
+                    </span>
+                  ) : null}
                   {active ? (
                     <span
                       className="absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-r-full bg-teal-bright"
@@ -253,6 +295,11 @@ export function MemberShell({
                 {moreMobile.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item);
+                  const locked = practiceNavLocked(
+                    item,
+                    profile.role,
+                    practiceLabAllowed,
+                  );
                   return (
                     <li key={item.href}>
                       <ShellNavLink
@@ -262,18 +309,36 @@ export function MemberShell({
                           "flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-colors",
                           active
                             ? "bg-navy text-cream"
-                            : "text-navy/80 hover:bg-sand",
+                            : locked
+                              ? "text-navy/50 hover:bg-sand/80"
+                              : "text-navy/80 hover:bg-sand",
                         )}
+                        aria-label={
+                          locked
+                            ? `${item.label} — ${practiceCopy.navLockedHint}`
+                            : undefined
+                        }
                       >
                         <span
                           className={cn(
-                            "flex size-9 items-center justify-center rounded-xl",
+                            "relative flex size-9 items-center justify-center rounded-xl",
                             active ? "bg-white/15" : "bg-white",
                           )}
                         >
                           <Icon className="size-4" aria-hidden />
+                          {locked ? (
+                            <Lock
+                              className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-cream p-0.5 text-navy/55"
+                              aria-hidden
+                            />
+                          ) : null}
                         </span>
-                        {item.label}
+                        <span className="flex-1">{item.label}</span>
+                        {locked ? (
+                          <span className="text-[10px] font-semibold tracking-wide text-navy/50 uppercase">
+                            {practiceCopy.navLockedLabel}
+                          </span>
+                        ) : null}
                       </ShellNavLink>
                     </li>
                   );

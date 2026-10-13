@@ -4,7 +4,7 @@ import {
   ElevenLabsConfigError,
   synthesizeSpeech,
 } from "@/lib/elevenlabs/tts";
-import { canAccessPracticeLab } from "@/lib/member/practice-access";
+import { getPracticeLabAccess } from "@/lib/member/practice-access-server";
 import { getCurrentProfile } from "@/lib/supabase/auth";
 
 type TtsBody = {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
-  if (!canAccessPracticeLab(profile.role)) {
+  if ((await getPracticeLabAccess(profile)) !== "allowed") {
     return NextResponse.json({ error: "Practice Lab access required." }, {
       status: 403,
     });

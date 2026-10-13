@@ -15,7 +15,7 @@ type ReviewState = {
   courseTitle: string;
   coursePrice: number;
   coursePriceLabel: string;
-  sessionLabel: string;
+  includesLabel: string;
   balance: number;
   balanceLabel: string;
 };
@@ -33,14 +33,12 @@ function suggestTopupAmount(shortfall: number) {
 
 export function CourseCheckoutPanel({
   slug,
-  sessionId,
   courseTitle,
   review,
   reviewError,
   initialPromoCode,
 }: {
   slug: string;
-  sessionId: string;
   courseTitle: string;
   review?: ReviewState | null;
   reviewError?: string | null;
@@ -111,11 +109,7 @@ export function CourseCheckoutPanel({
     setMessage("");
     setInsufficient(null);
     startTransition(async () => {
-      const result = await prepareCoursePayment(
-        slug,
-        sessionId,
-        appliedPromo?.code,
-      );
+      const result = await prepareCoursePayment(slug, appliedPromo?.code);
       if (!result.ok) {
         if (result.code === "INSUFFICIENT_WALLET") {
           setInsufficient({
@@ -135,14 +129,13 @@ export function CourseCheckoutPanel({
           ? memberCheckoutCopy.enrolledActive
           : memberCheckoutCopy.enrolledRedirect,
       );
-      router.replace("/member/schedule");
+      router.replace("/member/modules");
     });
   }, [
     appliedPromo?.code,
     displayTotal,
     review?.balanceLabel,
     router,
-    sessionId,
     shortfallPreview,
     slug,
   ]);
@@ -164,7 +157,7 @@ export function CourseCheckoutPanel({
       <div className="mt-6 rounded-2xl border border-border bg-white p-5">
         <p className="text-sm text-muted">{review?.courseTitle ?? courseTitle}</p>
         <p className="mt-2 text-sm text-navy">
-          {review?.sessionLabel ?? "—"}
+          {review?.includesLabel ?? "—"}
         </p>
         {review ? (
           <p className="mt-3 text-sm text-muted">

@@ -88,7 +88,7 @@ export default async function AdminModulesPage({ searchParams }: Props) {
     <div>
       <AdminPageHeader
         title="Modules"
-        description="Upload lesson files and multiple-choice quizzes per course. Students unlock them at Zoom start."
+        description="Upload lesson files and multiple-choice quizzes per course. Students unlock them once their course is paid."
       />
 
       <div className="mb-5 flex flex-wrap gap-2">

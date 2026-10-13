@@ -14,7 +14,7 @@ export type MemberCheckoutPrepareResult =
       balanceLabel: string;
       alreadyActive: boolean;
       courseTitle: string;
-      sessionLabel: string;
+      includesLabel: string;
     }
   | {
       ok: false;
@@ -32,64 +32,18 @@ export type MemberCheckoutReview =
       courseTitle: string;
       coursePrice: number;
       coursePriceLabel: string;
-      sessionLabel: string;
+      includesLabel: string;
       balance: number;
       balanceLabel: string;
     }
   | { ok: false; error: string };
 
-export function formatMemberSessionLabel(session: {
-  title: string;
-  starts_at: string;
-  ends_at: string | null;
-  timezone: string | null;
-}) {
-  const timezone = session.timezone || "Asia/Manila";
-  const start = new Date(session.starts_at);
-  const end = session.ends_at ? new Date(session.ends_at) : null;
-  const day = new Intl.DateTimeFormat("en-PH", {
-    weekday: "long",
-    timeZone: timezone,
-  }).format(start);
-  const dateLabel = new Intl.DateTimeFormat("en-PH", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: timezone,
-  }).format(start);
-  const startTime = new Intl.DateTimeFormat("en-PH", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: timezone,
-  }).format(start);
-  const endTime = end
-    ? new Intl.DateTimeFormat("en-PH", {
-        hour: "numeric",
-        minute: "2-digit",
-        timeZone: timezone,
-      }).format(end)
-    : null;
-  const tz = timezone === "Asia/Manila" ? "PHT" : timezone;
-  return endTime
-    ? `${day} · ${dateLabel} · ${startTime}–${endTime} ${tz}`
-    : `${day} · ${dateLabel} · ${startTime} ${tz}`;
-}
+const INCLUDES_LABEL =
+  "Includes course modules, Practice Lab, Student Lounge, and certificate.";
 
-const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function isMemberSessionId(id: string) {
-  return SESSION_ID_RE.test(id);
-}
-
-async function loadPublishedOffer(slug: string, sessionId: string) {
+async function loadPublishedOffer(slug: string) {
   if (!getCatalogCourseBySlug(slug)) {
     return { ok: false as const, error: "Invalid course for member checkout." };
-  }
-  if (!sessionId || !isMemberSessionId(sessionId)) {
-    return {
-      ok: false as const,
-      error: "Select an open schedule before checkout.",
-    };
   }
 
   const admin = createServiceClient();
@@ -108,34 +62,14 @@ async function loadPublishedOffer(slug: string, sessionId: string) {
     };
   }
 
-  const nowIso = new Date().toISOString();
-  const { data: session } = await admin
-    .from("sessions")
-    .select("id, title, starts_at, ends_at, timezone, format, status, course_id")
-    .eq("id", sessionId)
-    .eq("course_id", course.id)
-    .eq("status", "PUBLISHED")
-    .is("completed_at", null)
-    .gt("starts_at", nowIso)
-    .maybeSingle();
-
-  if (!session) {
-    return {
-      ok: false as const,
-      error:
-        "That schedule is not open anymore. Pick another open schedule or check back later.",
-    };
-  }
-
-  return { ok: true as const, admin, course, session };
+  return { ok: true as const, admin, course };
 }
 
 export async function getMemberCheckoutReview(
   slug: string,
   studentId: string,
-  sessionId: string,
 ): Promise<MemberCheckoutReview> {
-  const offer = await loadPublishedOffer(slug, sessionId);
+  const offer = await loadPublishedOffer(slug);
   if (!offer.ok) return offer;
 
   const wallet = await getOrCreateWallet(studentId);
@@ -146,7 +80,7 @@ export async function getMemberCheckoutReview(
     courseTitle: offer.course.title,
     coursePrice: price,
     coursePriceLabel: formatPeso(price),
-    sessionLabel: formatMemberSessionLabel(offer.session),
+    includesLabel: INCLUDES_LABEL,
     balance,
     balanceLabel: formatPeso(balance),
   };
@@ -159,16 +93,14 @@ export async function getMemberCheckoutReview(
 export async function prepareCoursePaymentForStudent(
   slug: string,
   studentId: string,
-  sessionId: string,
   promoCode?: string,
 ): Promise<MemberCheckoutPrepareResult> {
   try {
-    const offer = await loadPublishedOffer(slug, sessionId);
+    const offer = await loadPublishedOffer(slug);
     if (!offer.ok) return offer;
 
-    const { course, session } = offer;
+    const { course } = offer;
     await expireStalePendingPayments();
-    const label = formatMemberSessionLabel(session);
     const wallet = await getOrCreateWallet(studentId);
     const listPrice = Number(course.price);
     let finalAmount = listPrice;
@@ -186,7 +118,6 @@ export async function prepareCoursePaymentForStudent(
     const enrolled = await enrollWithWallet({
       studentId,
       courseId: course.id,
-      sessionId: session.id,
       amountPesos: finalAmount,
       promoId,
       originalAmount,
@@ -200,7 +131,7 @@ export async function prepareCoursePaymentForStudent(
         balanceLabel: formatPeso(enrolled.balance ?? wallet.balance),
         alreadyActive: enrolled.alreadyActive,
         courseTitle: course.title,
-        sessionLabel: label,
+        includesLabel: INCLUDES_LABEL,
       };
     }
 

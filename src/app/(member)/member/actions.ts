@@ -16,7 +16,6 @@ import { activatePaidEnrollment } from "@/lib/paymongo/activate";
 import { requireStudent } from "@/lib/supabase/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { formatPeso } from "@/lib/utils";
 
 const profileSchema = z.object({
   full_name: z.string().min(2, "Please enter your full name."),
@@ -274,16 +273,10 @@ export async function quoteMemberPromo(slug: string, code: string) {
 
 export async function prepareCoursePayment(
   slug: string,
-  sessionId: string,
   promoCode?: string,
 ): Promise<MemberCheckoutPrepareResult> {
   const profile = await requireStudent();
-  return prepareCoursePaymentForStudent(
-    slug,
-    profile.id,
-    sessionId,
-    promoCode,
-  );
+  return prepareCoursePaymentForStudent(slug, profile.id, promoCode);
 }
 
 export async function refreshCoursePaymentStatus(
@@ -370,10 +363,7 @@ export async function refreshMemberWalletTopup(topupId: string) {
   return refreshWalletTopupStatus(topupId);
 }
 
-export async function enrollCourseWithWallet(input: {
-  slug: string;
-  sessionId: string;
-}) {
+export async function enrollCourseWithWallet(input: { slug: string }) {
   const profile = await requireStudent();
   const admin = createServiceClient();
   const { data: course } = await admin
@@ -391,7 +381,6 @@ export async function enrollCourseWithWallet(input: {
   const result = await enrollWithWallet({
     studentId: profile.id,
     courseId: course.id,
-    sessionId: input.sessionId,
   });
 
   if (result.ok) {
@@ -402,101 +391,6 @@ export async function enrollCourseWithWallet(input: {
   }
 
   return result;
-}
-
-export type AssignSessionResult =
-  | { ok: true }
-  | { ok: false; error: string };
-
-export async function assignEnrollmentSession(
-  enrollmentId: string,
-  sessionId: string,
-): Promise<AssignSessionResult> {
-  const profile = await requireStudent();
-  if (!z.guid().safeParse(enrollmentId).success || !z.guid().safeParse(sessionId).success) {
-    return { ok: false, error: "Invalid selection." };
-  }
-
-  const admin = createServiceClient();
-  const { data: enrollment } = await admin
-    .from("enrollments")
-    .select("id, student_id, course_id, session_id, status")
-    .eq("id", enrollmentId)
-    .maybeSingle();
-
-  if (!enrollment || enrollment.student_id !== profile.id) {
-    return { ok: false, error: "Enrollment not found." };
-  }
-  if (enrollment.status !== "ACTIVE" && enrollment.status !== "COMPLETED") {
-    const { data: paidPayment } = await admin
-      .from("payments")
-      .select("id")
-      .eq("enrollment_id", enrollment.id)
-      .eq("status", "PAID")
-      .maybeSingle();
-    if (!paidPayment) {
-      return { ok: false, error: "Pay the course first before you pick a schedule." };
-    }
-  }
-  if (enrollment.session_id === sessionId) {
-    return { ok: true };
-  }
-
-  if (enrollment.session_id) {
-    const { isSessionStartPast } = await import("@/lib/member/data");
-    const { data: assigned } = await admin
-      .from("sessions")
-      .select("starts_at")
-      .eq("id", enrollment.session_id)
-      .maybeSingle();
-    if (isSessionStartPast(assigned?.starts_at as string | null | undefined)) {
-      return {
-        ok: false,
-        error:
-          "Session start na. Enroll and pay again sa Schedule para sa laing date.",
-      };
-    }
-  }
-
-  const { data: session } = await admin
-    .from("sessions")
-    .select("id, course_id, status, starts_at, capacity, completed_at")
-    .eq("id", sessionId)
-    .maybeSingle();
-
-  if (
-    !session ||
-    session.course_id !== enrollment.course_id ||
-    session.status !== "PUBLISHED" ||
-    session.completed_at
-  ) {
-    return { ok: false, error: "That schedule is not available for this course." };
-  }
-  if (new Date(session.starts_at as string).getTime() <= Date.now()) {
-    return { ok: false, error: "That session already started." };
-  }
-
-  const { count } = await admin
-    .from("enrollments")
-    .select("id", { count: "exact", head: true })
-    .eq("session_id", sessionId)
-    .in("status", ["ACTIVE", "COMPLETED", "PENDING_PAYMENT"]);
-  const capacity = Number(session.capacity ?? 0);
-  if (capacity > 0 && (count ?? 0) >= capacity) {
-    return { ok: false, error: "This session is full." };
-  }
-
-  const { error } = await admin
-    .from("enrollments")
-    .update({ session_id: sessionId })
-    .eq("id", enrollment.id);
-  if (error) return { ok: false, error: error.message };
-
-  revalidatePath("/member");
-  revalidatePath("/member/schedule");
-  revalidatePath("/member/modules");
-  revalidatePath("/member/course");
-  return { ok: true };
 }
 
 export async function saveMemberWithdrawalSettings(

@@ -30,3 +30,11 @@ export function getMemberNavForRole(
     (item) => item.href !== PRACTICE_HREF || showPractice,
   );
 }
+
+/** Student sees Practice Lab in nav but it stays locked until a course is paid. */
+export function isPracticeLabNavLocked(
+  role: string | null | undefined,
+  practiceLabAllowed: boolean,
+) {
+  return isStudentRole(role) && canAccessPracticeLab(role) && !practiceLabAllowed;
+}

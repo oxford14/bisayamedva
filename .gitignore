@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local AI skill packs (reinstall with ui-ux-pro-max-cli)
 .cursor/skills/
+
+# Supabase CLI local cache
+supabase/.temp/

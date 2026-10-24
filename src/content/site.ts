@@ -569,6 +569,17 @@ export const referCopy = {
   noFriendCourses: "Wala pa enrolled course.",
 } as const;
 
+export const memberCoursesCopy = {
+  foundationBlurb:
+    "Start with Medical VA Masterclass, then enroll separately sa Medical Billing Masterclass once active na imong VA seat.",
+  billingPrerequisiteHint:
+    "Enroll and activate Medical VA Masterclass first — separate payment, then open ang Medical Billing Masterclass dinhi.",
+  billingPrerequisiteButton: "Requires Medical VA Masterclass",
+  billingPrerequisiteCheckoutError:
+    "Medical Billing Masterclass opens after Medical VA Masterclass is active. Enroll and pay for VA first, then balik dinhi.",
+  vaCheckoutCta: "Enroll Medical VA Masterclass",
+} as const;
+
 export const memberCheckoutCopy = {
   eyebrow: "Review enrollment",
   body: "Check your schedule and add a promo if you have one. Bayad via Wallet lang — if kulang ang balance, top up sa Wallet first, then balik dinhi.",

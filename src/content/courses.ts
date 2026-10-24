@@ -32,10 +32,9 @@ export const foundationCourses: CatalogCourse[] = [
     title: "Medical Billing Masterclass",
     subtitle: "Medical Billing fundamentals for aspiring Medical VAs",
     description:
-      "Coming next after the Medical VA Masterclass. Core Medical Billing concepts and where billing sits in the revenue cycle.",
+      "Revenue Cycle basics, common Medical Billing terms, and how Claims and Insurance fit — for VAs who finished the Medical VA Masterclass.",
     price: 499,
     courseType: "FOUNDATION",
-    comingSoon: true,
   },
 ];
 

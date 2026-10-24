@@ -7,9 +7,14 @@ import {
   upskillCourses,
   type CatalogCourse,
 } from "@/content/courses";
-import { certificatesCopy, certificatesEnabled, site } from "@/content/site";
+import { certificatesCopy, certificatesEnabled, memberCoursesCopy, site } from "@/content/site";
 import { Button } from "@/components/ui/button";
 import { MemberStatusBadge } from "@/components/member/ui";
+import {
+  BILLING_SLUG,
+  studentMeetsBillingPrerequisite,
+  VA_SLUG,
+} from "@/lib/member/course-prerequisites";
 import { cn, formatPeso } from "@/lib/utils";
 import type { MemberEnrollment } from "@/lib/member/enrollment-shared";
 
@@ -80,12 +85,16 @@ function CourseThumb({
 function CourseCard({
   course,
   enrollment,
+  billingPrerequisiteMet,
 }: {
   course: CatalogCourse;
   enrollment?: MemberEnrollment;
+  billingPrerequisiteMet?: boolean;
 }) {
   const owned = isOwnedEnrollment(enrollment);
   const accent = course.courseType === "FOUNDATION" ? "foundation" : "upskill";
+  const billingLocked =
+    course.slug === BILLING_SLUG && !owned && !billingPrerequisiteMet;
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-[0_8px_24px_rgba(47,56,38,0.04)]">
@@ -117,46 +126,47 @@ function CourseCard({
         </p>
 
         <div className="mt-auto border-t border-border pt-4">
-          {course.comingSoon ? (
+          <p className="mb-3 font-display text-3xl font-semibold text-navy">
+            {formatPeso(course.price)}
+          </p>
+          {owned ? (
+            <Button variant="secondary" className="w-full" asChild>
+              {enrollment?.status === "COMPLETED" ? (
+                <Link
+                  href={
+                    certificatesEnabled
+                      ? `/member/certificates/${course.slug}`
+                      : "/member/modules"
+                  }
+                >
+                  {certificatesEnabled
+                    ? certificatesCopy.view
+                    : certificatesCopy.emptyCta}
+                </Link>
+              ) : (
+                <Link href="/member/modules">Open modules</Link>
+              )}
+            </Button>
+          ) : billingLocked ? (
             <>
-              <p className="mb-3 font-display text-xl font-semibold text-navy">
-                Coming soon
+              <p className="mb-3 text-sm leading-relaxed text-muted">
+                {memberCoursesCopy.billingPrerequisiteHint}
               </p>
               <Button variant="secondary" className="w-full" disabled>
-                Opens after Medical VA Masterclass
+                {memberCoursesCopy.billingPrerequisiteButton}
+              </Button>
+              <Button variant="accent" className="mt-2 w-full" asChild>
+                <Link href={`/member/checkout/${VA_SLUG}`}>
+                  {memberCoursesCopy.vaCheckoutCta}
+                </Link>
               </Button>
             </>
           ) : (
-            <>
-              <p className="mb-3 font-display text-3xl font-semibold text-navy">
-                {formatPeso(course.price)}
-              </p>
-              {owned ? (
-                <Button variant="secondary" className="w-full" asChild>
-                  {enrollment?.status === "COMPLETED" ? (
-                    <Link
-                      href={
-                        certificatesEnabled
-                          ? `/member/certificates/${course.slug}`
-                          : "/member/modules"
-                      }
-                    >
-                      {certificatesEnabled
-                        ? certificatesCopy.view
-                        : certificatesCopy.emptyCta}
-                    </Link>
-                  ) : (
-                    <Link href="/member/modules">Open modules</Link>
-                  )}
-                </Button>
-              ) : (
-                <Button variant="accent" className="w-full" asChild>
-                  <Link href={checkoutHref(course)}>
-                    {`Enroll · ${formatPeso(course.price)}`}
-                  </Link>
-                </Button>
-              )}
-            </>
+            <Button variant="accent" className="w-full" asChild>
+              <Link href={checkoutHref(course)}>
+                {`Enroll · ${formatPeso(course.price)}`}
+              </Link>
+            </Button>
           )}
         </div>
       </div>
@@ -170,6 +180,7 @@ export function MemberCourseCatalog({
   enrollments: MemberEnrollment[];
 }) {
   const primary = primaryOwned(enrollments);
+  const billingPrerequisiteMet = studentMeetsBillingPrerequisite(enrollments);
 
   return (
     <div className="space-y-10">
@@ -218,9 +229,7 @@ export function MemberCourseCatalog({
             Foundation
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Start with the {formatPeso(site.featuredCourse.price)}{" "}
-            {site.featuredCourse.name}. Medical Billing Masterclass opens later
-            as a separate enrollment.
+            {memberCoursesCopy.foundationBlurb}
           </p>
         </div>
         <div className="grid gap-5 lg:grid-cols-2">
@@ -229,6 +238,7 @@ export function MemberCourseCatalog({
               key={course.id}
               course={course}
               enrollment={enrollmentForCourse(enrollments, course)}
+              billingPrerequisiteMet={billingPrerequisiteMet}
             />
           ))}
         </div>

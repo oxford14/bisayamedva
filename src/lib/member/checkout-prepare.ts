@@ -1,4 +1,5 @@
 import { getCatalogCourseBySlug } from "@/content/courses";
+import { ensureBillingPrerequisite } from "@/lib/member/course-prerequisites";
 import { validateAndQuotePromo } from "@/lib/promo/codes";
 import { expireStalePendingPayments } from "@/lib/payments/expire-pending";
 import { createServiceClient } from "@/lib/supabase/admin";
@@ -72,6 +73,9 @@ export async function getMemberCheckoutReview(
   const offer = await loadPublishedOffer(slug);
   if (!offer.ok) return offer;
 
+  const prerequisite = await ensureBillingPrerequisite(slug, studentId);
+  if (!prerequisite.ok) return prerequisite;
+
   const wallet = await getOrCreateWallet(studentId);
   const price = Number(offer.course.price);
   const balance = Number(wallet.balance);
@@ -98,6 +102,9 @@ export async function prepareCoursePaymentForStudent(
   try {
     const offer = await loadPublishedOffer(slug);
     if (!offer.ok) return offer;
+
+    const prerequisite = await ensureBillingPrerequisite(slug, studentId);
+    if (!prerequisite.ok) return prerequisite;
 
     const { course } = offer;
     await expireStalePendingPayments();
